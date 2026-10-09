@@ -1,4 +1,8 @@
-"""Optional UI smoke test. Uses installed Playwright and Chromium; no downloads.
+"""Mobile, lifecycle, persistence and rendering regression checks.
+
+This suite uses deliberate state fixtures only for isolated controls/results;
+it does not establish difficulty balance or substitute for unassisted play.
+Uses installed Playwright and Chromium; no downloads.
 
 Run a server for dist/, then:
   python tests/browser_qa.py --url http://127.0.0.1:4173/
@@ -31,6 +35,35 @@ def box_inside(page, selector, width, height):
     return box and box['x'] >= -.5 and box['y'] >= -.5 and box['x'] + box['width'] <= width + .5 and box['y'] + box['height'] <= height + .5, box
 
 
+def touch_point(page, selector, pointer_id=1, x=.5, y=.5):
+    box = page.locator(selector).bounding_box()
+    return {'x': box['x'] + box['width'] * x, 'y': box['y'] + box['height'] * y, 'id': pointer_id}
+
+
+def quiet_control_fixture(page):
+    # Isolate input without altering actor health or formation behavior.
+    page.evaluate('''() => {
+      const g=deadSignal.game;g.state.enemies=[];g.state.wavesRemaining=0;
+      for(const [i,s] of g.soldiers.entries()){
+        s.x=220-i*28;s.y=970+i*25;s.path=null;s.pathTimer=0;
+      }
+      g.moveTo(g.leader.x,g.leader.y);
+    }''')
+
+
+def regroup_at_flare(page):
+    page.evaluate('''() => {
+      const g=deadSignal.game;
+      for(const [i,s] of g.soldiers.entries())if(s.alive){
+        s.x=g.extraction.x-i*26;s.y=g.extraction.y;s.path=null;s.pathTimer=0;
+      }
+      for(const [i,c] of g.civilians.entries())if(c.rescued){
+        c.x=g.extraction.x-35-i*26;c.y=g.extraction.y+55;c.path=null;c.pathTimer=0;
+      }
+      g.moveTo(g.extraction.x,g.extraction.y);
+    }''')
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path='/usr/bin/chromium', headless=True, args=['--no-sandbox'])
     for width, height, touch in [(390, 844, True), (360, 740, True), (844, 390, True), (1440, 1000, False)]:
@@ -41,6 +74,7 @@ with sync_playwright() as p:
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.goto(args.url)
         page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+        check(f'{label} sound begins off without audio context', page.evaluate('!deadSignal.audio.debug.enabled && deadSignal.audio.debug.contextState === "uninitialized"'), page.evaluate('deadSignal.audio.debug'))
         page.screenshot(path=str(artifacts / f'{label}-base.png'), full_page=True)
         check(f'{label} no horizontal page overflow', page.evaluate('document.documentElement.scrollWidth <= innerWidth'), page.evaluate('({width:innerWidth,scrollWidth:document.documentElement.scrollWidth})'))
         deploy_box = page.locator('#start-btn').bounding_box()
@@ -52,12 +86,15 @@ with sync_playwright() as p:
         page.locator('#start-btn').click()
         page.wait_for_function('deadSignal.state.status === "playing"')
         page.wait_for_timeout(200)
+        page.evaluate('window.qaSpawnCamera={...deadSignal.renderer.camera}')
+        check(f'{label} deployment preserves opt-in sound', page.evaluate('deadSignal.audio.debug.contextState === "uninitialized"'))
+        check(f'{label} objective HUD visible during play', page.locator('#mission-goal').is_visible() and page.locator('#mission-counter').is_visible())
         page.screenshot(path=str(artifacts / f'{label}-playing.png'), full_page=True)
         for selector in ['#field', '#joystick', '#grenade-btn', '#hold-btn', '#pause-btn']:
             good, box = box_inside(page, selector, width, height)
             check(f'{label} {selector} inside viewport', good, box)
         # Disable enemies for control tests so deaths do not hide the tested UI.
-        page.evaluate('deadSignal.state.enemies=[];deadSignal.state.wavesRemaining=0;')
+        quiet_control_fixture(page)
         page.locator('#hold-btn').click()
         check(f'{label} hold-fire toggles', state(page)['hold'] and page.locator('#hold-btn').get_attribute('aria-pressed') == 'true')
         before = state(page)['grenades']
@@ -67,30 +104,53 @@ with sync_playwright() as p:
         box = page.locator('#field').bounding_box()
         page.mouse.click(box['x'] + box['width'] * .7, box['y'] + box['height'] * .5)
         check(f'{label} terrain click sets move target', page.evaluate('deadSignal.state.target !== null'))
-        page.evaluate('deadSignal.state.target=null;deadSignal.game.leader.x=220;deadSignal.game.leader.y=970;')
+        quiet_control_fixture(page)
         if touch:
             cdp = context.new_cdp_session(page)
-            joy = page.locator('#joystick').bounding_box()
-            point = {'x': joy['x'] + joy['width'] * .83, 'y': joy['y'] + joy['height'] * .5, 'id': 1}
+            center = touch_point(page, '#joystick', x=.515)
+            x = state(page)['x']
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [center]})
+            page.wait_for_timeout(200)
+            check(f'{label} joystick deadzone prevents drift', abs(state(page)['x'] - x) < 1 and page.evaluate('deadSignal.input.sample().moveX === 0'))
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+            point = touch_point(page, '#joystick', x=.83)
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point]})
             page.wait_for_timeout(500)
             moved = state(page)['x']
             check(f'{label} actual touch joystick moves leader', moved > 270, {'leaderX': moved})
-            grenade = page.locator('#grenade-btn').bounding_box()
-            second = {'x': grenade['x'] + grenade['width'] / 2, 'y': grenade['y'] + grenade['height'] / 2, 'id': 2}
+            second = touch_point(page, '#grenade-btn', pointer_id=2)
             before = state(page)['grenades']
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point, second]})
             page.wait_for_timeout(70)
-            # CDP names the ending pointer here; the joystick pointer stays down.
+            # Chromium CDP names the pointers ending here. Native pointer-event
+            # tracing confirms this releases only the action thumb.
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': [second]})
             page.wait_for_timeout(300)
             check(f'{label} second thumb throws while joystick held', state(page)['grenades'] == before - 1)
             check(f'{label} joystick continues after second touch', state(page)['x'] > moved + 25)
+            before = state(page)['grenades']
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point, second]})
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': [second]})
+            check(f'{label} rapid second thumb tap is accepted once', state(page)['grenades'] == before - 1)
+            before_hold = state(page)['hold']
+            hold = touch_point(page, '#hold-btn', pointer_id=2)
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point, hold]})
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': [hold]})
+            check(f'{label} second thumb hold-fire toggles once', state(page)['hold'] != before_hold and page.evaluate('deadSignal.input.sample().moveX > .9'))
+            # A second finger on the same pad must not steal the movement owner.
+            pad_second = touch_point(page, '#joystick', pointer_id=3, x=.17)
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point, pad_second]})
+            check(f'{label} extra joystick pointer cannot steal control', page.evaluate('deadSignal.input.sample().moveX > .9'))
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': [pad_second]})
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
             page.wait_for_timeout(100)
             released = state(page)['x']
             page.wait_for_timeout(200)
             check(f'{label} releasing joystick stops movement', abs(state(page)['x'] - released) < 1)
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point]})
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchCancel', 'touchPoints': []})
+            check(f'{label} canceled touch clears movement', page.evaluate('deadSignal.input.sample().moveX === 0 && deadSignal.input.sample().moveY === 0'))
+            check(f'{label} touch selects tactical grenade auto-aim', page.evaluate('deadSignal.input.aimPoint() === null'))
         else:
             before = state(page)['x']
             page.keyboard.down('d'); page.wait_for_timeout(500); page.keyboard.up('d')
@@ -99,17 +159,133 @@ with sync_playwright() as p:
             check(f'{label} manual pauses live game', state(page)['status'] == 'paused')
             page.locator('#close-manual').click()
             check(f'{label} manual resumes live game', state(page)['status'] == 'playing')
+            # A button/select keeps its normal keyboard behavior without steering.
+            page.locator('#hold-btn').focus()
+            page.keyboard.down('d'); page.wait_for_timeout(100); page.keyboard.up('d')
+            check(f'{label} focused UI does not steer squad', page.evaluate('deadSignal.input.sample().moveX === 0'))
+            page.locator('#field').focus()
+            field = page.locator('#field').bounding_box()
+            aim_x, aim_y = field['x'] + field['width'] * .7, field['y'] + field['height'] * .5
+            page.evaluate('''() => {
+              const remember=e=>window.qaAimClient={x:e.clientX,y:e.clientY};
+              document.getElementById('field').addEventListener('pointermove',remember);
+              document.getElementById('field').addEventListener('pointerdown',remember);
+            }''')
+            page.mouse.move(aim_x, aim_y)
+            page.mouse.down(button='right')
+            old_aim = page.evaluate('deadSignal.input.sample().aim')
+            page.keyboard.down('d'); page.wait_for_timeout(250); page.keyboard.up('d')
+            aiming = page.evaluate('({aim:deadSignal.input.sample().aim,projected:deadSignal.renderer.screenToWorld(qaAimClient.x,qaAimClient.y)})')
+            aim, projected = aiming['aim'], aiming['projected']
+            check(f'{label} held aim follows moving camera', abs(aim['x'] - old_aim['x']) > 1 and abs(aim['x'] - projected['x']) < .000001 and abs(aim['y'] - projected['y']) < .000001, {'old': old_aim, 'aim': aim, 'projected': projected})
+            page.mouse.up(button='right')
+            check(f'{label} releasing aim stops manual fire', page.evaluate('deadSignal.input.sample().fire !== true'))
+        # The manual is available in mobile play and preserves an existing pause.
+        page.locator('#manual-btn').click()
+        check(f'{label} manual pauses and freezes mission', state(page)['status'] == 'paused')
+        page.locator('#close-manual').click()
+        check(f'{label} closing live manual resumes mission', state(page)['status'] == 'playing')
+        page.locator('#manual-btn').click()
+        page.evaluate('window.dispatchEvent(new Event("blur"))')
+        page.locator('#close-manual').click()
+        manual_away = state(page)
+        page.wait_for_timeout(150)
+        check(f'{label} closing manual after leaving tab keeps mission paused', manual_away['status'] == 'paused' and state(page)['time'] == manual_away['time'] and page.locator('#resume-btn').is_visible())
+        page.locator('#resume-btn').click()
+        page.locator('#sound-btn').click()
+        page.wait_for_function('deadSignal.audio.debug.contextState === "running" && deadSignal.audio.debug.enabled')
+        check(f'{label} sound enabled by player gesture', page.locator('#sound-btn').get_attribute('aria-pressed') == 'true')
+        page.wait_for_timeout(250)
+        voices = page.evaluate('''() => {
+          const before=deadSignal.audio.debug;
+          for(let i=0;i<20;i++)deadSignal.audio.consume(deadSignal.state);
+          const after=deadSignal.audio.debug;
+          return {before,after,latest:deadSignal.state.events.at(-1)?.id??0};
+        }''')
+        check(f'{label} repeated audio consume cannot replay journal', voices['after']['lastEventId'] == voices['before']['lastEventId'] == voices['latest'] and voices['after']['voices'] == voices['before']['voices'] and voices['after']['voices'] <= 18, voices)
         page.locator('#pause-btn').click()
         paused = state(page)
         page.wait_for_timeout(200)
         check(f'{label} pause freezes mission time', paused['status'] == 'paused' and state(page)['time'] == paused['time'])
+        page.wait_for_timeout(350)
+        check(f'{label} pause stops all sound voices', page.evaluate('deadSignal.audio.debug.paused && deadSignal.audio.debug.voices === 0'), page.evaluate('deadSignal.audio.debug'))
+        page.locator('#manual-btn').click()
+        page.keyboard.press('Escape')
+        check(f'{label} manual escape preserves prior pause', state(page)['status'] == 'paused' and not page.locator('#manual').evaluate('(el)=>el.open'))
         page.screenshot(path=str(artifacts / f'{label}-paused.png'), full_page=True)
+        interrupted = page.evaluate('''async () => {
+          window.qaInterruptedJournal=structuredClone(deadSignal.state);
+          qaInterruptedJournal.status='playing';
+          window.qaInterruptedCursor=deadSignal.audio.debug.lastEventId;
+          await deadSignal.audio.context.suspend();
+          return deadSignal.audio.debug;
+        }''')
+        check(f'{label} device audio interruption preserves opt-in preference', interrupted['contextState'] == 'suspended' and interrupted['enabled'] and interrupted['paused'], interrupted)
         page.locator('#resume-btn').click()
+        page.wait_for_function('deadSignal.audio.debug.contextState === "running" && deadSignal.audio.debug.enabled && !deadSignal.audio.debug.paused')
+        check(f'{label} explicit resume restores interrupted sound', state(page)['status'] == 'playing' and page.locator('#sound-btn').get_attribute('aria-pressed') == 'true')
+        replay = page.evaluate('''() => {
+          const before=deadSignal.audio.debug;
+          for(let i=0;i<20;i++)deadSignal.audio.consume(qaInterruptedJournal);
+          const after=deadSignal.audio.debug;
+          return {before,after,interruptedCursor:qaInterruptedCursor};
+        }''')
+        check(f'{label} audio recovery cannot replay previously heard events', replay['before']['lastEventId'] >= replay['interruptedCursor'] and replay['after']['lastEventId'] == replay['before']['lastEventId'] and replay['after']['voices'] == replay['before']['voices'], replay)
+        if touch:
+            point = touch_point(page, '#joystick', x=.83)
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point]})
+            pause_touch = touch_point(page, '#pause-btn', pointer_id=2)
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point, pause_touch]})
+            check(f'{label} second thumb pause opens overlay once', state(page)['status'] == 'paused')
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': [pause_touch]})
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+            page.locator('#resume-btn').click()
+            check(f'{label} pausing held pad prevents sticky movement', page.evaluate('deadSignal.input.sample().moveX === 0 && deadSignal.input.sample().moveY === 0'))
         check(f'{label} resume works', state(page)['status'] == 'playing')
+        page.locator('#sound-btn').click()
+        page.wait_for_timeout(100)
+        check(f'{label} muting stops voices immediately', page.evaluate('!deadSignal.audio.debug.enabled && deadSignal.audio.debug.voices === 0'))
+        # Simulate the browser lifecycle event deterministically; a tab return
+        # must keep the explicit resume overlay rather than running unnoticed.
+        page.evaluate('Object.defineProperty(document,"hidden",{configurable:true,get:()=>true});document.dispatchEvent(new Event("visibilitychange"))')
+        check(f'{label} hidden tab pauses automatically', state(page)['status'] == 'paused')
+        page.evaluate('Object.defineProperty(document,"hidden",{configurable:true,get:()=>false});document.dispatchEvent(new Event("visibilitychange"))')
+        page.wait_for_timeout(100)
+        check(f'{label} tab return waits for explicit resume', state(page)['status'] == 'paused')
+        page.locator('#resume-btn').click()
         page.locator('#pause-btn').click()
+        # A restart must discard a camera left elsewhere in the previous scene.
+        page.evaluate('deadSignal.renderer.camera.x=1200;deadSignal.renderer.camera.y=300')
         page.locator('#restart-btn').click()
         check(f'{label} restart resets mission', state(page)['status'] == 'playing' and state(page)['time'] < 1 and state(page)['grenades'] == 4)
         check(f'{label} restart resets pause button label', page.locator('#pause-btn').get_attribute('aria-label') == 'Pause game')
+        page.wait_for_timeout(150)
+        check(f'{label} restart resets input and stale aim', page.evaluate('deadSignal.input.sample().moveX === 0 && deadSignal.input.aimPoint() === null'))
+        camera_reset = page.evaluate('''() => {
+          const r=deadSignal.renderer,c=r.camera,l=deadSignal.game.leader;
+          const point=r.worldToScreen(l.x,l.y),field=document.getElementById('field').getBoundingClientRect();
+          const controls=document.getElementById('joystick').getBoundingClientRect();
+          return {matchesFresh:Math.hypot(c.x-qaSpawnCamera.x,c.y-qaSpawnCamera.y)<.01,
+            visible:point.x>=field.left&&point.x<=field.right&&point.y>=field.top&&point.y<controls.top,
+            camera:{...c},fresh:qaSpawnCamera,leader:point};
+        }''')
+        check(f'{label} restart restores fresh camera and visible squad', camera_reset['matchesFresh'] and camera_reset['visible'], camera_reset)
+        # Resizing preserves the static terrain cache and updates projection.
+        page.evaluate('window.qaTerrain=deadSignal.renderer.cache')
+        page.set_viewport_size({'width': height if touch else 1200, 'height': width if touch else 800})
+        page.evaluate('window.dispatchEvent(new Event("orientationchange"))')
+        page.wait_for_timeout(200)
+        check(f'{label} orientation/resize keeps terrain cache', page.evaluate('deadSignal.renderer.cache === window.qaTerrain'))
+        resized_width, resized_height = (height, width) if touch else (1200, 800)
+        for selector in ['#field', '#joystick', '#grenade-btn', '#pause-btn', '#mission-goal']:
+            good, bounds = box_inside(page, selector, resized_width, resized_height)
+            check(f'{label} resized {selector} stays usable', good, bounds)
+        check(f'{label} resized projection roundtrips correctly', page.evaluate('''() => {
+          const r=deadSignal.renderer,p=r.worldToScreen(800,600),q=r.screenToWorld(p.x,p.y);
+          return Math.hypot(q.x-800,q.y-600)<.000001;
+        }'''))
+        page.set_viewport_size({'width': width, 'height': height})
+        page.wait_for_timeout(100)
         page.locator('#pause-btn').click()
         page.locator('#exit-btn').click()
         check(f'{label} return to base restores selection', state(page)['status'] == 'ready' and page.locator('#start-btn').is_visible())
@@ -124,6 +300,7 @@ with sync_playwright() as p:
           g.state.wavesRemaining=0;
           for(const soldier of g.soldiers.slice(1))g.damage(soldier,1000);
           g.leader.x=g.extraction.x;g.leader.y=g.extraction.y;
+          g.leader.path=null;g.leader.pathTimer=0;
           g.setHoldFire(true);
         }''')
         page.wait_for_function('deadSignal.state.status === "won"', timeout=6000)
@@ -137,8 +314,8 @@ with sync_playwright() as p:
           const g=deadSignal.game;g.state.enemies=[];g.state.wavesRemaining=0;
           for(const civilian of g.civilians)civilian.rescued=true;
           g.state.rescueCount=g.state.rescueTarget;
-          g.leader.x=g.extraction.x;g.leader.y=g.extraction.y;
         }''')
+        regroup_at_flare(page)
         page.wait_for_function('deadSignal.state.status === "won"', timeout=6000)
         page.wait_for_function('!document.getElementById("result-overlay").hidden')
         page.locator('#next-btn').click()
@@ -151,7 +328,29 @@ with sync_playwright() as p:
         check(f'{label} retry repeats failed mission', state(page)['mission'] == 1 and state(page)['status'] == 'playing')
         page.locator('#pause-btn').click(); page.locator('#exit-btn').click()
         check(f'{label} completions persist in mission cards', 'COMPLETE' in page.locator('.mission-card').nth(0).inner_text() and 'COMPLETE' in page.locator('.mission-card').nth(2).inner_text())
+        page.reload()
+        page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+        check(f'{label} completions survive browser reload', 'COMPLETE' in page.locator('.mission-card').nth(0).inner_text() and 'COMPLETE' in page.locator('.mission-card').nth(2).inner_text())
         check(f'{label} no JavaScript errors', not errors, errors)
+        context.close()
+    for storage_fixture in ['malformed', 'denied']:
+        context = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+        if storage_fixture == 'malformed':
+            context.add_init_script('localStorage.setItem("dead-signal-v1", "{broken-save")')
+        else:
+            context.add_init_script('''
+              Storage.prototype.getItem = function(){throw new DOMException("blocked", "SecurityError")};
+              Storage.prototype.setItem = function(){throw new DOMException("blocked", "SecurityError")};
+            ''')
+        page = context.new_page()
+        errors = []
+        page.on('pageerror', lambda e: errors.append(str(e)))
+        page.goto(args.url)
+        page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+        check(f'{storage_fixture} storage still renders three missions', page.locator('.mission-card').count() == 3)
+        page.locator('#start-btn').click()
+        check(f'{storage_fixture} storage still deploys normally', state(page)['status'] == 'playing')
+        check(f'{storage_fixture} storage causes no JavaScript errors', not errors, errors)
         context.close()
     browser.close()
 

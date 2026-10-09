@@ -3,6 +3,7 @@
  * Dependency-free ES module. Coordinates and velocities are world pixels / second.
  * MIT licensed; see the project LICENSE.
  */
+import { findRoute } from './navigation.js?v=0.2.0';
 
 export const MISSIONS = Object.freeze([
   {
@@ -23,7 +24,7 @@ export const MISSIONS = Object.freeze([
     id: 2,
     title: 'LAST TRANSMISSION',
     subtitle: 'Clear the signal. Bring them home.',
-    briefing: 'The evacuation zone is overrun. Eliminate the patrol and the finite infected waves. When the area is secure, move any surviving squad members to the flare.',
+    briefing: 'The evacuation zone is overrun. Eliminate the patrol and the finite infected waves. When the area is secure, bring every surviving squad member to the flare.',
     objective: 'Clear all hostiles and reach extraction',
   },
 ]);
@@ -34,6 +35,13 @@ const CELL = 40;
 const COLS = WIDTH / CELL;
 const ROWS = HEIGHT / CELL;
 const TAU = Math.PI * 2;
+// Gameplay tuning lives together; all rates are per simulation second.
+export const CONFIG = Object.freeze({
+  step: 1 / 60, maxCatchup: 0.15, actorRadius: 11,
+  squadSpeed: 142, followSpeed: 162, catchupSpeed: 205,
+  weaponRange: 230, enemyRange: 225, activationRadius: 590,
+  extractionSeconds: 2.2, eventLimit: 128,
+});
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -131,7 +139,13 @@ function makeWorld(random) {
   for (const [x, y] of [[577, 687], [819, 547], [1240, 480], [982, 893], [482, 918]]) {
     decorations.push({x, y, type: 'crater'});
   }
-  return {width: WIDTH, height: HEIGHT, obstacles, decorations};
+  // The same boundary is consumed by movement and rendering: water is solid.
+  const coastline = [
+    [-10, 102], [180, 47], [710, 76], [955, 54], [1160, 90], [1340, 60],
+    [1490, 210], [1528, 495], [1482, 645], [1538, 780], [1513, 945],
+    [1549, 1090], [1555, 1210],
+  ].map(([x, y]) => ({x, y}));
+  return {width: WIDTH, height: HEIGHT, obstacles, decorations, coastline};
 }
 
 export class Game {
@@ -142,6 +156,8 @@ export class Game {
     this.hard = difficulty === 'hard';
     this.easy = difficulty === 'easy';
     this.nextId = 1;
+    this.nextEventId = 1;
+    this.accumulator = 0;
     this.holdFire = false;
     this.lastShot = {x: 220, y: 970};
     this.waveTimer = 0;
@@ -159,6 +175,7 @@ export class Game {
       particles: [], corpses: [], target: null, thrownGrenades: [],
       holdFire: false, wavesRemaining: index === 0 ? 1 : index === 1 ? 2 : 3,
       totalKills: 0,
+      events: [],
     };
     ['FOX', 'ROOK', 'JUNE'].forEach((name, i) => {
       this.state.soldiers.push({
@@ -166,6 +183,8 @@ export class Game {
         hp: 100, maxHp: 100, alive: true, angle: -Math.PI / 4,
         shootFlash: 0, cooldown: 0.1 + i * 0.13, invulnerable: 0,
         path: null, pathTimer: 0, stuck: 0,
+        moveAngle: -Math.PI / 4, moving: false, vx: 0, vy: 0,
+        speed: 0, walkPhase: i * 2, hitFlash: 0, targetId: null,
       });
     });
     const patrols = index === 0
@@ -182,7 +201,11 @@ export class Game {
     for (const [x, y] of infected) this.spawnEnemy('zombie', x, y);
     if (index < 2) {
       const locations = index === 0 ? [[1030, 590]] : [[829, 327], [1300, 570]];
-      for (const [x, y] of locations) this.state.civilians.push({id: this.nextId++, x, y, rescued: false, alive: true});
+      for (const [x, y] of locations) this.state.civilians.push({
+        id: this.nextId++, x, y, rescued: false, alive: true,
+        moveAngle: -Math.PI / 4, moving: false, vx: 0, vy: 0,
+        speed: 0, walkPhase: 0, hitFlash: 0, pathTimer: 0,
+      });
     }
     this.rebuildNavigation();
     this.state.totalKills = this.state.enemies.length;
@@ -208,14 +231,17 @@ export class Game {
   }
 
   pause(value = true) {
+    this.accumulator = 0;
     if (value && this.state.status === 'playing') this.state.status = 'paused';
     else if (!value && this.state.status === 'paused') this.state.status = 'playing';
   }
 
   setHoldFire(value) {
+    if (this.holdFire === Boolean(value)) return;
     this.holdFire = Boolean(value);
     this.state.holdFire = this.holdFire;
     this.say(this.holdFire ? 'HOLD FIRE · stay quiet' : 'WEAPONS FREE · watch the noise', 2);
+    this.emit('holdfire', this.leader || this.lastShot, {enabled: this.holdFire, team: 'player'});
   }
 
   selectSoldier(id) {
@@ -232,6 +258,7 @@ export class Game {
     const destination = this.nearestOpen(clamp(x, 22, WIDTH - 22), clamp(y, 22, HEIGHT - 22));
     this.state.target = destination;
     leader.path = this.findPath(leader.x, leader.y, destination.x, destination.y);
+    if (!leader.path.length) { this.state.target = null; return false; }
     leader.pathTimer = 1;
     return true;
   }
@@ -269,6 +296,9 @@ export class Game {
       wanderX: point.x + (this.random() - 0.5) * 160,
       wanderY: point.y + (this.random() - 0.5) * 160,
       invulnerable: 0,
+      moveAngle: 0, moving: false, vx: 0, vy: 0, speed: 0,
+      walkPhase: this.random() * TAU, hitFlash: 0,
+      active: false, reaction: 0, sightLost: 0,
     };
     this.state.enemies.push(enemy);
     return enemy;
@@ -279,8 +309,35 @@ export class Game {
     this.messageTimer = duration;
   }
 
+  // A bounded journal lets sound, effects and UI observe simulation facts once.
+  emit(type, point, details = {}) {
+    this.state.events.push({id: this.nextEventId++, type, time: this.state.time,
+      x: point.x, y: point.y, ...details});
+    if (this.state.events.length > CONFIG.eventLimit) this.state.events.shift();
+  }
+
   blocked(x, y, radius = 12) {
     if (x < radius + 4 || y < radius + 4 || x > WIDTH - radius - 4 || y > HEIGHT - radius - 4) return true;
+    const coast = this.world.coastline;
+    if (coast) {
+      // Each shoreline segment borders sea above (top) or right (east).
+      for (let i = 1; i < coast.length; i++) {
+        const a = coast[i - 1], b = coast[i];
+        if (i <= 5 && x >= a.x && x <= b.x) {
+          const shoreY = a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+          if (y < shoreY + radius) return true;
+        } else if (i >= 6 && y >= a.y && y <= b.y) {
+          const shoreX = a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y);
+          if (x > shoreX - radius) return true;
+        }
+      }
+      // The angled northeast corner has sea on its upper/right side.
+      const a = coast[5], b = coast[6];
+      if (x >= a.x && y <= b.y) {
+        const shoreY = a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+        if (y < shoreY + radius * Math.SQRT2) return true;
+      }
+    }
     return this.world.obstacles.some(o => o.alive !== false && pointRect(x, y, radius, o));
   }
 
@@ -311,84 +368,19 @@ export class Game {
   }
 
   findPath(sx, sy, ex, ey) {
-    if (!this.grid) return [{x: ex, y: ey}];
-    // Preserve precise destinations when a direct, body-width corridor is free.
-    if (this.walkableSegment(sx, sy, ex, ey)) return [{x: ex, y: ey}];
-    const toCell = (x, y) => clamp(Math.floor(y / CELL), 0, ROWS - 1) * COLS + clamp(Math.floor(x / CELL), 0, COLS - 1);
-    const nearestCell = (index) => {
-      if (!this.grid[index]) return index;
-      const ix = index % COLS;
-      const iy = Math.floor(index / COLS);
-      for (let radius = 1; radius < 5; radius++) {
-        for (let dy = -radius; dy <= radius; dy++) {
-          for (let dx = -radius; dx <= radius; dx++) {
-            const x = ix + dx;
-            const y = iy + dy;
-            if (x > 0 && y > 0 && x < COLS - 1 && y < ROWS - 1 && !this.grid[y * COLS + x]) return y * COLS + x;
-          }
-        }
-      }
-      return index;
-    };
-    const start = nearestCell(toCell(sx, sy));
-    const end = nearestCell(toCell(ex, ey));
-    if (start === end) return [{x: ex, y: ey}];
-    const costs = new Float32Array(COLS * ROWS).fill(Infinity);
-    const parents = new Int16Array(COLS * ROWS).fill(-1);
-    const closed = new Uint8Array(COLS * ROWS);
-    const heuristic = (i) => Math.hypot(i % COLS - end % COLS, Math.floor(i / COLS) - Math.floor(end / COLS));
-    const open = [start];
-    costs[start] = 0;
-    let found = false;
-    while (open.length) {
-      let best = 0;
-      for (let i = 1; i < open.length; i++) {
-        if (costs[open[i]] + heuristic(open[i]) < costs[open[best]] + heuristic(open[best])) best = i;
-      }
-      const current = open.splice(best, 1)[0];
-      if (current === end) { found = true; break; }
-      if (closed[current]) continue;
-      closed[current] = 1;
-      const cx = current % COLS;
-      const cy = Math.floor(current / COLS);
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (!dx && !dy) continue;
-          const nx = cx + dx;
-          const ny = cy + dy;
-          if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-          const next = ny * COLS + nx;
-          if (this.grid[next] || closed[next]) continue;
-          // A diagonal cannot cut across the corner of cover.
-          if (dx && dy && (this.grid[cy * COLS + nx] || this.grid[ny * COLS + cx])) continue;
-          const cost = costs[current] + (dx && dy ? 1.4142 : 1);
-          if (cost >= costs[next]) continue;
-          costs[next] = cost;
-          parents[next] = current;
-          if (!open.includes(next)) open.push(next);
-        }
-      }
-    }
-    if (!found) return [];
-    const path = [];
-    for (let current = end; current !== start && current >= 0; current = parents[current]) {
-      path.push({x: (current % COLS) * CELL + CELL / 2, y: Math.floor(current / COLS) * CELL + CELL / 2});
-    }
-    path.reverse();
-    if (!this.blocked(ex, ey, 15)) path.push({x: ex, y: ey});
-    return path;
+    return findRoute(this, sx, sy, ex, ey);
   }
 
-  walkableSegment(sx, sy, ex, ey) {
+  walkableSegment(sx, sy, ex, ey, radius = 15) {
     const length = Math.hypot(ex - sx, ey - sy);
-    const steps = Math.ceil(length / 15);
+    const steps = Math.max(1, Math.ceil(length / 8));
     for (let i = 1; i <= steps; i++) {
-      if (this.blocked(sx + (ex - sx) * i / steps, sy + (ey - sy) * i / steps, 15)) return false;
+      if (this.blocked(sx + (ex - sx) * i / steps, sy + (ey - sy) * i / steps, radius)) return false;
     }
     return true;
   }
 
-  moveActor(actor, vx, vy, dt, radius = 12) {
+  moveActor(actor, vx, vy, dt, radius = CONFIG.actorRadius) {
     const oldX = actor.x;
     const oldY = actor.y;
     const nx = clamp(actor.x + vx * dt, 18, WIDTH - 18);
@@ -401,29 +393,40 @@ export class Game {
       if (!this.blocked(nx, actor.y, radius)) actor.x = nx;
       if (!this.blocked(actor.x, ny, radius)) actor.y = ny;
     }
-    if (Math.abs(vx) + Math.abs(vy) > 1) actor.angle = Math.atan2(vy, vx);
-    return Math.hypot(actor.x - oldX, actor.y - oldY);
+    const travelled = Math.hypot(actor.x - oldX, actor.y - oldY);
+    if (travelled > 0.001) {
+      actor.vx += (actor.x - oldX) / dt;
+      actor.vy += (actor.y - oldY) / dt;
+      actor.speed = Math.hypot(actor.vx, actor.vy);
+      actor.moveAngle = Math.atan2(actor.vy, actor.vx);
+      actor.moving = true;
+      actor.walkPhase += travelled * 0.17;
+      if ((actor.aimTimer || 0) <= 0) actor.angle = actor.moveAngle;
+    }
+    return travelled;
   }
 
   navigate(actor, x, y, speed, dt) {
     const distance = Math.hypot(x - actor.x, y - actor.y);
-    if (distance < 10) { actor.path = null; return; }
+    if (distance < 5) { actor.path = null; return; }
     actor.pathTimer -= dt;
     if (actor.pathTimer <= 0 || !actor.path || actor.navVersion !== this.navVersion) {
       actor.path = this.findPath(actor.x, actor.y, x, y);
-      actor.pathTimer = 0.75 + this.random() * 0.35;
+      actor.pathTimer = actor.path.length ? 0.65 : 0.25;
       actor.navVersion = this.navVersion;
     }
     let point = actor.path && actor.path[0];
-    while (point && Math.hypot(point.x - actor.x, point.y - actor.y) < 12) {
+    while (point && Math.hypot(point.x - actor.x, point.y - actor.y) < 7) {
       actor.path.shift();
       point = actor.path[0];
     }
-    if (!point) point = {x, y};
+    // An unreachable destination means wait and replan, never walk through cover.
+    if (!point) return;
     const dx = point.x - actor.x;
     const dy = point.y - actor.y;
     const length = Math.hypot(dx, dy);
-    const actual = this.moveActor(actor, dx / Math.max(1, length) * speed, dy / Math.max(1, length) * speed, dt);
+    const pace = Math.min(speed, length / dt);
+    const actual = this.moveActor(actor, dx / Math.max(1, length) * pace, dy / Math.max(1, length) * pace, dt);
     actor.stuck = actual < speed * dt * 0.1 ? (actor.stuck || 0) + dt : 0;
     if (actor.stuck > 0.55) actor.pathTimer = 0;
   }
@@ -432,27 +435,33 @@ export class Game {
     const angle = Math.atan2(target.y - shooter.y, target.x - shooter.x);
     shooter.angle = angle;
     shooter.shootFlash = 0.075;
-    const spread = team === 'player' ? 0.018 : 0.07;
+    shooter.aimTimer = 0.55;
+    // A squad can shoot on the move, but stopping behind cover earns precision.
+    const spread = team === 'player' ? (shooter.moving ? 0.2 : 0.055) : 0.11;
     const actualAngle = angle + (this.random() - 0.5) * spread;
     this.state.bullets.push({
       x: shooter.x + Math.cos(angle) * 15, y: shooter.y + Math.sin(angle) * 15,
       vx: Math.cos(actualAngle) * 700, vy: Math.sin(actualAngle) * 700,
       team, shooterId: shooter.id, damage: team === 'player' ? 13 : (this.hard ? 12 : this.easy ? 4 : 8),
-      life: team === 'player' ? 0.56 : 0.45,
+      life: (team === 'player' ? CONFIG.weaponRange + 30 : CONFIG.enemyRange + 25) / 700,
     });
-    shooter.cooldown = team === 'player' ? 0.28 + this.random() * 0.04 : 0.83 + this.random() * 0.25;
-    this.state.noise = clamp(this.state.noise + (team === 'player' ? 2.8 : 1.2), 0, 100);
-    this.lastShot = {x: shooter.x, y: shooter.y};
+    shooter.cooldown = team === 'player' ? (shooter.moving ? 0.38 : 0.30) + this.random() * 0.06 : 0.83 + this.random() * 0.25;
+    this.state.noise = clamp(this.state.noise + (team === 'player' ? 2.8 : 0.4), 0, 100);
+    if (team === 'player') this.lastShot = {x: shooter.x, y: shooter.y};
+    this.emit('shot', shooter, {team, actorId: shooter.id, targetId: target.id, angle});
   }
 
   damage(actor, amount, source = 'player') {
     if (!actor.alive || actor.invulnerable > 0) return;
     actor.hp = Math.max(0, actor.hp - amount);
+    actor.hitFlash = 0.12;
     if (actor.name) actor.invulnerable = 0.13;
     this.puff(actor.x, actor.y, actor.type === 'zombie' ? '#a8bf54' : '#d77569', 3, 'hit');
+    this.emit('hit', actor, {team: actor.name ? 'player' : actor.type === 'soldier' ? 'enemy' : 'zombie', actorId: actor.id, targetId: actor.id, source, damage: amount});
     if (actor.hp > 0) return;
     actor.alive = false;
-    this.state.corpses.push({x: actor.x, y: actor.y, type: actor.type || 'squad', angle: actor.angle, name: actor.name});
+    this.state.corpses.push({x: actor.x, y: actor.y, type: actor.type || 'squad', angle: actor.angle, name: actor.name, time: this.state.time});
+    this.emit('death', actor, {team: actor.name ? 'player' : actor.type === 'soldier' ? 'enemy' : 'zombie', actorId: actor.id, targetId: actor.id, name: actor.name});
     if (!actor.name) {
       // The objective counts all eliminated hostiles, including faction fighting.
       this.state.kills++;
@@ -476,6 +485,7 @@ export class Game {
   }
 
   explode(x, y, radius = 112, damage = 105, chain = false) {
+    this.emit('explosion', {x, y}, {radius, chain, team: 'player'});
     this.puff(x, y, '#ffcd62', 24, 'explosion');
     this.puff(x, y, '#b66739', 12, 'smoke');
     this.state.particles.push({x, y, life: 0.38, maxLife: 0.38, radius, type: 'ring', color: '#ffd26a'});
@@ -507,18 +517,23 @@ export class Game {
   update(dt, input = {}) {
     if (this.state.status !== 'playing') return;
     if (!Number.isFinite(dt) || dt <= 0) return;
-    // Ignore time spent suspended in a background tab; small steps prevent tunnelling.
-    let remaining = Math.min(dt, 0.15);
-    while (remaining > 0.000001 && this.state.status === 'playing') {
-      const step = Math.min(remaining, 1 / 30);
-      this.step(step, input || {});
-      remaining -= step;
+    // Physics, AI and random sampling share one clock at every display cadence.
+    this.accumulator += Math.min(dt, CONFIG.maxCatchup);
+    while (this.accumulator + 1e-10 >= CONFIG.step && this.state.status === 'playing') {
+      this.accumulator = Math.max(0, this.accumulator - CONFIG.step);
+      this.step(CONFIG.step, input || {});
     }
+    if (this.state.status !== 'playing') this.accumulator = 0;
   }
 
   step(dt, input) {
     const state = this.state;
     state.time += dt;
+    for (const actor of [...this.soldiers, ...this.enemies, ...this.civilians]) {
+      actor.moving = false; actor.vx = 0; actor.vy = 0; actor.speed = 0;
+      actor.hitFlash = Math.max(0, (actor.hitFlash || 0) - dt);
+      actor.aimTimer = Math.max(0, (actor.aimTimer || 0) - dt);
+    }
     state.noise = Math.max(0, state.noise - dt * 7);
     this.messageTimer -= dt;
     if (this.messageTimer <= 0) state.message = state.extraction.active ? 'EXTRACTION OPEN · follow the flare' : MISSIONS[state.mission].objective;
@@ -533,9 +548,9 @@ export class Game {
     if (moving) {
       state.target = null;
       leader.path = null;
-      this.moveActor(leader, mx * 142, my * 142, dt);
+      this.moveActor(leader, mx * CONFIG.squadSpeed, my * CONFIG.squadSpeed, dt);
     } else if (state.target) {
-      this.navigate(leader, state.target.x, state.target.y, 142, dt);
+      this.navigate(leader, state.target.x, state.target.y, CONFIG.squadSpeed, dt);
       if (dist(leader, state.target) < 14) state.target = null;
     }
     let followerIndex = 0;
@@ -547,19 +562,14 @@ export class Game {
       if (soldier !== leader) {
         followerIndex++;
         const side = followerIndex % 2 ? -1 : 1;
-        const back = leader.angle + Math.PI;
+        const back = leader.moveAngle + Math.PI;
         const destination = this.nearestOpen(
           leader.x + Math.cos(back) * 32 + Math.cos(back + Math.PI / 2) * side * 24,
           leader.y + Math.sin(back) * 32 + Math.sin(back + Math.PI / 2) * side * 24,
         );
         const gap = dist(soldier, leader);
-        if (gap > 45) this.navigate(soldier, destination.x, destination.y, gap > 180 ? 205 : 162, dt);
-        // A trapped follower can regroup after an extended blockage.
-        if (soldier.stuck > 4 && gap > 220) {
-          soldier.x = destination.x;
-          soldier.y = destination.y;
-          soldier.stuck = 0;
-        }
+        if (dist(soldier, destination) > 9) this.navigate(soldier, destination.x, destination.y,
+          gap > 130 ? CONFIG.catchupSpeed : CONFIG.followSpeed, dt);
       }
       const shouldFire = input.fire === true || (!this.holdFire && input.fire !== false);
       if (!shouldFire || soldier.cooldown > 0) continue;
@@ -567,15 +577,15 @@ export class Game {
       if (input.aim && Number.isFinite(input.aim.x) && Number.isFinite(input.aim.y)) {
         // Manual aim remains usable even when no enemy is under the reticle.
         if (input.fire === true) target = input.aim;
-        else target = this.enemies.filter(e => e.alive && dist(e, soldier) < 350 && dist(e, input.aim) < 100 && this.hasLOS(soldier, e))
-          .sort((a, b) => dist(a, input.aim) - dist(b, input.aim))[0];
+        else target = this.acquireTarget(soldier, this.enemies, CONFIG.weaponRange,
+          e => dist(e, input.aim) < 100 ? dist(e, input.aim) : Infinity);
       }
-      if (!target) target = this.enemies.filter(e => e.alive && dist(e, soldier) < 350 && this.hasLOS(soldier, e))
-        .sort((a, b) => dist(a, soldier) - dist(b, soldier))[0];
+      if (!target) target = this.acquireTarget(soldier, this.enemies, CONFIG.weaponRange);
       if (target) this.fire(soldier, target, 'player');
     }
 
     this.updateEnemies(dt);
+    this.resolveContacts();
     this.updateBullets(dt);
     this.updateGrenades(dt);
     this.updateWaves(dt);
@@ -584,69 +594,101 @@ export class Game {
     this.checkObjective(dt);
   }
 
+  acquireTarget(actor, candidates, range, score = candidate => dist(actor, candidate), requireLOS = true) {
+    let best = null, bestScore = Infinity, retained = null, retainedScore = Infinity;
+    for (const candidate of candidates) {
+      if (!candidate.alive || candidate === actor || dist(actor, candidate) > range) continue;
+      if (requireLOS && !this.hasLOS(actor, candidate)) continue;
+      const value = score(candidate);
+      if (!Number.isFinite(value)) continue;
+      if (value < bestScore) { bestScore = value; best = candidate; }
+      if (candidate.id === actor.targetId) { retained = candidate; retainedScore = value; }
+    }
+    // Keep tracking a viable enemy; a new target must be appreciably closer.
+    const selected = retained && retainedScore <= bestScore * 1.25 + 12 ? retained : best;
+    actor.targetId = selected?.id ?? null;
+    return selected;
+  }
+
+  resolveContacts() {
+    const actors = [...this.soldiers, ...this.enemies, ...this.civilians.filter(c => c.rescued)].filter(a => a.alive);
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < actors.length; i++) {
+        for (let j = i + 1; j < actors.length; j++) {
+          const a = actors[i], b = actors[j];
+          let dx = b.x - a.x, dy = b.y - a.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance >= 22) continue;
+          if (distance < 0.001) { dx = a.id < b.id ? 1 : -1; dy = 0; }
+          else { dx /= distance; dy /= distance; }
+          const amount = Math.min(3, (22 - distance) / 2);
+          const ax = a.x - dx * amount, ay = a.y - dy * amount;
+          const bx = b.x + dx * amount, by = b.y + dy * amount;
+          if (!this.blocked(ax, ay, CONFIG.actorRadius)) { a.x = ax; a.y = ay; }
+          if (!this.blocked(bx, by, CONFIG.actorRadius)) { b.x = bx; b.y = by; }
+        }
+      }
+    }
+  }
+
   updateEnemies(dt) {
     const leader = this.leader;
     if (!leader) return;
     const friendly = this.soldiers.filter(s => s.alive);
     const living = this.enemies.filter(e => e.alive);
+    const finalRecall = this.state.mission === 2 && this.state.time > 36;
     for (const enemy of living) {
       if (!enemy.alive) continue;
       enemy.cooldown = Math.max(0, enemy.cooldown - dt);
       enemy.attackCooldown = Math.max(0, enemy.attackCooldown - dt);
       enemy.shootFlash = Math.max(0, enemy.shootFlash - dt);
+      enemy.invulnerable = Math.max(0, enemy.invulnerable - dt);
+      // Off-screen factions remain in place until the squad reaches their area.
+      // Final-mission recall brings every remaining hostile into the objective.
+      enemy.active ||= finalRecall || friendly.some(s => dist(s, enemy) < CONFIG.activationRadius);
+      if (!enemy.active) continue;
       const opponents = enemy.type === 'zombie'
-        ? [...friendly, ...living.filter(e => e.type === 'soldier')]
-        : [...friendly, ...living.filter(e => e.type === 'zombie')];
-      let target = null;
-      let best = Infinity;
-      let bestScore = Infinity;
-      const sense = enemy.type === 'zombie' ? (320 + this.state.noise * 4) : 315;
-      for (const candidate of opponents) {
-        if (!candidate.alive) continue;
-        const distance = dist(enemy, candidate);
-        if (distance > sense) continue;
-        if (enemy.type === 'soldier' && !this.hasLOS(enemy, candidate)) continue;
-        // Patrols react to the player's squad unless an infected is at their heels.
-        const score = distance * (enemy.type === 'soldier' && candidate.name ? 0.63 : 1);
-        if (score >= bestScore) continue;
-        best = distance;
-        bestScore = score;
-        target = candidate;
+        ? [...friendly, ...living.filter(e => e.type === 'soldier' && e.active)]
+        : [...friendly, ...living.filter(e => e.type === 'zombie' && e.active)];
+      const previousTarget = enemy.targetId;
+      const hearing = Math.max(0, 1 - dist(enemy, this.lastShot) / 650);
+      const sense = enemy.type === 'zombie' ? 185 + this.state.noise * 2.4 * hearing : 275;
+      const target = this.acquireTarget(enemy, opponents, sense,
+        candidate => dist(enemy, candidate) * (enemy.type === 'soldier' && candidate.name ? 0.8 : 1),
+        enemy.type === 'soldier');
+      if (target && enemy.type === 'soldier') {
+        if (target.id !== previousTarget) enemy.reaction = this.hard ? 0.18 : this.easy ? 0.75 : 0.35;
+        enemy.reaction = Math.max(0, enemy.reaction - dt);
       }
       if (target) {
-        enemy.angle = Math.atan2(target.y - enemy.y, target.x - enemy.x);
+        const distance = dist(enemy, target);
+        const aim = Math.atan2(target.y - enemy.y, target.x - enemy.x);
+        enemy.angle = aim;
         if (enemy.type === 'soldier') {
-          if (best > 235) this.navigate(enemy, target.x, target.y, 61, dt);
-          else if (best < 82) {
-            this.moveActor(enemy, -Math.cos(enemy.angle) * 34, -Math.sin(enemy.angle) * 34, dt);
+          if (distance > 195) this.navigate(enemy, target.x, target.y, 61, dt);
+          else if (distance < 82) this.moveActor(enemy, -Math.cos(aim) * 34, -Math.sin(aim) * 34, dt);
+          enemy.angle = aim;
+          if (distance < CONFIG.enemyRange && enemy.cooldown <= 0 && enemy.reaction <= 0 && this.hasLOS(enemy, target)) {
+            this.fire(enemy, target, 'enemy');
           }
-          if (best < 300 && enemy.cooldown <= 0 && this.hasLOS(enemy, target)) this.fire(enemy, target, 'enemy');
-        } else if (best > 24) {
+        } else if (distance > 25) {
           this.navigate(enemy, target.x, target.y, this.hard ? 69 : this.easy ? 43 : 52, dt);
         } else if (enemy.attackCooldown <= 0) {
           this.damage(target, target.name ? (this.hard ? 13 : this.easy ? 5 : 8) : 15, 'zombie');
           enemy.attackCooldown = 0.95;
-          this.puff(target.x, target.y, '#8eaf62', 2, 'hit');
         }
-      } else if (enemy.type === 'zombie' && (this.state.noise > 15 || this.state.mission === 2)) {
-        const destination = this.state.noise > 15 ? this.lastShot : leader;
-        this.navigate(enemy, destination.x, destination.y, 42, dt);
+      } else if (finalRecall || enemy.waveSpawn || (enemy.type === 'zombie' && this.state.noise > 15 && dist(enemy, this.lastShot) < 650)) {
+        const destination = finalRecall || enemy.waveSpawn ? leader : this.lastShot;
+        this.navigate(enemy, destination.x, destination.y, enemy.type === 'zombie' ? 42 : 48, dt);
       } else {
-        // Slow patrols are predictable, and unaware infected don't swarm immediately.
+        // Unaware patrols retain a short local route; quiet squads can slip past.
         if (Math.hypot(enemy.x - enemy.wanderX, enemy.y - enemy.wanderY) < 20) {
-          enemy.wanderX = clamp(enemy.x + (this.random() - 0.5) * 180, 60, WIDTH - 60);
-          enemy.wanderY = clamp(enemy.y + (this.random() - 0.5) * 180, 60, HEIGHT - 60);
-          enemy.pathTimer = 0;
+          const point = this.nearestOpen(
+            clamp(enemy.x + (this.random() - 0.5) * 180, 60, WIDTH - 60),
+            clamp(enemy.y + (this.random() - 0.5) * 180, 60, HEIGHT - 60));
+          enemy.wanderX = point.x; enemy.wanderY = point.y; enemy.pathTimer = 0;
         }
         this.navigate(enemy, enemy.wanderX, enemy.wanderY, enemy.type === 'zombie' ? 14 : 23, dt);
-      }
-      // Gentle separation keeps a horde readable and prevents perfect overlap.
-      for (const other of living) {
-        if (other === enemy || !other.alive) continue;
-        const distance = dist(enemy, other);
-        if (distance > 0 && distance < 18) {
-          this.moveActor(enemy, (enemy.x - other.x) / distance * 12, (enemy.y - other.y) / distance * 12, dt, 10);
-        }
       }
     }
   }
@@ -731,9 +773,11 @@ export class Game {
     const count = this.hard ? 5 : finalMission ? 4 : 3;
     for (let i = 0; i < count; i++) {
       const point = this.nearestOpen(center.x + (this.random() - 0.5) * 100, center.y + (this.random() - 0.5) * 100);
-      this.spawnEnemy('zombie', point.x, point.y);
+      const enemy = this.spawnEnemy('zombie', point.x, point.y);
+      enemy.active = true; enemy.waveSpawn = true;
     }
     this.state.totalKills += count;
+    this.emit('wave', center, {count, remaining: this.state.wavesRemaining});
     this.say(finalMission && this.state.wavesRemaining === 0 ? 'FINAL WAVE · clear the area' : 'THE DEAD HEARD YOU · infected incoming', 3);
   }
 
@@ -744,18 +788,15 @@ export class Game {
       if (!civilian.rescued && this.soldiers.some(s => s.alive && dist(s, civilian) < 67)) {
         civilian.rescued = true;
         this.state.rescueCount++;
+        this.emit('rescue', civilian, {actorId: civilian.id, count: this.state.rescueCount});
         this.say(`SURVIVOR SAFE · ${this.state.rescueCount}/${this.state.rescueTarget}`, 3);
         // A survivor brings a small field supply to help a damaged squad recover.
         for (const soldier of this.soldiers) if (soldier.alive) soldier.hp = Math.min(soldier.maxHp, soldier.hp + 25);
         this.state.grenades = Math.min(6, this.state.grenades + 1);
       }
       if (civilian.rescued && dist(civilian, leader) > 85) {
-        this.navigate(civilian, leader.x - 40, leader.y + 45, 175, dt);
-        if (dist(civilian, leader) > 420) {
-          const point = this.nearestOpen(leader.x - 40, leader.y + 45);
-          civilian.x = point.x;
-          civilian.y = point.y;
-        }
+        const point = this.nearestOpen(leader.x - 40, leader.y + 45);
+        this.navigate(civilian, point.x, point.y, 175, dt);
       }
     }
   }
@@ -780,15 +821,22 @@ export class Game {
       : state.wavesRemaining === 0 && !this.enemies.some(e => e.alive);
     if (complete && !state.extraction.active) {
       state.extraction.active = true;
+      this.emit('objective', state.extraction, {mission: state.mission});
       this.say('OBJECTIVE COMPLETE · get to the flare', 4);
       // The rescue itself is the objective. No extra waves appear during evacuation.
       state.wavesRemaining = 0;
     }
-    if (state.extraction.active && dist(leader, state.extraction) < state.extraction.r) {
-      state.extraction.progress = Math.min(1, state.extraction.progress + dt / 2.2);
+    const leaderAtFlare = dist(leader, state.extraction) < state.extraction.r;
+    const squadTogether = this.soldiers.every(s => !s.alive || dist(s, state.extraction) < state.extraction.r + 28)
+      && this.civilians.every(c => !c.rescued || dist(c, state.extraction) < state.extraction.r + 85);
+    state.extraction.regrouping = state.extraction.active && leaderAtFlare && !squadTogether;
+    if (state.extraction.regrouping) state.message = 'REGROUP AT THE FLARE · waiting for the squad';
+    if (state.extraction.active && leaderAtFlare && squadTogether) {
+      state.extraction.progress = Math.min(1, state.extraction.progress + dt / CONFIG.extractionSeconds);
       if (state.extraction.progress >= 1) {
         state.status = 'won';
         state.message = 'SQUAD EXTRACTED · signal received';
+        this.emit('extracted', state.extraction, {survivors: this.soldiers.filter(s => s.alive).length});
         this.puff(state.extraction.x, state.extraction.y, '#d5f68c', 32, 'spark');
       }
     } else state.extraction.progress = Math.max(0, state.extraction.progress - dt * 0.4);
