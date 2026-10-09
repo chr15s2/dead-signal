@@ -72,6 +72,8 @@ Version 0.2.0 keeps the same three missions and improves the foundations: stable
 
 Version 0.3.0 gives the island and field interface a more distinctive art direction, with lush pixel scenery, turquoise coastlines, detailed buildings and soldiers, and a sun-bleached field-journal interface. It also fixes repeated automatic pauses in embedded mobile browsers: temporary focus changes clear held input, while automatic pause follows actual page visibility or navigation away. The three missions and their simulation rules are unchanged.
 
+Version 0.4.0 refines existing play: followers respond to turns without chasing stale positions, companions yield to the controlled soldier, and enemies can approach physically reachable targets beside cover. Damage and critical health are clearer in the squad cards, grenade landing markers show the actual blast footprint, terrain orders receive visible confirmation, and friendly identification remains readable behind foliage. Smaller phone viewports retain clear movement hints, noise status, and firing-state icons. No missions, weapons, enemies, or progression systems are added.
+
 ## Hosting and licensing
 
 Publish the contents of `dist/` to any static host, including GitHub Pages. No server, API keys, or secrets are required. Keep checkout-specific `.openai/` hosting metadata out of public distributions.

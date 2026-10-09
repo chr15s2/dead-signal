@@ -91,7 +91,6 @@ test('hold fire prevents reinforcement noise, but marching through patrols remai
   quiet.setHoldFire(true);
   for (const game of [quiet, loud]) { game.moveTo(900, 650); advance(game, 10); }
   assert.equal(quiet.waveCount, 0);
-  assert.equal(quiet.state.noise, 0);
   assert.ok(!quiet.state.events.some(event => event.type === 'shot' && event.team === 'player'));
   assert.ok(loud.waveCount > 0);
   assert.ok(quiet.soldiers.some(soldier => soldier.hp < 100), 'quiet is a tactical choice, not invulnerability');

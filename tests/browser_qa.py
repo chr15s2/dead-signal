@@ -73,6 +73,79 @@ def regroup_at_flare(page):
     }''')
 
 
+def assert_hit_feedback(page, label):
+    card = page.locator('.soldier-card').nth(1)
+    border_before = card.evaluate('(el)=>getComputedStyle(el).borderColor')
+    damaged = page.evaluate('''() => {
+      const soldier=deadSignal.game.soldiers[1];
+      deadSignal.game.damage(soldier,12,'enemy');
+      return {id:soldier.id,hp:soldier.hp};
+    }''')
+    page.wait_for_function('document.querySelectorAll(".soldier-card")[1].classList.contains("hurt")')
+    check(f'{label} hit feedback marks only the damaged soldier', card.evaluate('(el)=>el.classList.contains("hurt") && !el.classList.contains("critical")') and card.evaluate('(el)=>getComputedStyle(el).borderColor') != border_before and page.locator('.soldier-card.hurt').count() == 1)
+    page.wait_for_timeout(750)
+    check(f'{label} damage flash ends without hiding remaining health', not card.evaluate('(el)=>el.classList.contains("hurt")') and str(int(damaged['hp'])) in card.get_attribute('aria-label'))
+    page.evaluate('''() => {
+      const soldier=deadSignal.game.soldiers[1];
+      deadSignal.game.damage(soldier,soldier.hp-soldier.maxHp*.3,'enemy');
+    }''')
+    page.wait_for_function('document.querySelectorAll(".soldier-card")[1].classList.contains("critical")')
+    page.wait_for_timeout(750)
+    check(f'{label} exactly thirty percent health retains critical warning', card.evaluate('(el)=>el.classList.contains("critical") && !el.classList.contains("hurt")') and 'critical' in card.get_attribute('aria-label') and card.locator('.soldier-name small').inner_text().startswith('!'))
+
+
+def assert_noise_feedback(page, label, width, height):
+    states = []
+    for value, expected in [(45, 'HEARD'), (90, 'HORDE ALERT'), (0, 'QUIET')]:
+        page.evaluate('value=>deadSignal.state.noise=value', value)
+        page.wait_for_function('expected=>document.getElementById("noise-label").textContent===expected', arg=expected)
+        visible = page.locator('#noise-label').evaluate('''el=>{
+          const style=getComputedStyle(el);
+          return style.display!=='none' && style.visibility!=='hidden' && Number(style.opacity)>0
+            && parseFloat(style.fontSize)>=8 && el.clientHeight>0 && el.scrollWidth<=el.clientWidth+1;
+        }''')
+        inside, bounds = box_inside(page, '#noise-label', width, height)
+        states.append({'state': expected, 'visible': visible, 'inside': bool(inside), 'bounds': bounds})
+    check(f'{label} noise state stays readable without relying on color', all(item['visible'] and item['inside'] for item in states), states)
+
+
+def assert_order_feedback(page, label, touch):
+    before = page.evaluate('deadSignal.state.events.at(-1)?.id??0')
+    point = page.evaluate('deadSignal.renderer.worldToScreen(400,900)')
+    if touch:
+        page.touchscreen.tap(point['x'], point['y'])
+    else:
+        page.mouse.click(point['x'], point['y'])
+    page.wait_for_function('before=>deadSignal.state.events.some(e=>e.type==="order"&&e.id>before)', arg=before)
+    event_id = page.evaluate('before=>deadSignal.state.events.find(e=>e.type==="order"&&e.id>before).id', before)
+    page.wait_for_function('id=>deadSignal.renderer.effects.some(e=>e.type==="order"&&e.id===id)', arg=event_id)
+    pulse_count = page.evaluate('id=>deadSignal.renderer.effects.filter(e=>e.type==="order"&&e.id===id).length', event_id)
+    check(f'{label} accepted terrain order produces exactly one confirmation pulse', pulse_count == 1 and page.evaluate('deadSignal.state.target !== null'))
+    page.emulate_media(reduced_motion='reduce')
+    page.evaluate('''id=>{
+      const renderer=deadSignal.renderer,event=renderer.effects.find(e=>e.id===id);
+      const context=renderer.ctx,original=context.arc;
+      window.qaOrderArcOriginal=original;window.qaOrderRadii=[];
+      context.arc=function(x,y,r,...rest){
+        if(Math.abs(x-event.x)<.000001&&Math.abs(y-event.y)<.000001){
+          const field=renderer.canvas.getBoundingClientRect();
+          qaOrderRadii.push(r*renderer.camera.zoom*field.width/renderer.width);
+        }
+        return original.call(context,x,y,r,...rest);
+      };
+    }''', event_id)
+    page.wait_for_timeout(150)
+    reduced = page.evaluate('''() => {
+      deadSignal.renderer.ctx.arc=qaOrderArcOriginal;
+      return {count:qaOrderRadii.length,spread:qaOrderRadii.length?Math.max(...qaOrderRadii)-Math.min(...qaOrderRadii):null,
+        radii:qaOrderRadii,reduced:matchMedia('(prefers-reduced-motion: reduce)').matches,shake:deadSignal.renderer.shake};
+    }''')
+    check(f'{label} reduced motion keeps the live order confirmation static', reduced['reduced'] and reduced['count'] >= 2 and reduced['spread'] < .01 and reduced['shake'] == 0, reduced)
+    page.emulate_media(reduced_motion='no-preference')
+    page.wait_for_timeout(850)
+    check(f'{label} order confirmation expires after the accepted move', page.evaluate('id=>!deadSignal.renderer.effects.some(e=>e.type==="order"&&e.id===id)', event_id))
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path='/usr/bin/chromium', headless=True, args=['--no-sandbox'])
     for width, height, touch in [(390, 844, True), (360, 740, True), (844, 390, True), (1440, 1000, False)]:
@@ -104,11 +177,30 @@ with sync_playwright() as p:
             check(f'{label} {selector} inside viewport', good, box)
         # Disable enemies for control tests so deaths do not hide the tested UI.
         quiet_control_fixture(page)
+        assert_hit_feedback(page, label)
+        assert_noise_feedback(page, label, width, height)
+        assert_order_feedback(page, label, touch)
+        quiet_control_fixture(page)
+        auto_icon = page.locator('#hold-btn .fire-slash').evaluate('(el)=>getComputedStyle(el).display === "none"')
         page.locator('#hold-btn').click()
         check(f'{label} hold-fire toggles', state(page)['hold'] and page.locator('#hold-btn').get_attribute('aria-pressed') == 'true')
+        check(f'{label} fire glyph and accessible label agree with hold-fire mode', auto_icon and page.locator('#hold-btn .fire-slash').evaluate('(el)=>getComputedStyle(el).display !== "none"') and page.locator('#fire-label').inner_text() == 'FIRE OFF' and page.locator('#hold-btn').get_attribute('aria-label') == 'Resume automatic fire')
+        page.locator('#hold-btn').click()
+        check(f'{label} automatic fire removes the crossed-out glyph', not state(page)['hold'] and page.locator('#hold-btn .fire-slash').evaluate('(el)=>getComputedStyle(el).display === "none"') and page.locator('#fire-label').inner_text() == 'AUTO FIRE')
+        page.locator('#hold-btn').click()
         before = state(page)['grenades']
         page.locator('#grenade-btn').click()
         check(f'{label} grenade consumes one', state(page)['grenades'] == before - 1)
+        footprint = page.evaluate('''async () => {
+          const grenade=structuredClone(deadSignal.state.thrownGrenades.at(-1));
+          const {CONFIG}=await import(new URL('engine.js',location.href));
+          const context=document.createElement('canvas').getContext('2d');
+          const arcs=[],arc=context.arc.bind(context);
+          context.arc=(x,y,r,...rest)=>{arcs.push({x,y,r});return arc(x,y,r,...rest)};
+          deadSignal.renderer.drawGrenadeFootprint(context,grenade,true);
+          return {arcs,radius:CONFIG.grenadeRadius,target:{x:grenade.tx,y:grenade.ty}};
+        }''')
+        check(f'{label} visible grenade footprint matches actual blast radius', any(abs(arc['r'] - footprint['radius']) < .000001 and abs(arc['x'] - footprint['target']['x']) < .000001 and abs(arc['y'] - footprint['target']['y']) < .000001 for arc in footprint['arcs']), footprint)
         # A field tap creates a destination; direct input must cancel that order.
         box = page.locator('#field').bounding_box()
         page.mouse.click(box['x'] + box['width'] * .7, box['y'] + box['height'] * .5)
@@ -294,6 +386,7 @@ with sync_playwright() as p:
         check(f'{label} restart resets pause button label', page.locator('#pause-btn').get_attribute('aria-label') == 'Pause game')
         page.wait_for_timeout(150)
         check(f'{label} restart resets input and stale aim', page.evaluate('deadSignal.input.sample().moveX === 0 && deadSignal.input.aimPoint() === null'))
+        check(f'{label} restart clears damage and critical HUD states', page.locator('.soldier-card.hurt,.soldier-card.critical').count() == 0 and page.evaluate('deadSignal.game.soldiers.every(s=>s.hp===s.maxHp)') and all('critical' not in card.get_attribute('aria-label') for card in page.locator('.soldier-card').all()))
         camera_reset = page.evaluate('''() => {
           const r=deadSignal.renderer,c=r.camera,l=deadSignal.game.leader;
           const point=r.worldToScreen(l.x,l.y),field=document.getElementById('field').getBoundingClientRect();
@@ -384,6 +477,56 @@ with sync_playwright() as p:
         page.locator('#start-btn').click()
         check(f'{storage_fixture} storage still deploys normally', state(page)['status'] == 'playing')
         check(f'{storage_fixture} storage causes no JavaScript errors', not errors, errors)
+        context.close()
+    for width, height in [(390, 540), (360, 500)]:
+        label = f'{width}x{height}'
+        context = browser.new_context(viewport={'width': width, 'height': height}, is_mobile=True, has_touch=True)
+        page = context.new_page()
+        errors = []
+        page.on('pageerror', lambda e: errors.append(str(e)))
+        page.goto(args.url)
+        page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+        page.locator('#start-btn').click()
+        page.wait_for_function('deadSignal.state.status === "playing"')
+        page.wait_for_timeout(200)
+        boxes = {selector: box_inside(page, selector, width, height) for selector in ['#field', '#joystick', '#grenade-btn', '#hold-btn', '#pause-btn']}
+        check(f'{label} compact portrait keeps field and touch controls usable', all(result[0] for result in boxes.values()), boxes)
+        hint_inside, hint_bounds = box_inside(page, '#touch-hint', width, height)
+        hint_readable = page.locator('#touch-hint').evaluate('''el=>{
+          const style=getComputedStyle(el);
+          return !el.hidden && style.display!=='none' && style.visibility!=='hidden'
+            && parseFloat(style.fontSize)>=8 && el.scrollWidth<=el.clientWidth+1
+            && /DRAG/.test(el.textContent) && /AUTO/.test(el.textContent);
+        }''')
+        check(f'{label} movement hint remains readable within the field', hint_inside and hint_readable, hint_bounds)
+        clearance = page.evaluate('''() => {
+          const renderer=deadSignal.renderer,leader=deadSignal.game.leader;
+          const point=renderer.worldToScreen(leader.x,leader.y),field=document.getElementById('field').getBoundingClientRect();
+          const scale=renderer.personScale*renderer.transform.zoom*field.width/renderer.width;
+          const actor={left:point.x-12*scale,right:point.x+12*scale,top:point.y-28*scale,bottom:point.y+10*scale};
+          const overlap=b=>actor.left<b.right && actor.right>b.left && actor.top<b.bottom && actor.bottom>b.top;
+          const obstacles=['touch-hint','joystick','hold-btn','grenade-btn'].map(id=>{
+            const b=document.getElementById(id).getBoundingClientRect();
+            return {id,left:b.left,right:b.right,top:b.top,bottom:b.bottom,overlap:overlap(b)};
+          });
+          return {actor,obstacles,inside:actor.left>=field.left && actor.right<=field.right && actor.top>=field.top && actor.bottom<=field.bottom};
+        }''')
+        check(f'{label} squad leader stays clear of hint and thumb controls', clearance['inside'] and not any(item['overlap'] for item in clearance['obstacles']), clearance)
+        page.screenshot(path=str(artifacts / f'{label}-playing.png'), full_page=True)
+        quiet_control_fixture(page)
+        assert_noise_feedback(page, label, width, height)
+        cdp = context.new_cdp_session(page)
+        point = touch_point(page, '#joystick', x=.83)
+        before = state(page)['x']
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point]})
+        page.wait_for_timeout(300)
+        check(f'{label} real thumb movement dismisses the compact hint', state(page)['x'] > before + 20 and page.locator('#touch-hint').evaluate('(el)=>el.hidden'))
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+        page.wait_for_timeout(100)
+        released = state(page)['x']
+        page.wait_for_timeout(150)
+        check(f'{label} releasing compact pad stops steering', abs(state(page)['x'] - released) < 1 and page.evaluate('deadSignal.input.sample().moveX===0 && deadSignal.input.sample().moveY===0'))
+        check(f'{label} no JavaScript errors', not errors, errors)
         context.close()
     # A short viewport represents a phone with substantial in-app browser chrome.
     # Keep this focused on usable play space and every pause-card action.

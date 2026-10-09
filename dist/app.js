@@ -1,8 +1,8 @@
-import { Game, MISSIONS } from './engine.js?v=0.3.0';
-import { Renderer } from './renderer.js?v=0.3.0';
-import { InputController, bindAction } from './input.js?v=0.3.0';
-import { AudioEngine } from './audio.js?v=0.3.0';
-import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.3.0';
+import { Game, MISSIONS } from './engine.js?v=0.4.0';
+import { Renderer } from './renderer.js?v=0.4.0';
+import { InputController, bindAction } from './input.js?v=0.4.0';
+import { AudioEngine } from './audio.js?v=0.4.0';
+import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.4.0';
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -23,6 +23,7 @@ let previousFrame = null;
 let lastHud = -Infinity;
 let lastStatus = 'ready';
 let lastMessage = '';
+let lastSquadEvent = 0;
 let radioUntil = 0;
 let manualResume = false;
 let sessionId = 0;
@@ -177,7 +178,7 @@ function createSquadCards() {
     info.querySelector('.soldier-name > span').textContent = soldier.name;
     button.append(portrait, info);
     cardCleanups.push(bindAction(button, () => selectSoldier(soldier.id)));
-    cards.push({ soldier, button, portrait, health: info.querySelector('.health > span'), hp: info.querySelector('small'), wasAlive: true });
+    cards.push({ soldier, button, portrait, health: info.querySelector('.health > span'), hp: info.querySelector('small'), wasAlive: true, hurtUntil: 0 });
     $('squad-list').append(button);
   });
 }
@@ -196,7 +197,7 @@ function clearScene() {
   renderer.reset();
   manualResume = false;
   hintUntil = 0; radioUntil = 0;
-  lastMessage = ''; lastHud = -Infinity; previousFrame = null;
+  lastMessage = ''; lastSquadEvent = 0; lastHud = -Infinity; previousFrame = null;
   metrics.updateSamples.length = 0; metrics.renderSamples.length = 0;
   $('manual').close();
   document.querySelector('.game-toast')?.remove();
@@ -284,6 +285,14 @@ function throwGrenade() {
 function updateHud() {
   if (mode !== 'game') return;
   const state = game.state;
+  // Observe each hit once, including a hit followed by healing between HUD frames.
+  for (const event of state.events) {
+    if (event.id <= lastSquadEvent) continue;
+    lastSquadEvent = event.id;
+    if (event.type !== 'hit' || event.team !== 'player') continue;
+    const card = cards.find(entry => entry.soldier.id === event.targetId);
+    if (card) card.hurtUntil = Math.max(card.hurtUntil, event.time + .5);
+  }
   text('timer', formatTime(state.time)); text('kills', String(state.kills).padStart(2, '0'));
   text('rescues', `${state.rescueCount} / ${state.rescueTarget}`);
   text('grenade-count', state.grenades);
@@ -303,14 +312,17 @@ function updateHud() {
   for (const card of cards) {
     const { soldier, button, health, hp } = card;
     const leader = soldier.id === state.leaderId;
+    const critical = soldier.alive && soldier.hp <= soldier.maxHp * .3;
     button.classList.toggle('selected', leader);
     button.classList.toggle('dead', !soldier.alive);
+    button.classList.toggle('hurt', soldier.alive && state.time < card.hurtUntil);
+    button.classList.toggle('critical', critical);
     button.disabled = !soldier.alive;
     button.setAttribute('aria-pressed', String(leader));
-    button.setAttribute('aria-label', `${soldier.name}, ${soldier.alive ? Math.ceil(soldier.hp) + ' health' + (leader ? ', squad leader' : ', select as leader') : 'killed in action'}`);
+    button.setAttribute('aria-label', `${soldier.name}, ${soldier.alive ? Math.ceil(soldier.hp) + ' health' + (critical ? ', critical' : '') + (leader ? ', squad leader' : ', select as leader') : 'killed in action'}`);
     health.style.width = Math.max(0, soldier.hp / soldier.maxHp * 100) + '%';
     health.classList.toggle('low', soldier.hp < soldier.maxHp * .35);
-    hp.textContent = soldier.alive ? Math.ceil(soldier.hp) : 'KIA';
+    hp.textContent = soldier.alive ? (critical ? '! ' : '') + Math.ceil(soldier.hp) : 'KIA';
     if (card.wasAlive && !soldier.alive) { drawPortrait(card.portrait, cards.indexOf(card), false); card.wasAlive = false; }
   }
   const objective = objectiveFor(state);
