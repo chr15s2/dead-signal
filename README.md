@@ -2,6 +2,8 @@
 
 A small, original, mobile-first squad tactics game inspired by the feel of classic action games. Lead a named squad through three missions, rescue survivors, and extract while enemy soldiers and zombies fight each other. Gunfire attracts the undead.
 
+[Play Dead Signal online](https://chr15s2.github.io/dead-signal/)
+
 This is a playable browser demo, not a commercial remake. It contains no Cannon Fodder code, artwork, maps, music, or other assets.
 
 ## Play locally
@@ -55,6 +57,8 @@ The equivalent convenience commands are `npm test` and `npm run serve`; neither 
 ## Hosting and licensing
 
 Publish the contents of `dist/` to any static host, including GitHub Pages. No server, API keys, or secrets are required. Keep checkout-specific `.openai/` hosting metadata out of public distributions.
+
+This repository uses GitHub Pages with the contents of `dist/` published to the root of the `gh-pages` branch. Run the release packaging command before republishing, include the generated source ZIP, and add `.nojekyll` to the published branch. The `main` branch contains the editable project.
 
 Code and original game artwork are MIT licensed; see [LICENSE](LICENSE). Bundled font files retain their included SIL Open Font License notice. See [CONTRIBUTING.md](CONTRIBUTING.md) for contributing.
 
