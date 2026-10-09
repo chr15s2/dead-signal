@@ -3,7 +3,7 @@
  * Dependency-free ES module. Coordinates and velocities are world pixels / second.
  * MIT licensed; see the project LICENSE.
  */
-import { findRoute } from './navigation.js?v=0.3.0';
+import { findRoute } from './navigation.js?v=0.4.0';
 
 export const MISSIONS = Object.freeze([
   {
@@ -40,6 +40,7 @@ export const CONFIG = Object.freeze({
   step: 1 / 60, maxCatchup: 0.15, actorRadius: 11,
   squadSpeed: 142, followSpeed: 162, catchupSpeed: 205,
   weaponRange: 230, enemyRange: 225, activationRadius: 590,
+  grenadeRadius: 112, grenadeRange: 330, grenadeFlight: 0.65,
   extractionSeconds: 2.2, eventLimit: 128,
 });
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -260,6 +261,8 @@ export class Game {
     leader.path = this.findPath(leader.x, leader.y, destination.x, destination.y);
     if (!leader.path.length) { this.state.target = null; return false; }
     leader.pathTimer = 1;
+    leader.pathGoal = destination;
+    this.emit('order', destination, {actorId: leader.id});
     return true;
   }
 
@@ -267,19 +270,19 @@ export class Game {
     const leader = this.leader;
     if (!leader || this.state.status !== 'playing' || this.state.grenades <= 0) return false;
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      const nearest = this.enemies.filter(e => e.alive && dist(e, leader) < 330)
+      const nearest = this.enemies.filter(e => e.alive && dist(e, leader) < CONFIG.grenadeRange)
         .sort((a, b) => dist(a, leader) - dist(b, leader))[0];
       x = nearest ? nearest.x : leader.x + Math.cos(leader.angle) * 180;
       y = nearest ? nearest.y : leader.y + Math.sin(leader.angle) * 180;
     }
     const distance = Math.hypot(x - leader.x, y - leader.y);
-    const scale = distance > 330 ? 330 / distance : 1;
+    const scale = distance > CONFIG.grenadeRange ? CONFIG.grenadeRange / distance : 1;
     const tx = clamp(leader.x + (x - leader.x) * scale, 15, WIDTH - 15);
     const ty = clamp(leader.y + (y - leader.y) * scale, 15, HEIGHT - 15);
     this.state.grenades--;
     this.state.thrownGrenades.push({
       x: leader.x, y: leader.y, sx: leader.x, sy: leader.y,
-      tx, ty, time: 0, duration: 0.65, life: 0.65,
+      tx, ty, time: 0, duration: CONFIG.grenadeFlight, life: CONFIG.grenadeFlight,
     });
     this.say('FRAG OUT!', 1.3);
     return true;
@@ -407,16 +410,29 @@ export class Game {
   }
 
   navigate(actor, x, y, speed, dt) {
-    const distance = Math.hypot(x - actor.x, y - actor.y);
+    // Joystick movement can stop within the smaller physical body margin.
+    // Pursue a nearby clear approach point rather than requesting an impossible
+    // route into that margin (and freezing a melee enemy beside its target).
+    const destination = this.nearestOpen(x, y);
+    const distance = Math.hypot(destination.x - actor.x, destination.y - actor.y);
     if (distance < 5) { actor.path = null; return; }
     actor.pathTimer -= dt;
-    if (actor.pathTimer <= 0 || !actor.path || actor.navVersion !== this.navVersion) {
-      actor.path = this.findPath(actor.x, actor.y, x, y);
+    if (this.walkableSegment(actor.x, actor.y, destination.x, destination.y)) {
+      // A visible moving destination should be followed now, not the position
+      // it occupied when a cached route was planned up to .65 seconds ago.
+      actor.path = [{x: destination.x, y: destination.y}];
+      actor.pathGoal = destination;
+      actor.pathTimer = 0.65;
+      actor.navVersion = this.navVersion;
+    } else if (actor.pathTimer <= 0 || !actor.path || actor.navVersion !== this.navVersion
+      || !actor.pathGoal || dist(actor.pathGoal, destination) > 28) {
+      actor.path = this.findPath(actor.x, actor.y, destination.x, destination.y);
       actor.pathTimer = actor.path.length ? 0.65 : 0.25;
+      actor.pathGoal = destination;
       actor.navVersion = this.navVersion;
     }
     let point = actor.path && actor.path[0];
-    while (point && Math.hypot(point.x - actor.x, point.y - actor.y) < 7) {
+    while (point && Math.hypot(point.x - actor.x, point.y - actor.y) < (actor.path.length === 1 ? 5 : 7)) {
       actor.path.shift();
       point = actor.path[0];
     }
@@ -484,7 +500,7 @@ export class Game {
     }
   }
 
-  explode(x, y, radius = 112, damage = 105, chain = false) {
+  explode(x, y, radius = CONFIG.grenadeRadius, damage = 105, chain = false) {
     this.emit('explosion', {x, y}, {radius, chain, team: 'player'});
     this.puff(x, y, '#ffcd62', 24, 'explosion');
     this.puff(x, y, '#b66739', 12, 'smoke');
@@ -611,6 +627,7 @@ export class Game {
   }
 
   resolveContacts() {
+    const leader = this.leader;
     const actors = [...this.soldiers, ...this.enemies, ...this.civilians.filter(c => c.rescued)].filter(a => a.alive);
     for (let pass = 0; pass < 2; pass++) {
       for (let i = 0; i < actors.length; i++) {
@@ -622,6 +639,20 @@ export class Game {
           if (distance < 0.001) { dx = a.id < b.id ? 1 : -1; dy = 0; }
           else { dx /= distance; dy /= distance; }
           const amount = Math.min(3, (22 - distance) / 2);
+          const companion = a === leader ? b : b === leader ? a : null;
+          if (companion && (companion.name || companion.rescued)) {
+            // Companions yield to the controlled soldier. A formation turn
+            // should not shove the player sideways or out of the flare.
+            // When cover prevents yielding, ordinary two-body separation
+            // still applies; enemies keep their normal physical contact.
+            const sign = a === leader ? 1 : -1;
+            const cx = companion.x + dx * amount * 2 * sign;
+            const cy = companion.y + dy * amount * 2 * sign;
+            if (!this.blocked(cx, cy, CONFIG.actorRadius)) {
+              companion.x = cx; companion.y = cy;
+              continue;
+            }
+          }
           const ax = a.x - dx * amount, ay = a.y - dy * amount;
           const bx = b.x + dx * amount, by = b.y + dy * amount;
           if (!this.blocked(ax, ay, CONFIG.actorRadius)) { a.x = ax; a.y = ay; }

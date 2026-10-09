@@ -1,6 +1,6 @@
 {
   "name": "dead-signal",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "An original mobile-first squad tactics browser game with zombies.",
   "type": "module",

@@ -7,7 +7,7 @@
   <meta name="description" content="A tiny squad. A very big outbreak. An original mobile-first tactical action game with zombies, three missions, and open-source code.">
   <title>Dead Signal — Squad up. Stay alive.</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=0.3.0">
+  <link rel="stylesheet" href="style.css?v=0.4.0">
 </head>
 <body>
   <header class="topbar">
@@ -34,7 +34,7 @@
           <div class="eyebrow">LIVE FIELD REPORT</div><h2 id="live-title">FIRST CONTACT</h2>
           <div class="objective-block"><span class="micro-label">CURRENT OBJECTIVE</span><p id="objective-text">Rescue the survivor.</p></div>
           <div id="squad-list" class="squad-list"></div>
-          <div class="noise-block"><div><span class="micro-label">NOISE SIGNATURE</span><strong id="noise-label">QUIET</strong></div><div class="noise-track" role="meter" aria-label="Noise signature" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="noise-fill"></div></div><p>The dead follow the sound.</p></div>
+          <div class="noise-block"><div><span class="micro-label">NOISE<span class="noise-expanded"> SIGNATURE</span></span><strong id="noise-label">QUIET</strong></div><div class="noise-track" role="meter" aria-label="Noise signature" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="noise-fill"></div></div><p>The dead follow the sound.</p></div>
           <div class="combat-stats"><div><span class="micro-label">ELIMINATED</span><b id="kills">00</b></div><div><span class="micro-label">SURVIVORS</span><b id="rescues">0 / 1</b></div></div>
           <p class="desktop-help">Click terrain to move. Your squad fires automatically. <kbd>WASD</kbd> to steer · <kbd>G</kbd> grenade · <kbd>H</kbd> hold fire · <kbd>Esc</kbd> pause.</p>
           <button id="return-btn" class="text-button return-button">← BACK TO BASE</button>
@@ -47,10 +47,10 @@
           <canvas id="field" aria-label="Top-down battlefield. Use the movement pad to steer your squad or tap the terrain." tabindex="0"></canvas>
           <div id="preview-caption" class="preview-caption"><span class="coordinate">23° 17′ N &nbsp; 81° 09′ W</span><div><span class="crosshair">⊕</span><p>ST. ORAN ISLAND<small>Last transmission: 06:42. Then nothing.</small></p></div></div>
           <div id="radio" class="radio" hidden aria-live="polite"><i></i><span id="radio-copy">Squad deployed. Stay together.</span></div>
-          <div id="touch-hint" class="touch-hint" hidden>DRAG THE LEFT PAD TO MOVE · YOUR SQUAD AUTO-AIMS</div>
+          <div id="touch-hint" class="touch-hint" hidden><span>DRAG TO MOVE</span><span>AUTO-AIM ON</span></div>
           <div id="touch-controls" class="touch-controls" hidden>
             <div class="joystick" id="joystick" role="group" aria-label="Touch movement pad"><span class="joy-axis horizontal"></span><span class="joy-axis vertical"></span><span class="joystick-knob" id="joystick-knob"></span><span class="joy-label">MOVE</span></div>
-            <div class="action-controls"><button id="hold-btn" class="hold-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h12v5H9v6H5v-6H3V8m13 1h5M3 3l18 18"/></svg><span id="fire-label">AUTO FIRE</span></button><button id="grenade-btn" class="grenade-button" aria-label="Throw grenade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v4H9zM8 7h8l3 5v7l-3 3H8l-3-3v-7zM16 3h4v7M5 14h14M10 8v13m4-13v13"/></svg><span id="grenade-count">3</span></button><span class="grenade-label">GRENADE</span></div>
+            <div class="action-controls"><button id="hold-btn" class="hold-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h12v5H9v6H5v-6H3V8m13 1h5"/><path class="fire-slash" d="M3 3l18 18"/></svg><span id="fire-label">AUTO FIRE</span></button><button id="grenade-btn" class="grenade-button" aria-label="Throw grenade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v4H9zM8 7h8l3 5v7l-3 3H8l-3-3v-7zM16 3h4v7M5 14h14M10 8v13m4-13v13"/></svg><span id="grenade-count">3</span></button><span class="grenade-label">GRENADE</span></div>
           </div>
           <div id="pause-overlay" class="game-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="overlay-card"><span class="eyebrow">FIELD DISPATCH / PAUSED</span><h2 id="pause-title">MISSION<br>ON HOLD.</h2><p>Your squad is holding position.</p><button id="resume-btn" class="primary-button">RESUME MISSION <span>→</span></button><button id="restart-btn" class="secondary-button">RESTART MISSION</button><button id="pause-manual-btn" class="secondary-button">FIELD MANUAL</button><button id="exit-btn" class="text-button">RETURN TO BASE</button></div></div>
           <div id="result-overlay" class="game-overlay" role="dialog" aria-modal="true" aria-labelledby="result-title" hidden><div class="overlay-card"><span class="eyebrow" id="result-label">MISSION COMPLETE</span><h2 id="result-title">SIGNAL<br>RESTORED.</h2><p id="result-copy"></p><div class="result-stats" id="result-stats"></div><div id="memorial"></div><button id="next-btn" class="primary-button">NEXT MISSION <span>→</span></button><button id="result-base-btn" class="secondary-button">RETURN TO BASE</button></div></div>
@@ -62,6 +62,6 @@
     <footer class="site-footer"><span>SMALL SOLDIERS. BIG TROUBLE.</span><div><span>ORIGINAL ART & CODE · MIT LICENSE</span><a href="dead-signal-source.zip" download>GET THE SOURCE ↗</a></div></footer>
   </main>
   <dialog id="manual"><div class="manual-top"><span class="eyebrow">DEAD SIGNAL / FIELD MANUAL</span><button class="close-button" id="close-manual" aria-label="Close field manual">×</button></div><h2>READ. THEN RUN.</h2><p class="manual-intro">Get your people out alive. You command the highlighted soldier; the rest of the squad follows.</p><div class="manual-grid"><div><span class="manual-number">01</span><h3>MOVE AS ONE</h3><p>On a phone, drag the movement pad with your left thumb. Tap the field to order a move. On desktop, click or use WASD / arrow keys. Tap a squad portrait to change leader. Your order follows a route around cover; the coastline cannot be crossed.</p></div><div><span class="manual-number">02</span><h3>MAKE SOME NOISE</h3><p>The squad automatically shoots nearby targets. Stopping to fire improves accuracy. Gunfire brings zombies. Toggle Hold Fire to travel quietly. Enemy soldiers and zombies fight each other too.</p></div><div><span class="manual-number">03</span><h3>BREAK THE DEADLOCK</h3><p>Tap Grenade to throw toward the closest enemy, or in the direction your leader faces. On desktop, point and press G, or hold right-click to aim and fire. Blasts break huts and barrels; your squad is safe from its own grenades. Cover blocks bullets.</p></div><div><span class="manual-number">04</span><h3>BRING THEM HOME</h3><p>Reach the marked survivors, then get your squad to the green extraction circle. Mission three needs the remaining hostiles cleared. Bring all living soldiers and rescued survivors into the zone. Stay together until the extraction timer finishes.</p></div></div><div class="manual-note"><strong>EVERY NAME COUNTS.</strong><p>Lost soldiers stay lost for that mission. Keep an eye on the squad’s health. You can restart, choose Recruit difficulty, or pause at any time.</p></div><button id="manual-done" class="primary-button">UNDERSTOOD <span>→</span></button></dialog>
-  <script type="module" src="app.js?v=0.3.0"></script>
+  <script type="module" src="app.js?v=0.4.0"></script>
 </body>
 </html>

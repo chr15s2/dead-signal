@@ -238,6 +238,10 @@ h1 > span { color: var(--orange); }
 .squad-list { display: flex; flex-direction: column; gap: 7px; margin: 20px 0; }
 .soldier-card { display: flex; align-items: center; gap: 11px; width: 100%; min-width: 0; min-height: 57px; padding: 9px; background: transparent; border: 1px solid var(--line); text-align: left; }
 .soldier-card.selected { border-color: #537762; background: #dce1be; box-shadow: inset 3px 0 var(--ink); }
+.soldier-card.critical:not(.dead) { border-color: var(--orange); background: #edddb9; }
+.soldier-card.critical:not(.dead) .soldier-name small { color: #ac442e; font-weight: 600; }
+.soldier-card.hurt:not(.dead) { border-color: #c44b31; background: #f1cfa9; }
+.soldier-card.hurt:not(.dead) .portrait { border-color: #c44b31; }
 .soldier-card.dead { opacity: .43; }
 .soldier-card.dead .soldier-name > span { text-decoration: line-through; }
 .portrait { width: 35px; height: 35px; border: 1px solid #90a07d; background: #c4d0a4; image-rendering: pixelated; flex-shrink: 0; }
@@ -286,6 +290,8 @@ kbd { font: 9px var(--mono); border: 1px solid var(--line); padding: 0 3px; }
 .action-controls { display: grid; grid-template-columns: 61px 71px; column-gap: 14px; align-items: end; color: var(--paper-light); pointer-events: auto; }
 .hold-button { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 61px; height: 66px; gap: 8px; border: 1px solid #dce5bf99; background: #163c32eb; color: #e8eccb; touch-action: manipulation; box-shadow: inset 0 -3px #102b2540; }
 .hold-button svg { width: 22px; height: 22px; }
+.hold-button .fire-slash { display: none; }
+.hold-button[aria-pressed=true] .fire-slash { display: block; }
 .hold-button span { font: 600 8px var(--mono); }
 .hold-button[aria-pressed=true] { color: #15372c; background: #ded3a6; border-color: #f0e4ba; }
 .grenade-button { position: relative; display: grid; place-items: center; width: 71px; height: 71px; border: 1px solid #f0aa76; border-radius: 50%; background: #dc6544f5; color: #fff1d8; box-shadow: inset 0 0 0 5px #dc6544, inset 0 0 0 6px #f3a27188, 0 0 0 4px #183d356b, 0 3px 0 #102b2544; touch-action: manipulation; }
@@ -293,6 +299,7 @@ kbd { font: 9px var(--mono); border: 1px solid var(--line); padding: 0 3px; }
 .grenade-button span { position: absolute; top: -4px; right: -2px; width: 23px; height: 23px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--ink); color: var(--ink); background: var(--paper); font: 600 11px var(--mono); }
 .grenade-label { grid-column: 2; text-align: center; font: 600 8px var(--mono); margin-top: 10px; letter-spacing: .035em; }
 .touch-hint { position: absolute; bottom: 166px; left: 20px; right: 20px; max-width: 360px; margin: auto; padding: 8px 10px; color: #f1efd2; background: #173b30e8; border: 1px solid #b6c79950; font: 500 9px/1.6 var(--mono); text-align: center; pointer-events: none; }
+.touch-hint > span { display: block; }
 
 /* Dispatches fold over the field without taking the whole screen. */
 .game-overlay { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: 18px; overflow: auto; background: #0d2923b5; }
@@ -395,7 +402,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .playing main { height: calc(100dvh - 52px - env(safe-area-inset-top)); padding: 0; }
   .playing .game-shell { border: 0; box-shadow: none; }
   .playing .command-panel { flex-shrink: 0; border: 0; padding: 7px 9px; overflow: visible; }
-  .playing #combat-panel { display: grid; grid-template-columns: minmax(0, 1fr) 49px; gap: 7px; }
+  .playing #combat-panel { display: grid; grid-template-columns: minmax(0, 1fr) 59px; gap: 7px; }
   .playing #combat-panel > .eyebrow, .playing #combat-panel > h2, .playing .objective-block, .playing .combat-stats, .playing .desktop-help, .playing .return-button { display: none; }
   .playing .squad-list { flex-direction: row; min-width: 0; gap: 5px; margin: 0; }
   .playing .soldier-card { flex: 1; min-height: 46px; padding: 5px; gap: 6px; }
@@ -405,9 +412,11 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .playing .soldier-name small { font-size: 8px; }
   .playing .health { margin-top: 4px; height: 3px; }
   .playing .noise-block { align-self: center; margin: 0; }
-  .playing .noise-block .micro-label { font-size: 6px; line-height: 1.6; letter-spacing: 0; }
-  .playing .noise-block strong, .playing .noise-block p { display: none; }
-  .playing .noise-track { margin: 5px 0 0; height: 6px; }
+  .playing .noise-block > div:first-child { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .playing .noise-block .micro-label { font-size: 7px; line-height: 1.2; letter-spacing: 0; }
+  .playing .noise-expanded, .playing .noise-block p { display: none; }
+  .playing .noise-block strong { display: block; max-width: 100%; color: var(--ink); font-size: 8px; line-height: 1.15; }
+  .playing .noise-track { margin: 4px 0 0; height: 5px; }
   .playing .field-panel { flex: 1; }
   .playing .field-heading { height: 27px; padding: 0 12px; font-size: 8px; }
   .playing .field-heading #field-location { max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 8px; }
@@ -419,7 +428,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   #weapon-status { font-size: 6px; }
   .playing .touch-controls { bottom: 25px; padding: 0 23px; }
   .playing .radio { top: 11px; left: 10px; right: 119px; font-size: 9px; padding: 8px 9px; }
-  .playing .touch-hint { bottom: 163px; left: 17px; right: 17px; font-size: 9px; }
+  .playing .touch-hint { bottom: 29px; left: 23px; right: auto; z-index: 5; width: 112px; margin: 0; padding: 0; border: 0; background: none; font-size: 8px; line-height: 1.4; text-shadow: 0 1px 2px #102b26, 0 0 3px #102b26; }
   .playing .field-footer { min-height: calc(28px + env(safe-area-inset-bottom)); padding: 0 12px env(safe-area-inset-bottom); font-size: 6px; }
   .playing .field-footer #footer-tip { line-height: 1.5; }
   .overlay-card { max-width: 315px; padding: 22px; }
@@ -445,22 +454,45 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .intro-detail { font-size: 9px; }
   .playing .brand { font-size: 18px; }
   .playing .command-panel { padding: 7px 8px; }
-  .playing #combat-panel { grid-template-columns: minmax(0, 1fr) 43px; gap: 5px; }
+  .playing #combat-panel { grid-template-columns: minmax(0, 1fr) 55px; gap: 5px; }
   .playing .portrait { width: 21px; height: 21px; }
   .playing .soldier-card { padding: 4px; gap: 4px; }
   .playing .soldier-name { font-size: 8px; }
   .playing .touch-controls { padding: 0 19px; }
+  .playing .touch-hint { left: 19px; }
   .mission-readout b { font-size: 8px; }
 }
+/* In-app browser bars can leave a short portrait field. Keep the same touch
+   controls, reclaim space from the cockpit, and keep the hint inside its pad. */
+@media (max-width: 700px) and (max-height: 650px) and (orientation: portrait) {
+  .playing .topbar { height: calc(48px + env(safe-area-inset-top)); }
+  .playing main { height: calc(100dvh - 48px - env(safe-area-inset-top)); }
+  .playing .command-panel { padding-top: 4px; padding-bottom: 4px; }
+  .playing .soldier-card { min-height: 44px; }
+  .playing .field-heading { height: 23px; }
+  .playing .mission-strip { min-height: 48px; padding-top: 7px; padding-bottom: 7px; }
+  .playing .mission-status { gap: 3px; }
+  .playing .mission-status > span { font-size: 9px; line-height: 1.35; }
+  .playing .mission-readout { gap: 4px; }
+  .playing .field-footer { min-height: calc(24px + env(safe-area-inset-bottom)); }
+  .playing .radio { top: 8px; padding-top: 6px; padding-bottom: 6px; font-size: 8px; }
+}
+@media (max-width: 700px) and (max-height: 540px) and (orientation: portrait) {
+  .playing .topbar { height: calc(44px + env(safe-area-inset-top)); }
+  .playing main { height: calc(100dvh - 44px - env(safe-area-inset-top)); }
+  .playing .command-panel { padding-top: 3px; padding-bottom: 3px; }
+  .playing .field-heading { height: 21px; }
+  .playing .mission-strip { min-height: 43px; padding-top: 5px; padding-bottom: 5px; }
+}
 @media (max-height: 500px) and (orientation: landscape) {
-  .playing .topbar { height: calc(40px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(13px, env(safe-area-inset-right)) 0 max(13px, env(safe-area-inset-left)); }
+  .playing .topbar { height: calc(44px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(13px, env(safe-area-inset-right)) 0 max(13px, env(safe-area-inset-left)); }
   .playing .brand { font-size: 23px; gap: 8px; }
   .playing .brand small { display: none; }
   .playing .brand-mark { width: 26px; height: 26px; }
   .playing .top-actions { gap: 13px; }
   .playing #manual-btn { max-width: none; font-size: 8px; }
-  .playing #sound-btn, .playing #pause-btn { min-height: 38px; height: 38px; padding: 8px; }
-  .playing main { height: calc(100dvh - 40px - env(safe-area-inset-top)); padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+  .playing #sound-btn, .playing #pause-btn { min-height: 44px; height: 44px; padding: 8px; }
+  .playing main { height: calc(100dvh - 44px - env(safe-area-inset-top)); padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); }
   .playing .game-shell { display: grid; grid-template-columns: 164px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); border: 0; }
   .playing .command-panel { padding: 12px; overflow-y: auto; border-right: 1px solid var(--ink); border-bottom: 0; }
   .playing #combat-panel { display: block; }
@@ -468,12 +500,14 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .playing #combat-panel > h2 { display: block; font-size: 27px; margin: 10px 0 12px; }
   .playing .objective-block, .playing .combat-stats, .playing .desktop-help { display: none; }
   .playing .squad-list { flex-direction: column; margin: 12px 0; gap: 5px; }
-  .playing .soldier-card { min-height: 42px; padding: 5px; }
+  .playing .soldier-card { min-height: 44px; padding: 5px; }
   .playing .soldier-name { flex-direction: row; font-size: 9px; }
   .playing .soldier-name small { font-size: 8px; }
   .playing .portrait { width: 25px; height: 25px; }
   .playing .noise-block { margin-top: 13px; }
-  .playing .noise-block strong { display: block; font-size: 7px; }
+  .playing .noise-block > div:first-child { flex-direction: row; }
+  .playing .noise-expanded { display: inline; }
+  .playing .noise-block strong { display: block; font-size: 8px; }
   .playing .noise-block .micro-label { font-size: 7px; }
   .playing .noise-track { margin: 6px 0; }
   .playing .return-button { display: flex; margin-top: 9px; font-size: 7px; padding: 5px 0; }
@@ -548,7 +582,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
           <div class="eyebrow">LIVE FIELD REPORT</div><h2 id="live-title">FIRST CONTACT</h2>
           <div class="objective-block"><span class="micro-label">CURRENT OBJECTIVE</span><p id="objective-text">Rescue the survivor.</p></div>
           <div id="squad-list" class="squad-list"></div>
-          <div class="noise-block"><div><span class="micro-label">NOISE SIGNATURE</span><strong id="noise-label">QUIET</strong></div><div class="noise-track" role="meter" aria-label="Noise signature" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="noise-fill"></div></div><p>The dead follow the sound.</p></div>
+          <div class="noise-block"><div><span class="micro-label">NOISE<span class="noise-expanded"> SIGNATURE</span></span><strong id="noise-label">QUIET</strong></div><div class="noise-track" role="meter" aria-label="Noise signature" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="noise-fill"></div></div><p>The dead follow the sound.</p></div>
           <div class="combat-stats"><div><span class="micro-label">ELIMINATED</span><b id="kills">00</b></div><div><span class="micro-label">SURVIVORS</span><b id="rescues">0 / 1</b></div></div>
           <p class="desktop-help">Click terrain to move. Your squad fires automatically. <kbd>WASD</kbd> to steer · <kbd>G</kbd> grenade · <kbd>H</kbd> hold fire · <kbd>Esc</kbd> pause.</p>
           <button id="return-btn" class="text-button return-button">← BACK TO BASE</button>
@@ -561,10 +595,10 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
           <canvas id="field" aria-label="Top-down battlefield. Use the movement pad to steer your squad or tap the terrain." tabindex="0"></canvas>
           <div id="preview-caption" class="preview-caption"><span class="coordinate">23° 17′ N &nbsp; 81° 09′ W</span><div><span class="crosshair">⊕</span><p>ST. ORAN ISLAND<small>Last transmission: 06:42. Then nothing.</small></p></div></div>
           <div id="radio" class="radio" hidden aria-live="polite"><i></i><span id="radio-copy">Squad deployed. Stay together.</span></div>
-          <div id="touch-hint" class="touch-hint" hidden>DRAG THE LEFT PAD TO MOVE · YOUR SQUAD AUTO-AIMS</div>
+          <div id="touch-hint" class="touch-hint" hidden><span>DRAG TO MOVE</span><span>AUTO-AIM ON</span></div>
           <div id="touch-controls" class="touch-controls" hidden>
             <div class="joystick" id="joystick" role="group" aria-label="Touch movement pad"><span class="joy-axis horizontal"></span><span class="joy-axis vertical"></span><span class="joystick-knob" id="joystick-knob"></span><span class="joy-label">MOVE</span></div>
-            <div class="action-controls"><button id="hold-btn" class="hold-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h12v5H9v6H5v-6H3V8m13 1h5M3 3l18 18"/></svg><span id="fire-label">AUTO FIRE</span></button><button id="grenade-btn" class="grenade-button" aria-label="Throw grenade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v4H9zM8 7h8l3 5v7l-3 3H8l-3-3v-7zM16 3h4v7M5 14h14M10 8v13m4-13v13"/></svg><span id="grenade-count">3</span></button><span class="grenade-label">GRENADE</span></div>
+            <div class="action-controls"><button id="hold-btn" class="hold-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h12v5H9v6H5v-6H3V8m13 1h5"/><path class="fire-slash" d="M3 3l18 18"/></svg><span id="fire-label">AUTO FIRE</span></button><button id="grenade-btn" class="grenade-button" aria-label="Throw grenade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v4H9zM8 7h8l3 5v7l-3 3H8l-3-3v-7zM16 3h4v7M5 14h14M10 8v13m4-13v13"/></svg><span id="grenade-count">3</span></button><span class="grenade-label">GRENADE</span></div>
           </div>
           <div id="pause-overlay" class="game-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="overlay-card"><span class="eyebrow">FIELD DISPATCH / PAUSED</span><h2 id="pause-title">MISSION<br>ON HOLD.</h2><p>Your squad is holding position.</p><button id="resume-btn" class="primary-button">RESUME MISSION <span>→</span></button><button id="restart-btn" class="secondary-button">RESTART MISSION</button><button id="pause-manual-btn" class="secondary-button">FIELD MANUAL</button><button id="exit-btn" class="text-button">RETURN TO BASE</button></div></div>
           <div id="result-overlay" class="game-overlay" role="dialog" aria-modal="true" aria-labelledby="result-title" hidden><div class="overlay-card"><span class="eyebrow" id="result-label">MISSION COMPLETE</span><h2 id="result-title">SIGNAL<br>RESTORED.</h2><p id="result-copy"></p><div class="result-stats" id="result-stats"></div><div id="memorial"></div><button id="next-btn" class="primary-button">NEXT MISSION <span>→</span></button><button id="result-base-btn" class="secondary-button">RETURN TO BASE</button></div></div>
@@ -573,7 +607,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
       </div>
     </section>
     <section class="missions-section" id="missions-section" aria-label="Mission selection"><div class="section-label"><span>THE OPERATION</span><span>THREE STOPS. ONE WAY OUT.</span></div><div class="mission-grid" id="mission-grid"></div></section>
-    <footer class="site-footer"><span>SMALL SOLDIERS. BIG TROUBLE.</span><div><span>ORIGINAL ART & CODE · MIT LICENSE</span><a href="data:text/markdown;base64,IyBEZWFkIFNpZ25hbAoKQSBzbWFsbCwgb3JpZ2luYWwsIG1vYmlsZS1maXJzdCBzcXVhZCB0YWN0aWNzIGdhbWUgaW5zcGlyZWQgYnkgdGhlIGZlZWwgb2YgY2xhc3NpYyBhY3Rpb24gZ2FtZXMuIExlYWQgYSBuYW1lZCBzcXVhZCB0aHJvdWdoIHRocmVlIG1pc3Npb25zLCByZXNjdWUgc3Vydml2b3JzLCBhbmQgZXh0cmFjdCB3aGlsZSBlbmVteSBzb2xkaWVycyBhbmQgem9tYmllcyBmaWdodCBlYWNoIG90aGVyLiBHdW5maXJlIGF0dHJhY3RzIHRoZSB1bmRlYWQuCgpbUGxheSBEZWFkIFNpZ25hbCBvbmxpbmVdKGh0dHBzOi8vY2hyMTVzMi5naXRodWIuaW8vZGVhZC1zaWduYWwvKQoKVGhpcyBpcyBhIHBsYXlhYmxlIGJyb3dzZXIgZGVtbywgbm90IGEgY29tbWVyY2lhbCByZW1ha2UuIEl0IGNvbnRhaW5zIG5vIENhbm5vbiBGb2RkZXIgY29kZSwgYXJ0d29yaywgbWFwcywgbXVzaWMsIG9yIG90aGVyIGFzc2V0cy4KCiMjIFBsYXkgbG9jYWxseQoKRm9yIGFuIGltbWVkaWF0ZSBkZXNrdG9wIHBsYXkgc2Vzc2lvbiwgb3BlbiBgUExBWS5odG1sYCBpbiBhIGJyb3dzZXIuIEl0IGJ1bmRsZXMgdGhlIGdhbWUgYW5kIGZvbnRzIGludG8gb25lIGZpbGUgYW5kIHdvcmtzIG9mZmxpbmUuIFRoZSBzb3VyY2UgWklQIGFsc28gaW5jbHVkZXMgdGhlIGVkaXRhYmxlIHByb2plY3QuCgpGb3IgbW9iaWxlIHRlc3Rpbmcgb3Igc3RhdGljIGhvc3RpbmcsIHVzZSB0aGUgZmlsZXMgaW4gYGRpc3QvYC4gWW91IG5lZWQgUHl0aG9uIDMgZm9yIHRoaXMgbG9jYWwtc2VydmVyIG9wdGlvbi4gTm8gYnVpbGQgc3RlcCBvciBkZXBlbmRlbmN5IGluc3RhbGxhdGlvbiBpcyByZXF1aXJlZC4KCmBgYHNoCnB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHkKcHl0aG9uMyAtbSBodHRwLnNlcnZlciA4MDgwIC0tZGlyZWN0b3J5IGRpc3QKYGBgCgpUaGUgcGFja2FnaW5nIGNvbW1hbmQgZ2VuZXJhdGVzIHRoZSBzb3VyY2UgZG93bmxvYWQgb2ZmZXJlZCBieSB0aGUgZ2FtZSdzIGZvb3Rlci4KCk9wZW4gPGh0dHA6Ly9sb2NhbGhvc3Q6ODA4MD4uIFRvIHRyeSBpdCBvbiBhIHBob25lIG9uIHRoZSBzYW1lIFdpLUZpLCBvcGVuIGBodHRwOi8vPHlvdXItY29tcHV0ZXIncy1sb2NhbC1JUD46ODA4MGAgYW5kIGFsbG93IHRoZSBsb2NhbCBzZXJ2ZXIgdGhyb3VnaCB5b3VyIGNvbXB1dGVyJ3MgZmlyZXdhbGwgaWYgbmVjZXNzYXJ5LgoKIyMgQ29udHJvbHMKCnwgQWN0aW9uIHwgVG91Y2ggfCBEZXNrdG9wIHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IE1vdmUgdGhlIHNxdWFkIHwgRHJhZyB0aGUgbW92ZW1lbnQgam95c3RpY2sgb3IgdGFwIHRoZSBiYXR0bGVmaWVsZCB8IFdBU0QgLyBhcnJvdyBrZXlzIG9yIGxlZnQtY2xpY2sgdGhlIGJhdHRsZWZpZWxkIHwKfCBBaW0gYW5kIGZpcmUgfCBTcXVhZCBhdXRvbWF0aWNhbGx5IHNob290cyBuZWFyYnkgdGFyZ2V0cyB8IEhvbGQgcmlnaHQtY2xpY2sgdG8gYWltIGFuZCBmaXJlIHwKfCBIb2xkIGZpcmUgfCBUYXAgdGhlIGhvbGQtZmlyZSBidXR0b24gfCBIIHwKfCBUaHJvdyBhIGdyZW5hZGUgfCBUYXAgdGhlIGdyZW5hZGUgYnV0dG9uIHwgRyB8CnwgUGF1c2UgfCBUYXAgcGF1c2UgfCBFc2MgfAoKS2VlcCBzb2xkaWVycyBuZWFyIGNvdmVyIGFuZCBjaG9vc2Ugd2hlbiB0byBmaXJlOiBub2lzZSBicmluZ3Mgem9tYmllcy4gU3RvcCBtb3ZpbmcgZm9yIG1vcmUgYWNjdXJhdGUgZmlyZS4gRW5lbXkgc29sZGllcnMgYW5kIHpvbWJpZXMgY2FuIGRhbWFnZSBlYWNoIG90aGVyLiBUaGUgZmluYWwgbWlzc2lvbiBoYXMgYSBmaW5pdGUgbnVtYmVyIG9mIHdhdmVzOyBjb21wbGV0ZSBpdHMgb2JqZWN0aXZlIGJlZm9yZSBleHRyYWN0aW5nLiBCcmluZyBldmVyeSBsaXZpbmcgc3F1YWQgbWVtYmVyIGFuZCByZXNjdWVkIHN1cnZpdm9yIHRvIHRoZSBleHRyYWN0aW9uIGNpcmNsZSwgdGhlbiBob2xkIHBvc2l0aW9uIHdoaWxlIHRoZSB0aW1lciBmaW5pc2hlcy4gVGhlIEhVRCBzaG93cyB3aGVuIGZvbGxvd2VycyBuZWVkIHRvIHJlZ3JvdXAuIE5hbWVkIHNvbGRpZXJzIGNhbiBkaWUsIHNvIHN1cnZpdmluZyB3aXRoIHRoZSB3aG9sZSBzcXVhZCB0YWtlcyBjYXJlLgoKVGhlIGdhbWUgcGF1c2VzIHdoZW4geW91IGxlYXZlIHRoZSB0YWIgb3Igb3BlbiB0aGUgZmllbGQgbWFudWFsLiBSZXR1cm5pbmcgdG8gdGhlIHRhYiByZXF1aXJlcyBhbiBleHBsaWNpdCByZXN1bWUuIFVzZSBzcXVhZCBjYXJkcywgb3IgZGVza3RvcCBrZXlzIDHigJMzLCB0byBjaGFuZ2UgdGhlIGxlYWRlci4KCiMjIFByaXZhY3kgYW5kIHNvdW5kCgpDYW1wYWlnbiBwcm9ncmVzcyBpcyBzYXZlZCBpbiB0aGlzIGJyb3dzZXIncyBgbG9jYWxTdG9yYWdlYC4gVGhlIGdhbWUgc2VuZHMgbm8gZ2FtZXBsYXkgZGF0YSB0byBhIHNlcnZlciBhbmQgbmVlZHMgbm8gYWNjb3VudC4gQ2xlYXIgdGhlIHNpdGUncyBicm93c2VyIHN0b3JhZ2UgdG8gcmVtb3ZlIHRoZSBzYXZlZCBwcm9ncmVzcy4gU291bmQgaXMgb3B0aW9uYWwgYW5kIHN5bnRoZXNpemVkIHdpdGggV2ViIEF1ZGlvIGFmdGVyIHlvdSBlbmFibGUgaXQuCgojIyBTb3VyY2UgYW5kIGNoZWNrcwoKVGhlIGdhbWUgdXNlcyBicm93c2VyIEFQSXMgYW5kIGJ1aWxkbGVzcyBIVE1MLCBDU1MsIGFuZCBKYXZhU2NyaXB0OgoKLSBgZGlzdC9lbmdpbmUuanNgOiBkZXRlcm1pbmlzdGljIDYwIEh6IHNpbXVsYXRpb24sIG1pc3Npb25zLCBjb21iYXQsIGFuZCBvYmplY3RpdmVzLiBBIGJvdW5kZWQgZXZlbnQgam91cm5hbCBzdXBwbGllcyBzb3VuZCBhbmQgdmlzdWFsIGZlZWRiYWNrLgotIGBkaXN0L25hdmlnYXRpb24uanNgOiBjb2xsaXNpb24tYXdhcmUgcm91dGVzIHNoYXJlZCBieSB0aGUgbGVhZGVyLCBmb2xsb3dlcnMsIGFuZCBzdXJ2aXZvcnMuCi0gYGRpc3QvcmVuZGVyZXIuanNgOiBvcmlnaW5hbCBjYW52YXMgZ3JhcGhpY3MsIGNhbWVyYSwgY29vcmRpbmF0ZSBwcm9qZWN0aW9uLCBhbmQgY2FjaGVkIHRlcnJhaW4uCi0gYGRpc3QvaW5wdXQuanNgOiBrZXlib2FyZCwgbW91c2UsIGNhcHR1cmVkIHRvdWNoIGpveXN0aWNrLCBhbmQgYWN0aW9uIGJ1dHRvbnMuCi0gYGRpc3QvYXVkaW8uanNgOiBnZXN0dXJlLWFjdGl2YXRlZCBwcm9jZWR1cmFsIHNvdW5kIGFuZCBib3VuZGVkIGF1ZGlvIHZvaWNlcy4KLSBgZGlzdC9zZXNzaW9uLmpzYDogdmFsaWRhdGVkIGJyb3dzZXIgc2F2ZXMgYW5kIG9iamVjdGl2ZSBwcmVzZW50YXRpb24uCi0gYGRpc3QvYXBwLmpzYDogaW50ZXJmYWNlIGFuZCBzY2VuZSBsaWZlY3ljbGUsIGNvb3JkaW5hdGluZyB0aGUgc3lzdGVtcyBhYm92ZS4KLSBgZGlzdC9pbmRleC5odG1sYCBhbmQgYGRpc3Qvc3R5bGUuY3NzYDogcGFnZSBhbmQgcmVzcG9uc2l2ZSBsYXlvdXQuCgpXaXRoIE5vZGUuanMgaW5zdGFsbGVkLCBydW4gdGhlIHNpbXVsYXRpb24gdGVzdHMgd2l0aDoKCmBgYHNoCm5vZGUgLS10ZXN0IHRlc3RzLyoudGVzdC5tanMKYGBgCgpUaGUgZXF1aXZhbGVudCBjb252ZW5pZW5jZSBjb21tYW5kcyBhcmUgYG5wbSB0ZXN0YCwgYG5wbSBydW4gcGFja2FnZWAsIGFuZCBgbnBtIHJ1biBzZXJ2ZWA7IG5vbmUgbmVlZHMgYG5wbSBpbnN0YWxsYC4KClRoZSBOb2RlIGNoZWNrcyBjb3ZlciBkZXRlcm1pbmlzdGljIHNpbXVsYXRpb24sIGNvbGxpc2lvbnMsIHJvdXRpbmcsIHdob2xlLXNxdWFkIGV4dHJhY3Rpb24sIGlucHV0IG5vcm1hbGl6YXRpb24sIGNvcnJ1cHQgc2F2ZXMsIGFuZCBzb3VuZCBsaWZlY3ljbGUuIEJyb3dzZXIgcmVncmVzc2lvbnMgYWxzbyBleGVyY2lzZSBwb3J0cmFpdCwgbGFuZHNjYXBlLCBkZXNrdG9wLCBnZW51aW5lIG11bHRpdG91Y2gsIHBhdXNlL3Jlc3RhcnQsIHNvdW5kLCBhbmQgcGVyc2lzdGVuY2UuIFdpdGggUHl0aG9uIFBsYXl3cmlnaHQgYW5kIENocm9taXVtIGFscmVhZHkgaW5zdGFsbGVkLCBzZXJ2ZSBgZGlzdC9gLCB0aGVuIHJ1bjoKCmBgYHNoCnB5dGhvbjMgdGVzdHMvYnJvd3Nlcl9xYS5weSAtLXVybCBodHRwOi8vMTI3LjAuMC4xOjgwODAvCmBgYAoKVGhlIGJyb3dzZXIgc3VpdGUgdXNlcyBjb250cm9sbGVkIGZpeHR1cmVzIGZvciBpc29sYXRlZCBiZWhhdmlvdXJzLiBDb21wbGV0ZSBlYWNoIG1pc3Npb24gdXNpbmcgb3JkaW5hcnkgY29udHJvbHMgYXMgYSBzZXBhcmF0ZSBnYW1lcGxheSBjaGVjay4gRW11bGF0aW9uIGRvZXMgbm90IGVzdGFibGlzaCBwZXJmb3JtYW5jZSBvciBTYWZhcmkgY29tcGF0aWJpbGl0eSBvbiBhIHBoeXNpY2FsIHBob25lLgoKVmVyc2lvbiAwLjIuMCBrZWVwcyB0aGUgc2FtZSB0aHJlZSBtaXNzaW9ucyBhbmQgaW1wcm92ZXMgdGhlIGZvdW5kYXRpb25zOiBzdGFibGUgZm9ybWF0aW9ucywgcGh5c2ljYWwgcmVncm91cGluZywgbG9jYWwgY29tYmF0IGFjdGl2YXRpb24sIGNsZWFyZXIgZmVlZGJhY2ssIG1vYmlsZSBjb250cm9scywgYW5kIHJlbGlhYmxlIHNjZW5lIHJlc2V0cy4gVGhlIGZpcnN0IHR3byBtaXNzaW9ucyBhcmUgZGVsaWJlcmF0ZWx5IGJyaWVmOyBiYWxhbmNlLCBhcnR3b3JrLCBhbmQgcmVhbC1kZXZpY2UgY292ZXJhZ2UgY2FuIHN0aWxsIGltcHJvdmUgYmVmb3JlIGFkZGluZyBtb3JlIGNvbnRlbnQuCgpWZXJzaW9uIDAuMy4wIGdpdmVzIHRoZSBpc2xhbmQgYW5kIGZpZWxkIGludGVyZmFjZSBhIG1vcmUgZGlzdGluY3RpdmUgYXJ0IGRpcmVjdGlvbiwgd2l0aCBsdXNoIHBpeGVsIHNjZW5lcnksIHR1cnF1b2lzZSBjb2FzdGxpbmVzLCBkZXRhaWxlZCBidWlsZGluZ3MgYW5kIHNvbGRpZXJzLCBhbmQgYSBzdW4tYmxlYWNoZWQgZmllbGQtam91cm5hbCBpbnRlcmZhY2UuIEl0IGFsc28gZml4ZXMgcmVwZWF0ZWQgYXV0b21hdGljIHBhdXNlcyBpbiBlbWJlZGRlZCBtb2JpbGUgYnJvd3NlcnM6IHRlbXBvcmFyeSBmb2N1cyBjaGFuZ2VzIGNsZWFyIGhlbGQgaW5wdXQsIHdoaWxlIGF1dG9tYXRpYyBwYXVzZSBmb2xsb3dzIGFjdHVhbCBwYWdlIHZpc2liaWxpdHkgb3IgbmF2aWdhdGlvbiBhd2F5LiBUaGUgdGhyZWUgbWlzc2lvbnMgYW5kIHRoZWlyIHNpbXVsYXRpb24gcnVsZXMgYXJlIHVuY2hhbmdlZC4KCiMjIEhvc3RpbmcgYW5kIGxpY2Vuc2luZwoKUHVibGlzaCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCB0byBhbnkgc3RhdGljIGhvc3QsIGluY2x1ZGluZyBHaXRIdWIgUGFnZXMuIE5vIHNlcnZlciwgQVBJIGtleXMsIG9yIHNlY3JldHMgYXJlIHJlcXVpcmVkLiBLZWVwIGNoZWNrb3V0LXNwZWNpZmljIGAub3BlbmFpL2AgaG9zdGluZyBtZXRhZGF0YSBvdXQgb2YgcHVibGljIGRpc3RyaWJ1dGlvbnMuCgpUaGlzIHJlcG9zaXRvcnkgdXNlcyBHaXRIdWIgUGFnZXMgd2l0aCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCBwdWJsaXNoZWQgdG8gdGhlIHJvb3Qgb2YgdGhlIGBnaC1wYWdlc2AgYnJhbmNoLiBSdW4gdGhlIHJlbGVhc2UgcGFja2FnaW5nIGNvbW1hbmQgYmVmb3JlIHJlcHVibGlzaGluZywgaW5jbHVkZSB0aGUgZ2VuZXJhdGVkIHNvdXJjZSBaSVAsIGFuZCBhZGQgYC5ub2pla3lsbGAgdG8gdGhlIHB1Ymxpc2hlZCBicmFuY2guIFRoZSBgbWFpbmAgYnJhbmNoIGNvbnRhaW5zIHRoZSBlZGl0YWJsZSBwcm9qZWN0LgoKQ29kZSBhbmQgb3JpZ2luYWwgZ2FtZSBhcnR3b3JrIGFyZSBNSVQgbGljZW5zZWQ7IHNlZSBbTElDRU5TRV0oTElDRU5TRSkuIEJ1bmRsZWQgZm9udCBmaWxlcyByZXRhaW4gdGhlaXIgaW5jbHVkZWQgU0lMIE9wZW4gRm9udCBMaWNlbnNlIG5vdGljZS4gU2VlIFtDT05UUklCVVRJTkcubWRdKENPTlRSSUJVVElORy5tZCkgZm9yIGNvbnRyaWJ1dGluZy4KCiMjIFBhY2thZ2UgYSByZWxlYXNlCgpSdW4gYHB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHlgIHRvIHJlZ2VuZXJhdGUgYFBMQVkuaHRtbGAgYW5kIGBkZWFkLXNpZ25hbC1zb3VyY2UuemlwYCBmcm9tIHRoZSBjdXJyZW50IHNvdXJjZS4gVGhlIFpJUCBleGNsdWRlcyBjaGVja291dCBtZXRhZGF0YSwgY3JlZGVudGlhbHMsIGFuZCBleGlzdGluZyBhcmNoaXZlcy4K" download="Dead-Signal-README.md">PROJECT README ↗</a></div></footer>
+    <footer class="site-footer"><span>SMALL SOLDIERS. BIG TROUBLE.</span><div><span>ORIGINAL ART & CODE · MIT LICENSE</span><a href="data:text/markdown;base64,IyBEZWFkIFNpZ25hbAoKQSBzbWFsbCwgb3JpZ2luYWwsIG1vYmlsZS1maXJzdCBzcXVhZCB0YWN0aWNzIGdhbWUgaW5zcGlyZWQgYnkgdGhlIGZlZWwgb2YgY2xhc3NpYyBhY3Rpb24gZ2FtZXMuIExlYWQgYSBuYW1lZCBzcXVhZCB0aHJvdWdoIHRocmVlIG1pc3Npb25zLCByZXNjdWUgc3Vydml2b3JzLCBhbmQgZXh0cmFjdCB3aGlsZSBlbmVteSBzb2xkaWVycyBhbmQgem9tYmllcyBmaWdodCBlYWNoIG90aGVyLiBHdW5maXJlIGF0dHJhY3RzIHRoZSB1bmRlYWQuCgpbUGxheSBEZWFkIFNpZ25hbCBvbmxpbmVdKGh0dHBzOi8vY2hyMTVzMi5naXRodWIuaW8vZGVhZC1zaWduYWwvKQoKVGhpcyBpcyBhIHBsYXlhYmxlIGJyb3dzZXIgZGVtbywgbm90IGEgY29tbWVyY2lhbCByZW1ha2UuIEl0IGNvbnRhaW5zIG5vIENhbm5vbiBGb2RkZXIgY29kZSwgYXJ0d29yaywgbWFwcywgbXVzaWMsIG9yIG90aGVyIGFzc2V0cy4KCiMjIFBsYXkgbG9jYWxseQoKRm9yIGFuIGltbWVkaWF0ZSBkZXNrdG9wIHBsYXkgc2Vzc2lvbiwgb3BlbiBgUExBWS5odG1sYCBpbiBhIGJyb3dzZXIuIEl0IGJ1bmRsZXMgdGhlIGdhbWUgYW5kIGZvbnRzIGludG8gb25lIGZpbGUgYW5kIHdvcmtzIG9mZmxpbmUuIFRoZSBzb3VyY2UgWklQIGFsc28gaW5jbHVkZXMgdGhlIGVkaXRhYmxlIHByb2plY3QuCgpGb3IgbW9iaWxlIHRlc3Rpbmcgb3Igc3RhdGljIGhvc3RpbmcsIHVzZSB0aGUgZmlsZXMgaW4gYGRpc3QvYC4gWW91IG5lZWQgUHl0aG9uIDMgZm9yIHRoaXMgbG9jYWwtc2VydmVyIG9wdGlvbi4gTm8gYnVpbGQgc3RlcCBvciBkZXBlbmRlbmN5IGluc3RhbGxhdGlvbiBpcyByZXF1aXJlZC4KCmBgYHNoCnB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHkKcHl0aG9uMyAtbSBodHRwLnNlcnZlciA4MDgwIC0tZGlyZWN0b3J5IGRpc3QKYGBgCgpUaGUgcGFja2FnaW5nIGNvbW1hbmQgZ2VuZXJhdGVzIHRoZSBzb3VyY2UgZG93bmxvYWQgb2ZmZXJlZCBieSB0aGUgZ2FtZSdzIGZvb3Rlci4KCk9wZW4gPGh0dHA6Ly9sb2NhbGhvc3Q6ODA4MD4uIFRvIHRyeSBpdCBvbiBhIHBob25lIG9uIHRoZSBzYW1lIFdpLUZpLCBvcGVuIGBodHRwOi8vPHlvdXItY29tcHV0ZXIncy1sb2NhbC1JUD46ODA4MGAgYW5kIGFsbG93IHRoZSBsb2NhbCBzZXJ2ZXIgdGhyb3VnaCB5b3VyIGNvbXB1dGVyJ3MgZmlyZXdhbGwgaWYgbmVjZXNzYXJ5LgoKIyMgQ29udHJvbHMKCnwgQWN0aW9uIHwgVG91Y2ggfCBEZXNrdG9wIHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IE1vdmUgdGhlIHNxdWFkIHwgRHJhZyB0aGUgbW92ZW1lbnQgam95c3RpY2sgb3IgdGFwIHRoZSBiYXR0bGVmaWVsZCB8IFdBU0QgLyBhcnJvdyBrZXlzIG9yIGxlZnQtY2xpY2sgdGhlIGJhdHRsZWZpZWxkIHwKfCBBaW0gYW5kIGZpcmUgfCBTcXVhZCBhdXRvbWF0aWNhbGx5IHNob290cyBuZWFyYnkgdGFyZ2V0cyB8IEhvbGQgcmlnaHQtY2xpY2sgdG8gYWltIGFuZCBmaXJlIHwKfCBIb2xkIGZpcmUgfCBUYXAgdGhlIGhvbGQtZmlyZSBidXR0b24gfCBIIHwKfCBUaHJvdyBhIGdyZW5hZGUgfCBUYXAgdGhlIGdyZW5hZGUgYnV0dG9uIHwgRyB8CnwgUGF1c2UgfCBUYXAgcGF1c2UgfCBFc2MgfAoKS2VlcCBzb2xkaWVycyBuZWFyIGNvdmVyIGFuZCBjaG9vc2Ugd2hlbiB0byBmaXJlOiBub2lzZSBicmluZ3Mgem9tYmllcy4gU3RvcCBtb3ZpbmcgZm9yIG1vcmUgYWNjdXJhdGUgZmlyZS4gRW5lbXkgc29sZGllcnMgYW5kIHpvbWJpZXMgY2FuIGRhbWFnZSBlYWNoIG90aGVyLiBUaGUgZmluYWwgbWlzc2lvbiBoYXMgYSBmaW5pdGUgbnVtYmVyIG9mIHdhdmVzOyBjb21wbGV0ZSBpdHMgb2JqZWN0aXZlIGJlZm9yZSBleHRyYWN0aW5nLiBCcmluZyBldmVyeSBsaXZpbmcgc3F1YWQgbWVtYmVyIGFuZCByZXNjdWVkIHN1cnZpdm9yIHRvIHRoZSBleHRyYWN0aW9uIGNpcmNsZSwgdGhlbiBob2xkIHBvc2l0aW9uIHdoaWxlIHRoZSB0aW1lciBmaW5pc2hlcy4gVGhlIEhVRCBzaG93cyB3aGVuIGZvbGxvd2VycyBuZWVkIHRvIHJlZ3JvdXAuIE5hbWVkIHNvbGRpZXJzIGNhbiBkaWUsIHNvIHN1cnZpdmluZyB3aXRoIHRoZSB3aG9sZSBzcXVhZCB0YWtlcyBjYXJlLgoKVGhlIGdhbWUgcGF1c2VzIHdoZW4geW91IGxlYXZlIHRoZSB0YWIgb3Igb3BlbiB0aGUgZmllbGQgbWFudWFsLiBSZXR1cm5pbmcgdG8gdGhlIHRhYiByZXF1aXJlcyBhbiBleHBsaWNpdCByZXN1bWUuIFVzZSBzcXVhZCBjYXJkcywgb3IgZGVza3RvcCBrZXlzIDHigJMzLCB0byBjaGFuZ2UgdGhlIGxlYWRlci4KCiMjIFByaXZhY3kgYW5kIHNvdW5kCgpDYW1wYWlnbiBwcm9ncmVzcyBpcyBzYXZlZCBpbiB0aGlzIGJyb3dzZXIncyBgbG9jYWxTdG9yYWdlYC4gVGhlIGdhbWUgc2VuZHMgbm8gZ2FtZXBsYXkgZGF0YSB0byBhIHNlcnZlciBhbmQgbmVlZHMgbm8gYWNjb3VudC4gQ2xlYXIgdGhlIHNpdGUncyBicm93c2VyIHN0b3JhZ2UgdG8gcmVtb3ZlIHRoZSBzYXZlZCBwcm9ncmVzcy4gU291bmQgaXMgb3B0aW9uYWwgYW5kIHN5bnRoZXNpemVkIHdpdGggV2ViIEF1ZGlvIGFmdGVyIHlvdSBlbmFibGUgaXQuCgojIyBTb3VyY2UgYW5kIGNoZWNrcwoKVGhlIGdhbWUgdXNlcyBicm93c2VyIEFQSXMgYW5kIGJ1aWxkbGVzcyBIVE1MLCBDU1MsIGFuZCBKYXZhU2NyaXB0OgoKLSBgZGlzdC9lbmdpbmUuanNgOiBkZXRlcm1pbmlzdGljIDYwIEh6IHNpbXVsYXRpb24sIG1pc3Npb25zLCBjb21iYXQsIGFuZCBvYmplY3RpdmVzLiBBIGJvdW5kZWQgZXZlbnQgam91cm5hbCBzdXBwbGllcyBzb3VuZCBhbmQgdmlzdWFsIGZlZWRiYWNrLgotIGBkaXN0L25hdmlnYXRpb24uanNgOiBjb2xsaXNpb24tYXdhcmUgcm91dGVzIHNoYXJlZCBieSB0aGUgbGVhZGVyLCBmb2xsb3dlcnMsIGFuZCBzdXJ2aXZvcnMuCi0gYGRpc3QvcmVuZGVyZXIuanNgOiBvcmlnaW5hbCBjYW52YXMgZ3JhcGhpY3MsIGNhbWVyYSwgY29vcmRpbmF0ZSBwcm9qZWN0aW9uLCBhbmQgY2FjaGVkIHRlcnJhaW4uCi0gYGRpc3QvaW5wdXQuanNgOiBrZXlib2FyZCwgbW91c2UsIGNhcHR1cmVkIHRvdWNoIGpveXN0aWNrLCBhbmQgYWN0aW9uIGJ1dHRvbnMuCi0gYGRpc3QvYXVkaW8uanNgOiBnZXN0dXJlLWFjdGl2YXRlZCBwcm9jZWR1cmFsIHNvdW5kIGFuZCBib3VuZGVkIGF1ZGlvIHZvaWNlcy4KLSBgZGlzdC9zZXNzaW9uLmpzYDogdmFsaWRhdGVkIGJyb3dzZXIgc2F2ZXMgYW5kIG9iamVjdGl2ZSBwcmVzZW50YXRpb24uCi0gYGRpc3QvYXBwLmpzYDogaW50ZXJmYWNlIGFuZCBzY2VuZSBsaWZlY3ljbGUsIGNvb3JkaW5hdGluZyB0aGUgc3lzdGVtcyBhYm92ZS4KLSBgZGlzdC9pbmRleC5odG1sYCBhbmQgYGRpc3Qvc3R5bGUuY3NzYDogcGFnZSBhbmQgcmVzcG9uc2l2ZSBsYXlvdXQuCgpXaXRoIE5vZGUuanMgaW5zdGFsbGVkLCBydW4gdGhlIHNpbXVsYXRpb24gdGVzdHMgd2l0aDoKCmBgYHNoCm5vZGUgLS10ZXN0IHRlc3RzLyoudGVzdC5tanMKYGBgCgpUaGUgZXF1aXZhbGVudCBjb252ZW5pZW5jZSBjb21tYW5kcyBhcmUgYG5wbSB0ZXN0YCwgYG5wbSBydW4gcGFja2FnZWAsIGFuZCBgbnBtIHJ1biBzZXJ2ZWA7IG5vbmUgbmVlZHMgYG5wbSBpbnN0YWxsYC4KClRoZSBOb2RlIGNoZWNrcyBjb3ZlciBkZXRlcm1pbmlzdGljIHNpbXVsYXRpb24sIGNvbGxpc2lvbnMsIHJvdXRpbmcsIHdob2xlLXNxdWFkIGV4dHJhY3Rpb24sIGlucHV0IG5vcm1hbGl6YXRpb24sIGNvcnJ1cHQgc2F2ZXMsIGFuZCBzb3VuZCBsaWZlY3ljbGUuIEJyb3dzZXIgcmVncmVzc2lvbnMgYWxzbyBleGVyY2lzZSBwb3J0cmFpdCwgbGFuZHNjYXBlLCBkZXNrdG9wLCBnZW51aW5lIG11bHRpdG91Y2gsIHBhdXNlL3Jlc3RhcnQsIHNvdW5kLCBhbmQgcGVyc2lzdGVuY2UuIFdpdGggUHl0aG9uIFBsYXl3cmlnaHQgYW5kIENocm9taXVtIGFscmVhZHkgaW5zdGFsbGVkLCBzZXJ2ZSBgZGlzdC9gLCB0aGVuIHJ1bjoKCmBgYHNoCnB5dGhvbjMgdGVzdHMvYnJvd3Nlcl9xYS5weSAtLXVybCBodHRwOi8vMTI3LjAuMC4xOjgwODAvCmBgYAoKVGhlIGJyb3dzZXIgc3VpdGUgdXNlcyBjb250cm9sbGVkIGZpeHR1cmVzIGZvciBpc29sYXRlZCBiZWhhdmlvdXJzLiBDb21wbGV0ZSBlYWNoIG1pc3Npb24gdXNpbmcgb3JkaW5hcnkgY29udHJvbHMgYXMgYSBzZXBhcmF0ZSBnYW1lcGxheSBjaGVjay4gRW11bGF0aW9uIGRvZXMgbm90IGVzdGFibGlzaCBwZXJmb3JtYW5jZSBvciBTYWZhcmkgY29tcGF0aWJpbGl0eSBvbiBhIHBoeXNpY2FsIHBob25lLgoKVmVyc2lvbiAwLjIuMCBrZWVwcyB0aGUgc2FtZSB0aHJlZSBtaXNzaW9ucyBhbmQgaW1wcm92ZXMgdGhlIGZvdW5kYXRpb25zOiBzdGFibGUgZm9ybWF0aW9ucywgcGh5c2ljYWwgcmVncm91cGluZywgbG9jYWwgY29tYmF0IGFjdGl2YXRpb24sIGNsZWFyZXIgZmVlZGJhY2ssIG1vYmlsZSBjb250cm9scywgYW5kIHJlbGlhYmxlIHNjZW5lIHJlc2V0cy4gVGhlIGZpcnN0IHR3byBtaXNzaW9ucyBhcmUgZGVsaWJlcmF0ZWx5IGJyaWVmOyBiYWxhbmNlLCBhcnR3b3JrLCBhbmQgcmVhbC1kZXZpY2UgY292ZXJhZ2UgY2FuIHN0aWxsIGltcHJvdmUgYmVmb3JlIGFkZGluZyBtb3JlIGNvbnRlbnQuCgpWZXJzaW9uIDAuMy4wIGdpdmVzIHRoZSBpc2xhbmQgYW5kIGZpZWxkIGludGVyZmFjZSBhIG1vcmUgZGlzdGluY3RpdmUgYXJ0IGRpcmVjdGlvbiwgd2l0aCBsdXNoIHBpeGVsIHNjZW5lcnksIHR1cnF1b2lzZSBjb2FzdGxpbmVzLCBkZXRhaWxlZCBidWlsZGluZ3MgYW5kIHNvbGRpZXJzLCBhbmQgYSBzdW4tYmxlYWNoZWQgZmllbGQtam91cm5hbCBpbnRlcmZhY2UuIEl0IGFsc28gZml4ZXMgcmVwZWF0ZWQgYXV0b21hdGljIHBhdXNlcyBpbiBlbWJlZGRlZCBtb2JpbGUgYnJvd3NlcnM6IHRlbXBvcmFyeSBmb2N1cyBjaGFuZ2VzIGNsZWFyIGhlbGQgaW5wdXQsIHdoaWxlIGF1dG9tYXRpYyBwYXVzZSBmb2xsb3dzIGFjdHVhbCBwYWdlIHZpc2liaWxpdHkgb3IgbmF2aWdhdGlvbiBhd2F5LiBUaGUgdGhyZWUgbWlzc2lvbnMgYW5kIHRoZWlyIHNpbXVsYXRpb24gcnVsZXMgYXJlIHVuY2hhbmdlZC4KClZlcnNpb24gMC40LjAgcmVmaW5lcyBleGlzdGluZyBwbGF5OiBmb2xsb3dlcnMgcmVzcG9uZCB0byB0dXJucyB3aXRob3V0IGNoYXNpbmcgc3RhbGUgcG9zaXRpb25zLCBjb21wYW5pb25zIHlpZWxkIHRvIHRoZSBjb250cm9sbGVkIHNvbGRpZXIsIGFuZCBlbmVtaWVzIGNhbiBhcHByb2FjaCBwaHlzaWNhbGx5IHJlYWNoYWJsZSB0YXJnZXRzIGJlc2lkZSBjb3Zlci4gRGFtYWdlIGFuZCBjcml0aWNhbCBoZWFsdGggYXJlIGNsZWFyZXIgaW4gdGhlIHNxdWFkIGNhcmRzLCBncmVuYWRlIGxhbmRpbmcgbWFya2VycyBzaG93IHRoZSBhY3R1YWwgYmxhc3QgZm9vdHByaW50LCB0ZXJyYWluIG9yZGVycyByZWNlaXZlIHZpc2libGUgY29uZmlybWF0aW9uLCBhbmQgZnJpZW5kbHkgaWRlbnRpZmljYXRpb24gcmVtYWlucyByZWFkYWJsZSBiZWhpbmQgZm9saWFnZS4gU21hbGxlciBwaG9uZSB2aWV3cG9ydHMgcmV0YWluIGNsZWFyIG1vdmVtZW50IGhpbnRzLCBub2lzZSBzdGF0dXMsIGFuZCBmaXJpbmctc3RhdGUgaWNvbnMuIE5vIG1pc3Npb25zLCB3ZWFwb25zLCBlbmVtaWVzLCBvciBwcm9ncmVzc2lvbiBzeXN0ZW1zIGFyZSBhZGRlZC4KCiMjIEhvc3RpbmcgYW5kIGxpY2Vuc2luZwoKUHVibGlzaCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCB0byBhbnkgc3RhdGljIGhvc3QsIGluY2x1ZGluZyBHaXRIdWIgUGFnZXMuIE5vIHNlcnZlciwgQVBJIGtleXMsIG9yIHNlY3JldHMgYXJlIHJlcXVpcmVkLiBLZWVwIGNoZWNrb3V0LXNwZWNpZmljIGAub3BlbmFpL2AgaG9zdGluZyBtZXRhZGF0YSBvdXQgb2YgcHVibGljIGRpc3RyaWJ1dGlvbnMuCgpUaGlzIHJlcG9zaXRvcnkgdXNlcyBHaXRIdWIgUGFnZXMgd2l0aCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCBwdWJsaXNoZWQgdG8gdGhlIHJvb3Qgb2YgdGhlIGBnaC1wYWdlc2AgYnJhbmNoLiBSdW4gdGhlIHJlbGVhc2UgcGFja2FnaW5nIGNvbW1hbmQgYmVmb3JlIHJlcHVibGlzaGluZywgaW5jbHVkZSB0aGUgZ2VuZXJhdGVkIHNvdXJjZSBaSVAsIGFuZCBhZGQgYC5ub2pla3lsbGAgdG8gdGhlIHB1Ymxpc2hlZCBicmFuY2guIFRoZSBgbWFpbmAgYnJhbmNoIGNvbnRhaW5zIHRoZSBlZGl0YWJsZSBwcm9qZWN0LgoKQ29kZSBhbmQgb3JpZ2luYWwgZ2FtZSBhcnR3b3JrIGFyZSBNSVQgbGljZW5zZWQ7IHNlZSBbTElDRU5TRV0oTElDRU5TRSkuIEJ1bmRsZWQgZm9udCBmaWxlcyByZXRhaW4gdGhlaXIgaW5jbHVkZWQgU0lMIE9wZW4gRm9udCBMaWNlbnNlIG5vdGljZS4gU2VlIFtDT05UUklCVVRJTkcubWRdKENPTlRSSUJVVElORy5tZCkgZm9yIGNvbnRyaWJ1dGluZy4KCiMjIFBhY2thZ2UgYSByZWxlYXNlCgpSdW4gYHB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHlgIHRvIHJlZ2VuZXJhdGUgYFBMQVkuaHRtbGAgYW5kIGBkZWFkLXNpZ25hbC1zb3VyY2UuemlwYCBmcm9tIHRoZSBjdXJyZW50IHNvdXJjZS4gVGhlIFpJUCBleGNsdWRlcyBjaGVja291dCBtZXRhZGF0YSwgY3JlZGVudGlhbHMsIGFuZCBleGlzdGluZyBhcmNoaXZlcy4K" download="Dead-Signal-README.md">PROJECT README ↗</a></div></footer>
   </main>
   <dialog id="manual"><div class="manual-top"><span class="eyebrow">DEAD SIGNAL / FIELD MANUAL</span><button class="close-button" id="close-manual" aria-label="Close field manual">×</button></div><h2>READ. THEN RUN.</h2><p class="manual-intro">Get your people out alive. You command the highlighted soldier; the rest of the squad follows.</p><div class="manual-grid"><div><span class="manual-number">01</span><h3>MOVE AS ONE</h3><p>On a phone, drag the movement pad with your left thumb. Tap the field to order a move. On desktop, click or use WASD / arrow keys. Tap a squad portrait to change leader. Your order follows a route around cover; the coastline cannot be crossed.</p></div><div><span class="manual-number">02</span><h3>MAKE SOME NOISE</h3><p>The squad automatically shoots nearby targets. Stopping to fire improves accuracy. Gunfire brings zombies. Toggle Hold Fire to travel quietly. Enemy soldiers and zombies fight each other too.</p></div><div><span class="manual-number">03</span><h3>BREAK THE DEADLOCK</h3><p>Tap Grenade to throw toward the closest enemy, or in the direction your leader faces. On desktop, point and press G, or hold right-click to aim and fire. Blasts break huts and barrels; your squad is safe from its own grenades. Cover blocks bullets.</p></div><div><span class="manual-number">04</span><h3>BRING THEM HOME</h3><p>Reach the marked survivors, then get your squad to the green extraction circle. Mission three needs the remaining hostiles cleared. Bring all living soldiers and rescued survivors into the zone. Stay together until the extraction timer finishes.</p></div></div><div class="manual-note"><strong>EVERY NAME COUNTS.</strong><p>Lost soldiers stay lost for that mission. Keep an eye on the squad’s health. You can restart, choose Recruit difficulty, or pause at any time.</p></div><button id="manual-done" class="primary-button">UNDERSTOOD <span>→</span></button></dialog>
   <script>
@@ -814,6 +848,7 @@ const CONFIG = Object.freeze({
   step: 1 / 60, maxCatchup: 0.15, actorRadius: 11,
   squadSpeed: 142, followSpeed: 162, catchupSpeed: 205,
   weaponRange: 230, enemyRange: 225, activationRadius: 590,
+  grenadeRadius: 112, grenadeRange: 330, grenadeFlight: 0.65,
   extractionSeconds: 2.2, eventLimit: 128,
 });
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -1034,6 +1069,8 @@ class Game {
     leader.path = this.findPath(leader.x, leader.y, destination.x, destination.y);
     if (!leader.path.length) { this.state.target = null; return false; }
     leader.pathTimer = 1;
+    leader.pathGoal = destination;
+    this.emit('order', destination, {actorId: leader.id});
     return true;
   }
 
@@ -1041,19 +1078,19 @@ class Game {
     const leader = this.leader;
     if (!leader || this.state.status !== 'playing' || this.state.grenades <= 0) return false;
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      const nearest = this.enemies.filter(e => e.alive && dist(e, leader) < 330)
+      const nearest = this.enemies.filter(e => e.alive && dist(e, leader) < CONFIG.grenadeRange)
         .sort((a, b) => dist(a, leader) - dist(b, leader))[0];
       x = nearest ? nearest.x : leader.x + Math.cos(leader.angle) * 180;
       y = nearest ? nearest.y : leader.y + Math.sin(leader.angle) * 180;
     }
     const distance = Math.hypot(x - leader.x, y - leader.y);
-    const scale = distance > 330 ? 330 / distance : 1;
+    const scale = distance > CONFIG.grenadeRange ? CONFIG.grenadeRange / distance : 1;
     const tx = clamp(leader.x + (x - leader.x) * scale, 15, WIDTH - 15);
     const ty = clamp(leader.y + (y - leader.y) * scale, 15, HEIGHT - 15);
     this.state.grenades--;
     this.state.thrownGrenades.push({
       x: leader.x, y: leader.y, sx: leader.x, sy: leader.y,
-      tx, ty, time: 0, duration: 0.65, life: 0.65,
+      tx, ty, time: 0, duration: CONFIG.grenadeFlight, life: CONFIG.grenadeFlight,
     });
     this.say('FRAG OUT!', 1.3);
     return true;
@@ -1181,16 +1218,29 @@ class Game {
   }
 
   navigate(actor, x, y, speed, dt) {
-    const distance = Math.hypot(x - actor.x, y - actor.y);
+    // Joystick movement can stop within the smaller physical body margin.
+    // Pursue a nearby clear approach point rather than requesting an impossible
+    // route into that margin (and freezing a melee enemy beside its target).
+    const destination = this.nearestOpen(x, y);
+    const distance = Math.hypot(destination.x - actor.x, destination.y - actor.y);
     if (distance < 5) { actor.path = null; return; }
     actor.pathTimer -= dt;
-    if (actor.pathTimer <= 0 || !actor.path || actor.navVersion !== this.navVersion) {
-      actor.path = this.findPath(actor.x, actor.y, x, y);
+    if (this.walkableSegment(actor.x, actor.y, destination.x, destination.y)) {
+      // A visible moving destination should be followed now, not the position
+      // it occupied when a cached route was planned up to .65 seconds ago.
+      actor.path = [{x: destination.x, y: destination.y}];
+      actor.pathGoal = destination;
+      actor.pathTimer = 0.65;
+      actor.navVersion = this.navVersion;
+    } else if (actor.pathTimer <= 0 || !actor.path || actor.navVersion !== this.navVersion
+      || !actor.pathGoal || dist(actor.pathGoal, destination) > 28) {
+      actor.path = this.findPath(actor.x, actor.y, destination.x, destination.y);
       actor.pathTimer = actor.path.length ? 0.65 : 0.25;
+      actor.pathGoal = destination;
       actor.navVersion = this.navVersion;
     }
     let point = actor.path && actor.path[0];
-    while (point && Math.hypot(point.x - actor.x, point.y - actor.y) < 7) {
+    while (point && Math.hypot(point.x - actor.x, point.y - actor.y) < (actor.path.length === 1 ? 5 : 7)) {
       actor.path.shift();
       point = actor.path[0];
     }
@@ -1258,7 +1308,7 @@ class Game {
     }
   }
 
-  explode(x, y, radius = 112, damage = 105, chain = false) {
+  explode(x, y, radius = CONFIG.grenadeRadius, damage = 105, chain = false) {
     this.emit('explosion', {x, y}, {radius, chain, team: 'player'});
     this.puff(x, y, '#ffcd62', 24, 'explosion');
     this.puff(x, y, '#b66739', 12, 'smoke');
@@ -1385,6 +1435,7 @@ class Game {
   }
 
   resolveContacts() {
+    const leader = this.leader;
     const actors = [...this.soldiers, ...this.enemies, ...this.civilians.filter(c => c.rescued)].filter(a => a.alive);
     for (let pass = 0; pass < 2; pass++) {
       for (let i = 0; i < actors.length; i++) {
@@ -1396,6 +1447,20 @@ class Game {
           if (distance < 0.001) { dx = a.id < b.id ? 1 : -1; dy = 0; }
           else { dx /= distance; dy /= distance; }
           const amount = Math.min(3, (22 - distance) / 2);
+          const companion = a === leader ? b : b === leader ? a : null;
+          if (companion && (companion.name || companion.rescued)) {
+            // Companions yield to the controlled soldier. A formation turn
+            // should not shove the player sideways or out of the flare.
+            // When cover prevents yielding, ordinary two-body separation
+            // still applies; enemies keep their normal physical contact.
+            const sign = a === leader ? 1 : -1;
+            const cx = companion.x + dx * amount * 2 * sign;
+            const cy = companion.y + dy * amount * 2 * sign;
+            if (!this.blocked(cx, cy, CONFIG.actorRadius)) {
+              companion.x = cx; companion.y = cy;
+              continue;
+            }
+          }
           const ax = a.x - dx * amount, ay = a.y - dy * amount;
           const bx = b.x + dx * amount, by = b.y + dy * amount;
           if (!this.blocked(ax, ay, CONFIG.actorRadius)) { a.x = ax; a.y = ay; }
@@ -1621,7 +1686,11 @@ return { MISSIONS, CONFIG, Game };
 })();
 __modules["renderer.js"] = (() => {
 /** Original, procedural pixel artwork for Dead Signal. No external assets. */
+const { CONFIG } = __modules["engine.js"];
+
 const TAU = Math.PI * 2;
+const MAX_EFFECTS = 64;
+const FRIENDLY_SAMPLES = [[0,-13],[-4,-8],[4,-8]];
 const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
 function seeded(seed) { let s = seed >>> 0; return () => { s = Math.imul(1664525,s) + 1013904223 | 0; return (s>>>0)/4294967296; }; }
 function rgba(hex,a) { return hex.startsWith('#') && hex.length===7 ? `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})` : hex; }
@@ -1858,10 +1927,12 @@ class Renderer {
       this.lastEventId=event.id;
       if(time-event.time>.7)continue;
       if(event.type==='explosion')this.effects.push({...event,duration:.42});
+      if(event.type==='order')this.effects.push({...event,duration:.7});
       if(event.type==='rescue'||event.type==='objective'||event.type==='extracted')this.effects.push({...event,duration:.9});
       if(!reducedMotion&&event.type==='explosion')this.shake=Math.max(this.shake,2.2);
       if(!reducedMotion&&event.type==='hit'&&event.team==='player')this.shake=Math.max(this.shake,1.1);
     }
+    if(this.effects.length>MAX_EFFECTS)this.effects.splice(0,this.effects.length-MAX_EFFECTS);
     this.shake*=Math.exp(-dt*15);
     if(reducedMotion||preview)this.shake=0;
     const shakeX=Math.sin(time*67)*this.shake,shakeY=Math.cos(time*79)*this.shake*.6;
@@ -1899,11 +1970,9 @@ class Renderer {
     if(state.target&&leader&&!preview){
       const path=leader.path;
       if(path?.length){
-        c.strokeStyle='rgba(175,222,206,.65)';c.lineWidth=1.5;c.setLineDash([3,5]);c.beginPath();c.moveTo(leader.x,leader.y);
+        c.strokeStyle='rgba(175,222,206,.65)';c.lineWidth=this.worldPixels(1.1);c.setLineDash([this.worldPixels(3),this.worldPixels(5)]);c.beginPath();c.moveTo(leader.x,leader.y);
         for(const waypoint of path)c.lineTo(waypoint.x,waypoint.y);c.stroke();c.setLineDash([]);
       }
-      c.strokeStyle='#bbebd7';c.lineWidth=1.5;c.beginPath();c.arc(state.target.x,state.target.y,8,0,TAU);c.stroke();
-      c.fillStyle='#d7f3e7';c.fillRect(state.target.x-2,state.target.y-2,4,4);
     }
     for(const dead of state.corpses||[])if(this.visible(dead.x,dead.y))this.drawCorpse(c,dead,state);
     const objects=this.objects;objects.length=0;
@@ -1922,9 +1991,11 @@ class Renderer {
       c.beginPath();c.moveTo(b.x,b.y-4);c.lineTo(b.x-dx*11,b.y-dy*11-4);c.stroke();
       c.fillStyle='#fff4d4';c.fillRect(b.x-1.5,b.y-5.5,3,3);
     }
-    for(const g of state.thrownGrenades||[])if(this.visible(g.x,g.y)){
+    for(const g of state.thrownGrenades||[]){
+      const radius=CONFIG.grenadeRadius;
+      if(this.visible(g.tx-radius,g.ty-radius,radius*2,radius*2))this.drawGrenadeFootprint(c,g,reducedMotion);
+      if(!this.visible(g.x,g.y))continue;
       const t=clamp((g.time||0)/(g.duration||.65),0,1);
-      c.strokeStyle='rgba(240,185,102,.65)';c.lineWidth=1.5;c.setLineDash([3,3]);c.beginPath();c.arc(g.tx,g.ty,17+(1-t)*12,0,TAU);c.stroke();c.setLineDash([]);
       c.fillStyle='rgba(25,38,25,.35)';c.beginPath();c.ellipse(g.x,g.y,5,3,0,0,TAU);c.fill();
       c.save();c.translate(g.x,g.y-(g.height||0)-4);c.rotate(t*TAU);c.fillStyle='#1e3b31';c.fillRect(-3,-3,6,6);c.fillStyle='#c6d1a0';c.fillRect(-2,-2,4,4);c.fillStyle='#ebce8e';c.fillRect(0,-4,2,2);c.restore();
     }
@@ -1933,10 +2004,82 @@ class Renderer {
       const age=time-event.time;if(age>event.duration)continue;
       this.effects[write++]=event;if(this.visible(event.x,event.y))this.drawEvent(c,event,age,reducedMotion);
     }this.effects.length=write;
+    if(!preview){
+      if(state.target&&leader&&this.visible(state.target.x,state.target.y))this.drawOrderMarker(c,state.target);
+      // Identification is the only layer lifted above cover; the world keeps its depth.
+      for(const soldier of soldiers)if(soldier.alive&&this.visible(soldier.x,soldier.y)&&this.friendlyOccluded(soldier)){
+        this.drawFriendlyIdentification(c,soldier,soldier.id===state.leaderId);
+      }
+    }
     c.restore();this.drawVignette(c);
     if(!preview){this.drawMinimap(c,state);if(state.status==='playing')this.drawObjectiveDirection(c,state,leader,safeTop,safeBottom);}
   }
   visible(x,y,w=0,h=0){const b=this.bounds;return x+w>=b.left&&x<=b.right&&y+h>=b.top&&y<=b.bottom;}
+  // Interaction marks keep the same readable CSS size at every camera scale.
+  worldPixels(cssPixels){return cssPixels*this.width/this.cssWidth/this.camera.zoom;}
+  drawOrderMarker(c,target){
+    const radius=this.worldPixels(10),tick=this.worldPixels(3),dot=this.worldPixels(2);
+    c.save();c.translate(target.x,target.y);
+    c.beginPath();c.arc(0,0,radius,0,TAU);
+    for(let i=0;i<4;i++){
+      const a=i*Math.PI/2,dx=Math.cos(a),dy=Math.sin(a);
+      c.moveTo(dx*(radius-tick),dy*(radius-tick));c.lineTo(dx*(radius+tick),dy*(radius+tick));
+    }
+    c.strokeStyle='rgba(24,61,53,.8)';c.lineWidth=this.worldPixels(3);c.stroke();
+    c.strokeStyle='#cdebd9';c.lineWidth=this.worldPixels(1.2);c.stroke();
+    c.fillStyle='#deefe0';c.fillRect(-dot,-dot,dot*2,dot*2);c.restore();
+  }
+  drawGrenadeFootprint(c,grenade,reducedMotion){
+    const t=clamp((grenade.time||0)/(grenade.duration||CONFIG.grenadeFlight),0,1);
+    c.save();
+    c.setLineDash([this.worldPixels(3),this.worldPixels(5)]);
+    c.strokeStyle='rgba(239,197,135,.2)';c.lineWidth=this.worldPixels(.8);
+    c.beginPath();c.moveTo(grenade.sx,grenade.sy);c.lineTo(grenade.tx,grenade.ty);c.stroke();
+    // This outline is the actual damage radius, rather than a decorative landing ring.
+    c.beginPath();c.arc(grenade.tx,grenade.ty,CONFIG.grenadeRadius,0,TAU);
+    c.strokeStyle='rgba(41,61,42,.35)';c.lineWidth=this.worldPixels(2.8);c.stroke();
+    c.strokeStyle=`rgba(244,204,143,${.6+t*.15})`;c.lineWidth=this.worldPixels(1.3);c.stroke();c.setLineDash([]);
+    const radius=this.worldPixels(6),dot=this.worldPixels(2);
+    c.fillStyle='#253f33';c.beginPath();c.arc(grenade.tx,grenade.ty,radius+this.worldPixels(1),0,TAU);c.fill();
+    c.strokeStyle='#f0d09b';c.lineWidth=this.worldPixels(1.2);
+    c.beginPath();c.arc(grenade.tx,grenade.ty,radius,-Math.PI/2,-Math.PI/2+TAU*(reducedMotion?1:t));c.stroke();
+    c.fillStyle='#f1d69f';c.fillRect(grenade.tx-dot,grenade.ty-dot,dot*2,dot*2);c.restore();
+  }
+  friendlyOccluded(soldier){
+    const scale=this.personScale||1;
+    for(const obstacle of this.objects){
+      if(obstacle.w===undefined||obstacle.y+obstacle.h<=soldier.y)continue;
+      const art=this.obstacleArt?.get(obstacle);if(!art)continue;
+      const left=obstacle.x-art.pad,top=obstacle.y-art.pad;
+      for(const [dx,dy]of FRIENDLY_SAMPLES){
+        const x=Math.floor(soldier.x+dx*scale-left),y=Math.floor(soldier.y+dy*scale-top);
+        if(x<0||y<0||x>=art.canvas.width||y>=art.canvas.height)continue;
+        // Cache alpha once per static cover sprite, avoiding canvas reads in later frames.
+        if(!art.alpha){
+          const pixels=art.canvas.getContext('2d').getImageData(0,0,art.canvas.width,art.canvas.height).data;
+          art.alpha=new Uint8Array(art.canvas.width*art.canvas.height);
+          for(let i=0;i<art.alpha.length;i++)art.alpha[i]=pixels[i*4+3];
+        }
+        if(art.alpha[y*art.canvas.width+x]>=170)return true;
+      }
+    }
+    return false;
+  }
+  drawFriendlyIdentification(c,soldier,leader){
+    const scale=this.personScale||1;
+    c.save();c.translate(Math.round(soldier.x),Math.round(soldier.y));
+    // A small helmet-and-shoulders outline identifies the obscured person, without
+    // repainting the actor or revealing anything about hostile positions.
+    c.beginPath();c.rect(-4*scale,-17*scale,8*scale,7*scale);
+    c.moveTo(-7*scale,-2*scale);c.lineTo(-7*scale,-7*scale);c.lineTo(-4*scale,-9*scale);
+    c.moveTo(7*scale,-2*scale);c.lineTo(7*scale,-7*scale);c.lineTo(4*scale,-9*scale);
+    c.strokeStyle='rgba(24,61,53,.75)';c.lineWidth=this.worldPixels(2.6);c.stroke();
+    c.strokeStyle=leader?'rgba(229,231,186,.9)':'rgba(190,226,207,.7)';c.lineWidth=this.worldPixels(1);c.stroke();
+    if(leader){
+      c.fillStyle='#dc6544';c.beginPath();c.moveTo(-3*scale,-25*scale);c.lineTo(3*scale,-25*scale);c.lineTo(0,-21*scale);c.closePath();c.fill();
+    }
+    c.restore();
+  }
   drawWater(c,time,reducedMotion){
     c.save();c.strokeStyle='#d7ebca';c.lineWidth=1.3;c.globalAlpha=.24;
     for(const wave of this.waterMarks||[])if(this.visible(wave.x,wave.y)){
@@ -1986,6 +2129,10 @@ class Renderer {
   drawEvent(c,event,age,reducedMotion){
     if(event.type==='explosion'){
       if(age<.11&&!reducedMotion){const r=10+age*180;c.fillStyle=`rgba(255,237,174,${(.11-age)*5})`;c.beginPath();c.arc(event.x,event.y,r,0,TAU);c.fill();}
+    }else if(event.type==='order'){
+      const t=clamp(age/event.duration,0,1),radius=this.worldPixels(reducedMotion?17:13+t*16);
+      c.save();c.globalAlpha=reducedMotion?.55:(1-t)*.65;c.strokeStyle='#d4ebd8';c.lineWidth=this.worldPixels(1.2);
+      c.beginPath();c.arc(event.x,event.y,radius,0,TAU);c.stroke();c.restore();
     }else{
       const t=age/event.duration;c.globalAlpha=(1-t)*.6;c.strokeStyle='#d6eed1';c.lineWidth=2;c.beginPath();c.arc(event.x,event.y,20+t*35,0,TAU);c.stroke();c.globalAlpha=1;
     }
@@ -2994,6 +3141,7 @@ let previousFrame = null;
 let lastHud = -Infinity;
 let lastStatus = 'ready';
 let lastMessage = '';
+let lastSquadEvent = 0;
 let radioUntil = 0;
 let manualResume = false;
 let sessionId = 0;
@@ -3148,7 +3296,7 @@ function createSquadCards() {
     info.querySelector('.soldier-name > span').textContent = soldier.name;
     button.append(portrait, info);
     cardCleanups.push(bindAction(button, () => selectSoldier(soldier.id)));
-    cards.push({ soldier, button, portrait, health: info.querySelector('.health > span'), hp: info.querySelector('small'), wasAlive: true });
+    cards.push({ soldier, button, portrait, health: info.querySelector('.health > span'), hp: info.querySelector('small'), wasAlive: true, hurtUntil: 0 });
     $('squad-list').append(button);
   });
 }
@@ -3167,7 +3315,7 @@ function clearScene() {
   renderer.reset();
   manualResume = false;
   hintUntil = 0; radioUntil = 0;
-  lastMessage = ''; lastHud = -Infinity; previousFrame = null;
+  lastMessage = ''; lastSquadEvent = 0; lastHud = -Infinity; previousFrame = null;
   metrics.updateSamples.length = 0; metrics.renderSamples.length = 0;
   $('manual').close();
   document.querySelector('.game-toast')?.remove();
@@ -3255,6 +3403,14 @@ function throwGrenade() {
 function updateHud() {
   if (mode !== 'game') return;
   const state = game.state;
+  // Observe each hit once, including a hit followed by healing between HUD frames.
+  for (const event of state.events) {
+    if (event.id <= lastSquadEvent) continue;
+    lastSquadEvent = event.id;
+    if (event.type !== 'hit' || event.team !== 'player') continue;
+    const card = cards.find(entry => entry.soldier.id === event.targetId);
+    if (card) card.hurtUntil = Math.max(card.hurtUntil, event.time + .5);
+  }
   text('timer', formatTime(state.time)); text('kills', String(state.kills).padStart(2, '0'));
   text('rescues', `${state.rescueCount} / ${state.rescueTarget}`);
   text('grenade-count', state.grenades);
@@ -3274,14 +3430,17 @@ function updateHud() {
   for (const card of cards) {
     const { soldier, button, health, hp } = card;
     const leader = soldier.id === state.leaderId;
+    const critical = soldier.alive && soldier.hp <= soldier.maxHp * .3;
     button.classList.toggle('selected', leader);
     button.classList.toggle('dead', !soldier.alive);
+    button.classList.toggle('hurt', soldier.alive && state.time < card.hurtUntil);
+    button.classList.toggle('critical', critical);
     button.disabled = !soldier.alive;
     button.setAttribute('aria-pressed', String(leader));
-    button.setAttribute('aria-label', `${soldier.name}, ${soldier.alive ? Math.ceil(soldier.hp) + ' health' + (leader ? ', squad leader' : ', select as leader') : 'killed in action'}`);
+    button.setAttribute('aria-label', `${soldier.name}, ${soldier.alive ? Math.ceil(soldier.hp) + ' health' + (critical ? ', critical' : '') + (leader ? ', squad leader' : ', select as leader') : 'killed in action'}`);
     health.style.width = Math.max(0, soldier.hp / soldier.maxHp * 100) + '%';
     health.classList.toggle('low', soldier.hp < soldier.maxHp * .35);
-    hp.textContent = soldier.alive ? Math.ceil(soldier.hp) : 'KIA';
+    hp.textContent = soldier.alive ? (critical ? '! ' : '') + Math.ceil(soldier.hp) : 'KIA';
     if (card.wasAlive && !soldier.alive) { drawPortrait(card.portrait, cards.indexOf(card), false); card.wasAlive = false; }
   }
   const objective = objectiveFor(state);
