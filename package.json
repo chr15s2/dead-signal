@@ -1,0 +1,12 @@
+{
+  "name": "dead-signal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An original mobile-first squad tactics browser game with zombies.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "serve": "python3 -m http.server 8080 --directory dist"
+  }
+}

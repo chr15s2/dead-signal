@@ -1,0 +1,63 @@
+# Dead Signal
+
+A small, original, mobile-first squad tactics game inspired by the feel of classic action games. Lead a named squad through three missions, rescue survivors, and extract while enemy soldiers and zombies fight each other. Gunfire attracts the undead.
+
+This is a playable browser demo, not a commercial remake. It contains no Cannon Fodder code, artwork, maps, music, or other assets.
+
+## Play locally
+
+For an immediate desktop play session, open `PLAY.html` in a browser. It bundles the game and fonts into one file and works offline. The source ZIP also includes the editable project.
+
+For mobile testing or static hosting, use the files in `dist/`. You need Python 3 for this local-server option. No build step or dependency installation is required.
+
+```sh
+python3 scripts/package-release.py
+python3 -m http.server 8080 --directory dist
+```
+
+The packaging command generates the source download offered by the game's footer.
+
+Open <http://localhost:8080>. To try it on a phone on the same Wi-Fi, open `http://<your-computer's-local-IP>:8080` and allow the local server through your computer's firewall if necessary.
+
+## Controls
+
+| Action | Touch | Desktop |
+| --- | --- | --- |
+| Move the squad | Drag the movement joystick or tap the battlefield | WASD / arrow keys or left-click the battlefield |
+| Aim and fire | Squad automatically shoots nearby targets | Hold right-click to aim and fire |
+| Hold fire | Tap the hold-fire button | H |
+| Throw a grenade | Tap the grenade button | G |
+| Pause | Tap pause | Esc |
+
+Keep soldiers near cover and choose when to fire: noise brings zombies. Enemy soldiers and zombies can damage each other. The final mission has a finite number of waves; complete its objective before extracting. To extract, move at least one living squad member inside the extraction circle and wait for the timer to finish. Named soldiers can die, so surviving with the whole squad takes care.
+
+## Privacy and sound
+
+Campaign progress is saved in this browser's `localStorage`. The game sends no gameplay data to a server and needs no account. Clear the site's browser storage to remove the saved progress. Sound is optional and synthesized with Web Audio after you enable it.
+
+## Source and checks
+
+The game uses browser APIs and buildless HTML, CSS, and JavaScript:
+
+- `dist/engine.js`: game simulation, missions, movement, combat, and objectives.
+- `dist/renderer.js`: original canvas graphics.
+- `dist/app.js`: interface, controls, audio, and browser saves.
+- `dist/index.html` and `dist/style.css`: page and responsive layout.
+
+With Node.js installed, run the simulation tests with:
+
+```sh
+node --test tests/*.test.mjs
+```
+
+The equivalent convenience commands are `npm test` and `npm run serve`; neither needs `npm install`.
+
+## Hosting and licensing
+
+Publish the contents of `dist/` to any static host, including GitHub Pages. No server, API keys, or secrets are required. Keep checkout-specific `.openai/` hosting metadata out of public distributions.
+
+Code and original game artwork are MIT licensed; see [LICENSE](LICENSE). Bundled font files retain their included SIL Open Font License notice. See [CONTRIBUTING.md](CONTRIBUTING.md) for contributing.
+
+## Package a release
+
+Run `python3 scripts/package-release.py` to regenerate `PLAY.html` and `dead-signal-source.zip` from the current source. The ZIP excludes checkout metadata, credentials, and existing archives.
