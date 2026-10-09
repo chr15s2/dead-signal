@@ -1,14 +1,18 @@
 /** Browser progress and objective text. No DOM or simulation side effects. */
 export const SAVE_KEY = 'dead-signal-v1';
+export const MISSION_REVISION = 1;
 
 export function normalizeProgress(value) {
-  const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false };
+  const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false, missionRevision: MISSION_REVISION };
   if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
   if (Array.isArray(value.completed)) {
     result.completed = [...new Set(value.completed.filter(id => Number.isInteger(id) && id >= 0 && id < 3))].sort();
   }
   if (value.best && typeof value.best === 'object' && !Array.isArray(value.best)) {
-    for (let id = 0; id < 3; id++) {
+    // The new sabotage and relay runs cannot be compared to their old rescue
+    // and clear-the-map times. Keep campaign completion, preferences and M1.
+    const unchangedTimes = value.missionRevision === MISSION_REVISION;
+    for (let id = 0; id < (unchangedTimes ? 3 : 1); id++) {
       const time = value.best[id];
       if (typeof time === 'number' && Number.isFinite(time) && time > 0) result.best[id] = time;
     }
@@ -40,23 +44,30 @@ export function saveProgress(storage, value) {
 }
 
 export function objectiveFor(state) {
-  const remaining = state.enemies.filter(enemy => enemy.alive).length;
   if (state.extraction.active) {
     if (state.extraction.regrouping) {
-      return { label: 'REGROUP', text: 'Bring your squad and survivors into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
+      return { label: 'REGROUP', text: state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
     }
     if (state.extraction.progress > 0) {
       return { label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
     }
     return { label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
   }
-  if (state.rescueCount < state.rescueTarget) {
+  const objective = state.objective || {type: 'rescue'};
+  if (objective.type === 'rescue') {
     return { label: 'RESCUE', text: 'Reach the marked survivor. Your squad follows.', counter: `${state.rescueCount} / ${state.rescueTarget} SAFE`, progress: null };
   }
-  return {
-    label: remaining ? 'SECURE THE AREA' : 'HOLD THE PERIMETER',
-    text: state.wavesRemaining > 0 ? `${state.wavesRemaining} infected ${state.wavesRemaining === 1 ? 'wave remains' : 'waves remain'}. Watch your noise.` : 'Clear the last hostiles to open extraction.',
-    counter: `${remaining} HOSTILE${remaining === 1 ? '' : 'S'}`,
-    progress: null,
-  };
+  if (objective.type === 'sabotage') {
+    const destroyed = objective.targets.filter(target => !target.alive).length;
+    return {label: 'SABOTAGE', text: 'Destroy both marked jammers. Gunfire or grenades work.',
+      counter: `${destroyed} / ${objective.targets.length} SILENCED`, progress: null};
+  }
+  const seconds = Math.max(0, Math.ceil(objective.duration - objective.held - 1e-9));
+  if (!objective.started) {
+    return {label: 'REACH THE RELAY', text: 'Enter the marked perimeter to start transmitting.',
+      counter: `${objective.duration} SEC SIGNAL`, progress: 0};
+  }
+  return {label: objective.inside ? 'HOLD THE SIGNAL' : 'RE-ENTER THE SIGNAL',
+    text: objective.inside ? 'Keep your selected soldier inside. Survive the infected waves.' : 'Return to the perimeter. Transmission progress is saved.',
+    counter: `${seconds} SEC LEFT`, progress: Math.min(1, objective.held / objective.duration)};
 }

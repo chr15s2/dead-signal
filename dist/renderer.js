@@ -1,5 +1,5 @@
 /** Original, procedural pixel artwork for Dead Signal. No external assets. */
-import { CONFIG } from './engine.js?v=0.4.0';
+import { CONFIG } from './engine.js?v=0.5.0';
 
 const TAU = Math.PI * 2;
 const MAX_EFFECTS = 64;
@@ -15,6 +15,7 @@ export class Renderer {
     this.width = 1; this.height = 1; this.cache = null; this.terrainWorld = null;
     this.lastTime = 0; this.initialized = false; this.lastState = null;
     this.objects = []; this.effects = []; this.lastEventId = 0; this.shake = 0;
+    this.objectiveArt = new Map(); this.objectiveAlpha = new Map(); this.radioProp = null;
     this.look = {x:0,y:0}; this.transform = {x:0,y:0,zoom:1};
     const margin=document.createElement('canvas');margin.width=margin.height=96;
     const mc=margin.getContext('2d'),mr=seeded(1402);mc.fillStyle='#4f7958';mc.fillRect(0,0,96,96);
@@ -40,6 +41,7 @@ export class Renderer {
     // A restarted mission has a new state, even when its mission number is unchanged.
     this.initialized=false;this.lastState=null;this.lastTime=0;
     this.look.x=0;this.look.y=0;this.shake=0;this.effects.length=0;this.lastEventId=0;
+    this.radioProp=null;
   }
   screenToWorld(clientX,clientY) {
     const b=this.canvas.getBoundingClientRect();
@@ -275,6 +277,7 @@ export class Renderer {
     }
     const ex=state.extraction;
     if(ex&&this.visible(ex.x,ex.y,ex.r,ex.r))this.drawExtraction(c,ex,time,reducedMotion);
+    this.drawObjectiveGround(c,state,reducedMotion);
     for(const person of state.civilians||[]){
       if(!person.rescued&&this.visible(person.x,person.y)){
         c.strokeStyle='#b6e4d2';c.lineWidth=1.5;c.setLineDash([3,5]);c.beginPath();c.arc(person.x,person.y,23,0,TAU);c.stroke();c.setLineDash([]);
@@ -293,9 +296,17 @@ export class Renderer {
     for(const s of soldiers)if(s.alive&&this.visible(s.x,s.y))objects.push(s);
     for(const e of state.enemies||[])if(e.alive&&this.visible(e.x,e.y))objects.push(e);
     for(const p of state.civilians||[])if(p.alive!==false&&this.visible(p.x,p.y))objects.push(p);
+    const objective=state.objective;
+    if(objective?.type==='sabotage'){
+      for(const device of objective.targets||[])if(this.visible(device.x,device.y))objects.push(device);
+    }else if(objective?.type==='holdout'&&objective.zone){
+      if(!this.radioProp)this.radioProp={type:'relay',x:objective.zone.x,y:objective.zone.y};
+      if(this.visible(this.radioProp.x,this.radioProp.y))objects.push(this.radioProp);
+    }
     objects.sort((a,b)=>(a.y+(a.h||0))-(b.y+(b.h||0)));
     for(const o of objects){
-      if(o.w!==undefined)this.drawObstacle(c,o,state);
+      if(o.type==='jammer'||o.type==='relay')this.drawObjectiveProp(c,o,state,reducedMotion);
+      else if(o.w!==undefined)this.drawObstacle(c,o,state);
       else this.drawPerson(c,o,o.name?'squad':o.type==='zombie'?'zombie':o.type==='soldier'?'enemy':'civilian',state,o.id===state.leaderId);
     }
     for(const b of state.bullets||[])if(this.visible(b.x,b.y)){
@@ -330,6 +341,132 @@ export class Renderer {
   visible(x,y,w=0,h=0){const b=this.bounds;return x+w>=b.left&&x<=b.right&&y+h>=b.top&&y<=b.bottom;}
   // Interaction marks keep the same readable CSS size at every camera scale.
   worldPixels(cssPixels){return cssPixels*this.width/this.cssWidth/this.camera.zoom;}
+  drawObjectiveGround(c,state,reducedMotion){
+    const objective=state.objective;if(!objective)return;
+    if(objective.type==='sabotage'){
+      for(const device of objective.targets||[]){
+        if(!this.visible(device.x,device.y))continue;
+        c.save();c.translate(device.x,device.y);
+        if(device.alive){
+          // A four-corner target is visually distinct from survivor and flare rings.
+          c.beginPath();for(const [x,y,dx,dy]of [[-26,-15,1,1],[26,-15,-1,1],[-26,17,1,-1],[26,17,-1,-1]]){
+            c.moveTo(x+dx*8,y);c.lineTo(x,y);c.lineTo(x,y+dy*7);
+          }
+          c.strokeStyle='rgba(31,56,42,.65)';c.lineWidth=this.worldPixels(3);c.stroke();
+          c.strokeStyle='#edbd77';c.lineWidth=this.worldPixels(1.1);c.stroke();
+        }else{
+          c.strokeStyle='#b9d9ba';c.lineWidth=this.worldPixels(1.2);c.beginPath();
+          c.moveTo(20,9);c.lineTo(24,13);c.lineTo(31,4);c.stroke();
+        }
+        c.restore();
+      }
+    }else if(objective.type==='holdout'&&objective.zone){
+      const zone=objective.zone,r=zone.r,complete=objective.held>=objective.duration;
+      if(!this.visible(zone.x-r,zone.y-r,r*2,r*2))return;
+      const color=complete?'#bbdcc1':objective.inside?'#f1cd88':'#e4be7d';
+      c.save();c.translate(zone.x,zone.y);
+      // The relay has survey posts and a segmented perimeter; extraction keeps its cross.
+      c.setLineDash([this.worldPixels(6),this.worldPixels(5)]);c.beginPath();c.arc(0,0,r,0,TAU);
+      c.strokeStyle='rgba(26,51,37,.6)';c.lineWidth=this.worldPixels(3.2);c.stroke();
+      c.strokeStyle=rgba(color,complete?.55:.83);c.lineWidth=this.worldPixels(1.1);c.stroke();c.setLineDash([]);
+      for(let i=0;i<4;i++){
+        const a=i*Math.PI/2,x=Math.cos(a)*r,y=Math.sin(a)*r;
+        c.fillStyle='#2c4c3a';c.fillRect(x-3,y-3,6,6);c.fillStyle=color;c.fillRect(x-1.5,y-1.5,3,3);
+      }
+      const progress=clamp(objective.held/objective.duration,0,1);
+      if(progress>0){
+        c.strokeStyle='#2a4b36';c.lineWidth=this.worldPixels(4);c.beginPath();c.arc(0,0,r-7,-Math.PI/2,-Math.PI/2+TAU*progress);c.stroke();
+        c.strokeStyle=color;c.lineWidth=this.worldPixels(2);c.stroke();
+      }
+      if(objective.started&&!complete){
+        // A quiet inner dial confirms the hold without washing out actors or gunfire.
+        c.strokeStyle=rgba(color,.5);c.lineWidth=this.worldPixels(.8);
+        const dial=reducedMotion?0:((state.time||0)*.12)%1;
+        c.beginPath();c.arc(0,0,30,-Math.PI/2+TAU*dial,Math.PI/2+TAU*dial);c.stroke();
+      }
+      c.restore();
+    }
+  }
+  drawObjectiveProp(c,prop,state,reducedMotion){
+    const alive=prop.type==='relay'||prop.alive!==false,key=prop.type+(alive?'-live':'-wreck');
+    let art=this.objectiveArt.get(key);
+    if(!art){
+      art=document.createElement('canvas');art.width=128;art.height=128;
+      const a=art.getContext('2d');a.imageSmoothingEnabled=false;a.translate(64,96);
+      this.paintObjectiveProp(a,prop.type,alive);this.objectiveArt.set(key,art);
+    }
+    const scale=clamp(.46/this.camera.zoom,1,1.25);
+    c.save();c.translate(Math.round(prop.x),Math.round(prop.y));c.scale(scale,scale);c.drawImage(art,-64,-96);
+    if(prop.type==='jammer'&&alive){
+      const health=clamp(prop.hp/(prop.maxHp||1),0,1),width=this.worldPixels(24)/scale,y=-72;
+      c.fillStyle='#203f32';c.fillRect(-width/2-1,y-1,width+2,4);
+      c.fillStyle='#edbd77';c.fillRect(-width/2,y,Math.max(0,width*health),2);
+      c.fillStyle='#f4d99f';c.fillRect(3,-13,2,2);
+      const signal=reducedMotion?1:Math.floor((state.time||0)*2)%3;
+      c.strokeStyle=rgba('#f1cd88',.48);c.lineWidth=1;c.beginPath();
+      c.arc(8,-58,8+signal*2,-.95,.65);c.stroke();
+    }else if(prop.type==='relay'){
+      const objective=state.objective,complete=objective.held>=objective.duration;
+      c.fillStyle=complete?'#b9dcc3':objective.inside?'#f1d296':'#829b75';c.fillRect(-9,-17,2,2);
+      if(objective.started&&!complete){
+        const length=reducedMotion?9:4+Math.floor((state.time||0)*4)%6;
+        c.fillStyle='#b9d7ae';c.fillRect(-5,-16,length,1);
+      }
+      // A tiny meter stays below the equipment, clear of the squad's head/health cues.
+      if(objective.started||complete){
+        const width=this.worldPixels(26)/scale;
+        c.fillStyle='#294a37';c.fillRect(-width/2-1,15,width+2,4);
+        c.fillStyle=complete?'#b9dcc3':'#f1cd88';c.fillRect(-width/2,16,width*clamp(objective.held/objective.duration,0,1),2);
+      }
+    }
+    c.restore();
+  }
+  paintObjectiveProp(c,type,alive){
+    c.fillStyle='rgba(24,45,31,.28)';c.beginPath();c.ellipse(6,7,27,11,.12,0,TAU);c.fill();
+    if(type==='jammer'&&!alive){
+      c.fillStyle='#485442';c.fillRect(-19,-9,38,17);c.fillStyle='#6b6c4c';c.fillRect(-18,-8,34,4);
+      c.fillStyle='#263e31';c.fillRect(-13,-3,25,8);c.fillStyle='#996344';c.fillRect(-8,-7,7,6);c.fillRect(8,1,6,4);
+      c.strokeStyle='#364c38';c.lineWidth=3;c.beginPath();c.moveTo(3,-3);c.lineTo(22,-27);c.lineTo(32,-23);c.stroke();
+      c.strokeStyle='#a69b6c';c.lineWidth=1;c.beginPath();c.moveTo(3,-4);c.lineTo(22,-28);c.stroke();
+      c.fillStyle='#536044';c.fillRect(-27,3,5,3);c.fillRect(22,10,8,3);c.fillStyle='#ae8760';c.fillRect(-23,10,5,2);
+      c.strokeStyle='#475141';c.lineWidth=1;c.beginPath();c.moveTo(-14,-6);c.lineTo(-27,-13);c.lineTo(-33,-8);c.stroke();return;
+    }
+    if(type==='jammer'){
+      // A field generator, telescopic aerial and small parabolic dish form the jammer.
+      c.fillStyle='#243f34';c.fillRect(-21,-17,42,25);c.fillStyle='#607364';c.fillRect(-19,-16,38,21);
+      c.fillStyle='#a6aa79';c.fillRect(-19,-17,37,3);c.fillStyle='#405846';c.fillRect(12,-13,6,18);
+      c.fillStyle='#223d31';c.fillRect(-15,-11,12,13);c.fillStyle='#829176';
+      for(let y=-10;y<1;y+=3)c.fillRect(-14,y,10,1);
+      c.fillStyle='#243f32';c.fillRect(0,-12,9,7);c.fillStyle='#d1ab70';c.fillRect(1,-11,7,5);
+      c.fillStyle='#4b5e42';c.fillRect(3,-10,3,3);c.fillStyle='#b78c52';c.fillRect(-18,2,8,3);c.fillRect(1,2,8,3);
+      c.fillStyle='#263f34';c.fillRect(-17,6,8,4);c.fillRect(10,6,8,4);
+      c.fillStyle='#314c3a';c.fillRect(5,-63,4,46);c.fillStyle='#b7bc91';c.fillRect(6,-62,1,44);
+      c.strokeStyle='#42644d';c.lineWidth=2;c.beginPath();c.moveTo(7,-40);c.lineTo(-11,-18);c.moveTo(8,-40);c.lineTo(18,-18);c.stroke();
+      c.fillStyle='#223f34';c.fillRect(-7,-58,28,3);c.fillRect(-3,-49,20,3);
+      c.fillStyle='#b9b88b';c.fillRect(-8,-59,28,1);c.fillRect(-4,-50,20,1);
+      for(const x of [-6,0,14,20]){c.fillStyle='#e4c78b';c.fillRect(x,-64,1,10);}
+      c.fillStyle='#f0cc84';c.fillRect(5,-67,4,3);
+      c.fillStyle='#3a5140';c.beginPath();c.moveTo(-17,-39);c.lineTo(-24,-34);c.lineTo(-12,-25);c.lineTo(-7,-32);c.closePath();c.fill();
+      c.fillStyle='#c7c19a';c.beginPath();c.moveTo(-17,-40);c.lineTo(-23,-35);c.lineTo(-12,-28);c.lineTo(-8,-33);c.closePath();c.fill();
+      c.strokeStyle='#6d825e';c.lineWidth=1;c.beginPath();c.moveTo(-20,-35);c.lineTo(-12,-30);c.moveTo(-15,-35);c.lineTo(-10,-43);c.stroke();
+      c.fillStyle='#d7ba7b';c.fillRect(-11,-44,3,2);
+      c.strokeStyle='#324e36';c.lineWidth=1;c.beginPath();c.moveTo(-13,-26);c.lineTo(-10,-17);c.lineTo(1,-13);c.stroke();
+    }else{
+      // A portable receiver in a canvas case is friendly equipment, unlike the jammers.
+      c.fillStyle='#476449';c.fillRect(-25,2,48,8);c.fillStyle='#9d9e71';c.fillRect(-24,2,45,3);
+      c.fillStyle='#243f34';c.fillRect(-19,-23,36,26);c.fillStyle='#adad7c';c.fillRect(-18,-22,34,22);
+      c.fillStyle='#d8d1a0';c.fillRect(-18,-23,34,3);c.fillStyle='#7c8d63';c.fillRect(12,-19,4,20);
+      c.fillStyle='#214c3e';c.fillRect(-12,-18,20,9);c.fillStyle='#69a88c';c.fillRect(-10,-17,16,6);
+      c.fillStyle='#c9d9a7';c.fillRect(-8,-16,3,1);c.fillStyle='#2c6551';c.fillRect(-3,-15,7,2);
+      c.fillStyle='#40593c';c.fillRect(-12,-6,20,5);c.fillStyle='#d9d0a0';
+      for(const x of [-9,-1,7])c.fillRect(x,-5,3,3);
+      c.fillStyle='#35513c';c.fillRect(-8,-27,17,4);c.fillStyle='#b5bc87';c.fillRect(-6,-27,13,1);
+      c.fillStyle='#385741';c.fillRect(21,-47,2,49);c.fillStyle='#cad0a0';c.fillRect(21,-46,1,46);
+      c.fillStyle='#9cae7d';c.fillRect(12,-42,21,2);c.fillRect(16,-35,13,2);c.fillStyle='#d5d9a7';c.fillRect(20,-49,3,3);
+      c.strokeStyle='#3b5a40';c.lineWidth=1;c.beginPath();c.moveTo(21,-15);c.lineTo(14,-10);c.moveTo(-18,-12);c.lineTo(-26,-12);c.lineTo(-26,-21);c.stroke();
+      c.fillStyle='#284639';c.fillRect(-29,-27,7,8);c.fillStyle='#aab78a';c.fillRect(-28,-26,5,2);c.fillStyle='#5a7350';c.fillRect(-23,7,8,2);c.fillRect(12,7,8,2);
+    }
+  }
   drawOrderMarker(c,target){
     const radius=this.worldPixels(10),tick=this.worldPixels(3),dot=this.worldPixels(2);
     c.save();c.translate(target.x,target.y);
@@ -361,17 +498,23 @@ export class Renderer {
   friendlyOccluded(soldier){
     const scale=this.personScale||1;
     for(const obstacle of this.objects){
-      if(obstacle.w===undefined||obstacle.y+obstacle.h<=soldier.y)continue;
-      const art=this.obstacleArt?.get(obstacle);if(!art)continue;
-      const left=obstacle.x-art.pad,top=obstacle.y-art.pad;
+      const device=obstacle.type==='jammer'||obstacle.type==='relay';
+      if(device?obstacle.y<=soldier.y:obstacle.w===undefined||obstacle.y+obstacle.h<=soldier.y)continue;
+      const key=device?obstacle.type+(obstacle.type==='relay'||obstacle.alive!==false?'-live':'-wreck'):null;
+      const canvas=device?this.objectiveArt.get(key):this.obstacleArt?.get(obstacle)?.canvas;
+      if(!canvas)continue;
+      const art=device?{canvas,alpha:this.objectiveAlpha.get(key)}:this.obstacleArt.get(obstacle);
+      const artScale=device?clamp(.46/this.camera.zoom,1,1.25):1;
+      const left=obstacle.x-(device?64*artScale:art.pad),top=obstacle.y-(device?96*artScale:art.pad);
       for(const [dx,dy]of FRIENDLY_SAMPLES){
-        const x=Math.floor(soldier.x+dx*scale-left),y=Math.floor(soldier.y+dy*scale-top);
+        const x=Math.floor((soldier.x+dx*scale-left)/artScale),y=Math.floor((soldier.y+dy*scale-top)/artScale);
         if(x<0||y<0||x>=art.canvas.width||y>=art.canvas.height)continue;
         // Cache alpha once per static cover sprite, avoiding canvas reads in later frames.
         if(!art.alpha){
           const pixels=art.canvas.getContext('2d').getImageData(0,0,art.canvas.width,art.canvas.height).data;
           art.alpha=new Uint8Array(art.canvas.width*art.canvas.height);
           for(let i=0;i<art.alpha.length;i++)art.alpha[i]=pixels[i*4+3];
+          if(device)this.objectiveAlpha.set(key,art.alpha);
         }
         if(art.alpha[y*art.canvas.width+x]>=170)return true;
       }
@@ -613,15 +756,21 @@ export class Renderer {
   drawObjectiveDirection(c,state,leader,safeTop=30,safeBottom=76) {
     if(!leader)return;
     let target=null,nearest=Infinity,color='#c2e8d7';
-    for(const person of state.civilians||[])if(!person.rescued&&person.alive!==false){
-      const d=Math.hypot(person.x-leader.x,person.y-leader.y);if(d<nearest){target=person;nearest=d;}
+    const objective=state.objective;
+    if(objective?.type==='sabotage'){
+      for(const device of objective.targets||[])if(device.alive){
+        const d=Math.hypot(device.x-leader.x,device.y-leader.y);if(d<nearest){target=device;nearest=d;color='#edc080';}
+      }
+    }else if(objective?.type==='holdout'&&objective.held<objective.duration){
+      target=objective.zone;color='#edc080';
+    }else{
+      for(const person of state.civilians||[])if(!person.rescued&&person.alive!==false){
+        const d=Math.hypot(person.x-leader.x,person.y-leader.y);if(d<nearest){target=person;nearest=d;}
+      }
     }
     if(!target&&state.extraction?.active){target=state.extraction;color='#d6e9ac';}
-    if(!target&&Number(state.mission)===2){
-      for(const enemy of state.enemies||[])if(enemy.alive){const d=Math.hypot(enemy.x-leader.x,enemy.y-leader.y);if(d<nearest){target=enemy;nearest=d;color='#dfb37c';}}
-    }
     const edges={left:10,right:this.width-10,top:safeTop+9,bottom:Math.max(safeTop+28,this.height-safeBottom-9)};
-    if(target)this.drawEdgeMarker(c,target,leader,edges,color,true);
+    if(target)this.drawEdgeMarker(c,target,leader,edges,color,true,target.type==='jammer'||target===objective?.zone);
     // A nearby offscreen threat receives a small bearing, without obscuring the objective.
     let threat=null,distance=Infinity;
     for(const enemy of state.enemies||[])if(enemy.alive&&enemy!==target){
@@ -631,8 +780,10 @@ export class Renderer {
     }
     if(threat)this.drawEdgeMarker(c,threat,leader,edges,threat.type==='zombie'?'#b9c68d':'#e3ac75',false);
   }
-  drawEdgeMarker(c,target,leader,edges,color,objective){
+  drawEdgeMarker(c,target,leader,edges,color,objective,visibleProp=false){
     const t=this.transform,sx=target.x*t.zoom+t.x,sy=target.y*t.zoom+t.y;
+    // Equipment already visible at the top of a short field needs no arrow over its sprite.
+    if(visibleProp&&sx>=4&&sx<=this.width-4&&sy>=4&&sy<=this.height-4)return;
     if(sx>=edges.left&&sx<=edges.right&&sy>=edges.top&&sy<=edges.bottom)return;
     const ox=clamp(leader.x*t.zoom+t.x,edges.left+1,edges.right-1),oy=clamp(leader.y*t.zoom+t.y,edges.top+1,edges.bottom-1);
     const vx=sx-ox,vy=sy-oy;let reach=Infinity;
@@ -662,6 +813,20 @@ export class Renderer {
     for(const o of state.world.obstacles||[])if(o.alive!==false){c.fillStyle=o.type==='hut'?'#a69d7b':'#40553f';c.fillRect(x+o.x/ww*mw,y+o.y/wh*mh,Math.max(1,o.w/ww*mw),Math.max(1,o.h/wh*mh));}
     if(state.extraction){const ex=state.extraction;c.strokeStyle=ex.active?'#dbecad':'#aba878';c.strokeRect(x+ex.x/ww*mw-2,y+ex.y/wh*mh-2,4,4);}
     for(const p of state.civilians||[])if(!p.rescued&&p.alive!==false){c.fillStyle='#caecda';c.fillRect(Math.round(x+p.x/ww*mw)-1,Math.round(y+p.y/wh*mh)-1,2,2);}
+    const objective=state.objective;
+    if(objective?.type==='sabotage'){
+      for(const device of objective.targets||[]){
+        const px=Math.round(x+device.x/ww*mw),py=Math.round(y+device.y/wh*mh);
+        if(device.alive){c.fillStyle='#edc080';c.beginPath();c.moveTo(px,py-2);c.lineTo(px+2,py);c.lineTo(px,py+2);c.lineTo(px-2,py);c.closePath();c.fill();}
+        else{c.strokeStyle='#a7c3a4';c.lineWidth=.8;c.beginPath();c.moveTo(px-1.5,py);c.lineTo(px,py+1.5);c.lineTo(px+2,py-1.5);c.stroke();}
+      }
+    }else if(objective?.type==='holdout'&&objective.zone){
+      const zone=objective.zone,complete=objective.held>=objective.duration;
+      const px=x+zone.x/ww*mw,py=y+zone.y/wh*mh;
+      c.strokeStyle=complete?'#a7c3a4':'#edc080';c.lineWidth=.8;
+      c.beginPath();c.ellipse(px,py,zone.r/ww*mw,zone.r/wh*mh,0,0,TAU);c.stroke();
+      c.fillStyle=complete?'#a7c3a4':'#edc080';c.fillRect(Math.round(px)-1,Math.round(py)-1,2,2);
+    }
     for(const e of state.enemies||[])if(e.alive){c.fillStyle=e.type==='zombie'?'#bbc48b':'#e0ac70';c.fillRect(Math.round(x+e.x/ww*mw),Math.round(y+e.y/wh*mh),1,1);}
     const vw=this.width/this.camera.zoom/ww*mw,vh=this.height/this.camera.zoom/wh*mh;
     c.strokeStyle='rgba(211,233,205,.43)';c.lineWidth=.7;c.strokeRect(clamp(x+this.camera.x/ww*mw-vw/2,x,x+mw),clamp(y+this.camera.y/wh*mh-vh/2,y,y+mh),Math.min(vw,mw),Math.min(vh,mh));

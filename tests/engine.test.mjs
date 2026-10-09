@@ -76,13 +76,14 @@ test('survivor rescue occurs once, supplies squad, and unlocks extraction', () =
   assert.equal(game.state.status, 'playing');
 });
 
-test('mission two requires both survivor rescues before extraction', () => {
+test('mission two requires both jammers destroyed before extraction', () => {
   const game = quietGame({ mission: 1 });
+  assert.equal(game.civilians.length, 0);
   for (let i = 0; i < 2; i++) {
-    game.leader.x = game.civilians[i].x;
-    game.leader.y = game.civilians[i].y;
+    const target = game.state.objective.targets[i];
+    game.damage(target, 1000, 'player');
     advance(game, .1);
-    assert.equal(game.state.rescueCount, i + 1);
+    assert.equal(game.state.objective.targets.filter(target => !target.alive).length, i + 1);
     assert.equal(game.extraction.active, i === 1);
   }
 });
@@ -115,25 +116,25 @@ test('an extraction requires staying in the zone, loses progress outside, and wi
   assert.deepEqual(game.state, wonState);
 });
 
-test('mission three has finite waves and requires all hostiles cleared', () => {
+test('mission three has three relay-triggered waves and opens extraction with hostiles alive', () => {
   const game = quietGame({ mission: 2 });
-  game.checkObjective(.1);
+  advance(game, 12);
   assert.equal(game.extraction.active, false);
-  for (let remaining = 2; remaining >= 0; remaining--) {
-    const before = game.enemies.length;
-    game.updateWaves(11.1);
-    assert.equal(game.state.wavesRemaining, remaining);
-    assert.equal(game.enemies.length, before + 4);
-  }
-  const count = game.enemies.length;
-  game.updateWaves(30);
-  assert.equal(game.enemies.length, count);
-  game.checkObjective(.1);
-  assert.equal(game.extraction.active, false);
-  for (const enemy of game.enemies) game.damage(enemy, 1000);
+  assert.equal(game.enemies.length, 0);
+  game.leader.x = game.state.objective.zone.x;
+  game.leader.y = game.state.objective.zone.y;
+  for (const seconds of [1 / 60, 8, 8]) advance(game, seconds);
+  assert.equal(game.state.wavesRemaining, 0);
+  assert.equal(game.waveCount, 3);
+  assert.equal(game.state.events.filter(event => event.type === 'wave').length, 3);
+  assert.equal(game.extraction.active, false, '16 seconds is not a full transmission');
+  game.state.objective.held = 25;
   game.checkObjective(.1);
   assert.equal(game.extraction.active, true);
-  assert.equal(game.state.kills, 12);
+  assert.ok(game.enemies.some(enemy => enemy.alive), 'hostiles need not be cleared');
+  const count = game.enemies.length;
+  game.updateWaves(30);
+  assert.equal(game.enemies.length, count, 'there is no fourth or evacuation wave');
 });
 
 test('leader death selects a living replacement, and a dead soldier cannot be selected', () => {
