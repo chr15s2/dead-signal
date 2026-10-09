@@ -1,5 +1,9 @@
 /** Original, procedural pixel artwork for Dead Signal. No external assets. */
+import { CONFIG } from './engine.js?v=0.4.0';
+
 const TAU = Math.PI * 2;
+const MAX_EFFECTS = 64;
+const FRIENDLY_SAMPLES = [[0,-13],[-4,-8],[4,-8]];
 const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
 function seeded(seed) { let s = seed >>> 0; return () => { s = Math.imul(1664525,s) + 1013904223 | 0; return (s>>>0)/4294967296; }; }
 function rgba(hex,a) { return hex.startsWith('#') && hex.length===7 ? `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})` : hex; }
@@ -236,10 +240,12 @@ export class Renderer {
       this.lastEventId=event.id;
       if(time-event.time>.7)continue;
       if(event.type==='explosion')this.effects.push({...event,duration:.42});
+      if(event.type==='order')this.effects.push({...event,duration:.7});
       if(event.type==='rescue'||event.type==='objective'||event.type==='extracted')this.effects.push({...event,duration:.9});
       if(!reducedMotion&&event.type==='explosion')this.shake=Math.max(this.shake,2.2);
       if(!reducedMotion&&event.type==='hit'&&event.team==='player')this.shake=Math.max(this.shake,1.1);
     }
+    if(this.effects.length>MAX_EFFECTS)this.effects.splice(0,this.effects.length-MAX_EFFECTS);
     this.shake*=Math.exp(-dt*15);
     if(reducedMotion||preview)this.shake=0;
     const shakeX=Math.sin(time*67)*this.shake,shakeY=Math.cos(time*79)*this.shake*.6;
@@ -277,11 +283,9 @@ export class Renderer {
     if(state.target&&leader&&!preview){
       const path=leader.path;
       if(path?.length){
-        c.strokeStyle='rgba(175,222,206,.65)';c.lineWidth=1.5;c.setLineDash([3,5]);c.beginPath();c.moveTo(leader.x,leader.y);
+        c.strokeStyle='rgba(175,222,206,.65)';c.lineWidth=this.worldPixels(1.1);c.setLineDash([this.worldPixels(3),this.worldPixels(5)]);c.beginPath();c.moveTo(leader.x,leader.y);
         for(const waypoint of path)c.lineTo(waypoint.x,waypoint.y);c.stroke();c.setLineDash([]);
       }
-      c.strokeStyle='#bbebd7';c.lineWidth=1.5;c.beginPath();c.arc(state.target.x,state.target.y,8,0,TAU);c.stroke();
-      c.fillStyle='#d7f3e7';c.fillRect(state.target.x-2,state.target.y-2,4,4);
     }
     for(const dead of state.corpses||[])if(this.visible(dead.x,dead.y))this.drawCorpse(c,dead,state);
     const objects=this.objects;objects.length=0;
@@ -300,9 +304,11 @@ export class Renderer {
       c.beginPath();c.moveTo(b.x,b.y-4);c.lineTo(b.x-dx*11,b.y-dy*11-4);c.stroke();
       c.fillStyle='#fff4d4';c.fillRect(b.x-1.5,b.y-5.5,3,3);
     }
-    for(const g of state.thrownGrenades||[])if(this.visible(g.x,g.y)){
+    for(const g of state.thrownGrenades||[]){
+      const radius=CONFIG.grenadeRadius;
+      if(this.visible(g.tx-radius,g.ty-radius,radius*2,radius*2))this.drawGrenadeFootprint(c,g,reducedMotion);
+      if(!this.visible(g.x,g.y))continue;
       const t=clamp((g.time||0)/(g.duration||.65),0,1);
-      c.strokeStyle='rgba(240,185,102,.65)';c.lineWidth=1.5;c.setLineDash([3,3]);c.beginPath();c.arc(g.tx,g.ty,17+(1-t)*12,0,TAU);c.stroke();c.setLineDash([]);
       c.fillStyle='rgba(25,38,25,.35)';c.beginPath();c.ellipse(g.x,g.y,5,3,0,0,TAU);c.fill();
       c.save();c.translate(g.x,g.y-(g.height||0)-4);c.rotate(t*TAU);c.fillStyle='#1e3b31';c.fillRect(-3,-3,6,6);c.fillStyle='#c6d1a0';c.fillRect(-2,-2,4,4);c.fillStyle='#ebce8e';c.fillRect(0,-4,2,2);c.restore();
     }
@@ -311,10 +317,82 @@ export class Renderer {
       const age=time-event.time;if(age>event.duration)continue;
       this.effects[write++]=event;if(this.visible(event.x,event.y))this.drawEvent(c,event,age,reducedMotion);
     }this.effects.length=write;
+    if(!preview){
+      if(state.target&&leader&&this.visible(state.target.x,state.target.y))this.drawOrderMarker(c,state.target);
+      // Identification is the only layer lifted above cover; the world keeps its depth.
+      for(const soldier of soldiers)if(soldier.alive&&this.visible(soldier.x,soldier.y)&&this.friendlyOccluded(soldier)){
+        this.drawFriendlyIdentification(c,soldier,soldier.id===state.leaderId);
+      }
+    }
     c.restore();this.drawVignette(c);
     if(!preview){this.drawMinimap(c,state);if(state.status==='playing')this.drawObjectiveDirection(c,state,leader,safeTop,safeBottom);}
   }
   visible(x,y,w=0,h=0){const b=this.bounds;return x+w>=b.left&&x<=b.right&&y+h>=b.top&&y<=b.bottom;}
+  // Interaction marks keep the same readable CSS size at every camera scale.
+  worldPixels(cssPixels){return cssPixels*this.width/this.cssWidth/this.camera.zoom;}
+  drawOrderMarker(c,target){
+    const radius=this.worldPixels(10),tick=this.worldPixels(3),dot=this.worldPixels(2);
+    c.save();c.translate(target.x,target.y);
+    c.beginPath();c.arc(0,0,radius,0,TAU);
+    for(let i=0;i<4;i++){
+      const a=i*Math.PI/2,dx=Math.cos(a),dy=Math.sin(a);
+      c.moveTo(dx*(radius-tick),dy*(radius-tick));c.lineTo(dx*(radius+tick),dy*(radius+tick));
+    }
+    c.strokeStyle='rgba(24,61,53,.8)';c.lineWidth=this.worldPixels(3);c.stroke();
+    c.strokeStyle='#cdebd9';c.lineWidth=this.worldPixels(1.2);c.stroke();
+    c.fillStyle='#deefe0';c.fillRect(-dot,-dot,dot*2,dot*2);c.restore();
+  }
+  drawGrenadeFootprint(c,grenade,reducedMotion){
+    const t=clamp((grenade.time||0)/(grenade.duration||CONFIG.grenadeFlight),0,1);
+    c.save();
+    c.setLineDash([this.worldPixels(3),this.worldPixels(5)]);
+    c.strokeStyle='rgba(239,197,135,.2)';c.lineWidth=this.worldPixels(.8);
+    c.beginPath();c.moveTo(grenade.sx,grenade.sy);c.lineTo(grenade.tx,grenade.ty);c.stroke();
+    // This outline is the actual damage radius, rather than a decorative landing ring.
+    c.beginPath();c.arc(grenade.tx,grenade.ty,CONFIG.grenadeRadius,0,TAU);
+    c.strokeStyle='rgba(41,61,42,.35)';c.lineWidth=this.worldPixels(2.8);c.stroke();
+    c.strokeStyle=`rgba(244,204,143,${.6+t*.15})`;c.lineWidth=this.worldPixels(1.3);c.stroke();c.setLineDash([]);
+    const radius=this.worldPixels(6),dot=this.worldPixels(2);
+    c.fillStyle='#253f33';c.beginPath();c.arc(grenade.tx,grenade.ty,radius+this.worldPixels(1),0,TAU);c.fill();
+    c.strokeStyle='#f0d09b';c.lineWidth=this.worldPixels(1.2);
+    c.beginPath();c.arc(grenade.tx,grenade.ty,radius,-Math.PI/2,-Math.PI/2+TAU*(reducedMotion?1:t));c.stroke();
+    c.fillStyle='#f1d69f';c.fillRect(grenade.tx-dot,grenade.ty-dot,dot*2,dot*2);c.restore();
+  }
+  friendlyOccluded(soldier){
+    const scale=this.personScale||1;
+    for(const obstacle of this.objects){
+      if(obstacle.w===undefined||obstacle.y+obstacle.h<=soldier.y)continue;
+      const art=this.obstacleArt?.get(obstacle);if(!art)continue;
+      const left=obstacle.x-art.pad,top=obstacle.y-art.pad;
+      for(const [dx,dy]of FRIENDLY_SAMPLES){
+        const x=Math.floor(soldier.x+dx*scale-left),y=Math.floor(soldier.y+dy*scale-top);
+        if(x<0||y<0||x>=art.canvas.width||y>=art.canvas.height)continue;
+        // Cache alpha once per static cover sprite, avoiding canvas reads in later frames.
+        if(!art.alpha){
+          const pixels=art.canvas.getContext('2d').getImageData(0,0,art.canvas.width,art.canvas.height).data;
+          art.alpha=new Uint8Array(art.canvas.width*art.canvas.height);
+          for(let i=0;i<art.alpha.length;i++)art.alpha[i]=pixels[i*4+3];
+        }
+        if(art.alpha[y*art.canvas.width+x]>=170)return true;
+      }
+    }
+    return false;
+  }
+  drawFriendlyIdentification(c,soldier,leader){
+    const scale=this.personScale||1;
+    c.save();c.translate(Math.round(soldier.x),Math.round(soldier.y));
+    // A small helmet-and-shoulders outline identifies the obscured person, without
+    // repainting the actor or revealing anything about hostile positions.
+    c.beginPath();c.rect(-4*scale,-17*scale,8*scale,7*scale);
+    c.moveTo(-7*scale,-2*scale);c.lineTo(-7*scale,-7*scale);c.lineTo(-4*scale,-9*scale);
+    c.moveTo(7*scale,-2*scale);c.lineTo(7*scale,-7*scale);c.lineTo(4*scale,-9*scale);
+    c.strokeStyle='rgba(24,61,53,.75)';c.lineWidth=this.worldPixels(2.6);c.stroke();
+    c.strokeStyle=leader?'rgba(229,231,186,.9)':'rgba(190,226,207,.7)';c.lineWidth=this.worldPixels(1);c.stroke();
+    if(leader){
+      c.fillStyle='#dc6544';c.beginPath();c.moveTo(-3*scale,-25*scale);c.lineTo(3*scale,-25*scale);c.lineTo(0,-21*scale);c.closePath();c.fill();
+    }
+    c.restore();
+  }
   drawWater(c,time,reducedMotion){
     c.save();c.strokeStyle='#d7ebca';c.lineWidth=1.3;c.globalAlpha=.24;
     for(const wave of this.waterMarks||[])if(this.visible(wave.x,wave.y)){
@@ -364,6 +442,10 @@ export class Renderer {
   drawEvent(c,event,age,reducedMotion){
     if(event.type==='explosion'){
       if(age<.11&&!reducedMotion){const r=10+age*180;c.fillStyle=`rgba(255,237,174,${(.11-age)*5})`;c.beginPath();c.arc(event.x,event.y,r,0,TAU);c.fill();}
+    }else if(event.type==='order'){
+      const t=clamp(age/event.duration,0,1),radius=this.worldPixels(reducedMotion?17:13+t*16);
+      c.save();c.globalAlpha=reducedMotion?.55:(1-t)*.65;c.strokeStyle='#d4ebd8';c.lineWidth=this.worldPixels(1.2);
+      c.beginPath();c.arc(event.x,event.y,radius,0,TAU);c.stroke();c.restore();
     }else{
       const t=age/event.duration;c.globalAlpha=(1-t)*.6;c.strokeStyle='#d6eed1';c.lineWidth=2;c.beginPath();c.arc(event.x,event.y,20+t*35,0,TAU);c.stroke();c.globalAlpha=1;
     }
