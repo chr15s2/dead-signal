@@ -40,6 +40,15 @@ def touch_point(page, selector, pointer_id=1, x=.5, y=.5):
     return {'x': box['x'] + box['width'] * x, 'y': box['y'] + box['height'] * y, 'id': pointer_id}
 
 
+def set_visibility(page, hidden):
+    # Emulate the browser's actual visibility contract, including visibilityState.
+    page.evaluate('''hidden => {
+      Object.defineProperty(document,'hidden',{configurable:true,get:()=>hidden});
+      Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>hidden?'hidden':'visible'});
+      document.dispatchEvent(new Event('visibilitychange'));
+    }''', hidden)
+
+
 def quiet_control_fixture(page):
     # Isolate input without altering actor health or formation behavior.
     page.evaluate('''() => {
@@ -186,12 +195,32 @@ with sync_playwright() as p:
         page.locator('#close-manual').click()
         check(f'{label} closing live manual resumes mission', state(page)['status'] == 'playing')
         page.locator('#manual-btn').click()
-        page.evaluate('window.dispatchEvent(new Event("blur"))')
+        set_visibility(page, True)
+        set_visibility(page, False)
         page.locator('#close-manual').click()
         manual_away = state(page)
         page.wait_for_timeout(150)
         check(f'{label} closing manual after leaving tab keeps mission paused', manual_away['status'] == 'paused' and state(page)['time'] == manual_away['time'] and page.locator('#resume-btn').is_visible())
         page.locator('#resume-btn').click()
+        # Embedded phone browsers can lose focus while their page stays visible.
+        # Input must stop safely without bringing back the pause overlay.
+        if touch:
+            point = touch_point(page, '#joystick', x=.83)
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point]})
+        else:
+            page.locator('#field').focus()
+            page.keyboard.down('d')
+        active_input = page.evaluate('deadSignal.input.sample()')
+        page.evaluate('for(let i=0;i<3;i++)window.dispatchEvent(new Event("blur"))')
+        cleared_input = page.evaluate('deadSignal.input.sample()')
+        check(f'{label} visible blur clears active movement input', active_input['moveX'] > .9 and cleared_input['moveX'] == 0 and cleared_input['moveY'] == 0, {'before': active_input, 'after': cleared_input})
+        if touch:
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+        else:
+            page.keyboard.up('d')
+        visible_blur = state(page)
+        page.wait_for_timeout(200)
+        check(f'{label} repeated visible blur keeps mission running', visible_blur['status'] == 'playing' and state(page)['status'] == 'playing' and state(page)['time'] > visible_blur['time'] + .1 and page.locator('#pause-overlay').evaluate('(el)=>el.hidden') and page.evaluate('!document.hidden && document.visibilityState === "visible"'))
         page.locator('#sound-btn').click()
         page.wait_for_function('deadSignal.audio.debug.contextState === "running" && deadSignal.audio.debug.enabled')
         check(f'{label} sound enabled by player gesture', page.locator('#sound-btn').get_attribute('aria-pressed') == 'true')
@@ -247,12 +276,16 @@ with sync_playwright() as p:
         check(f'{label} muting stops voices immediately', page.evaluate('!deadSignal.audio.debug.enabled && deadSignal.audio.debug.voices === 0'))
         # Simulate the browser lifecycle event deterministically; a tab return
         # must keep the explicit resume overlay rather than running unnoticed.
-        page.evaluate('Object.defineProperty(document,"hidden",{configurable:true,get:()=>true});document.dispatchEvent(new Event("visibilitychange"))')
+        set_visibility(page, True)
         check(f'{label} hidden tab pauses automatically', state(page)['status'] == 'paused')
-        page.evaluate('Object.defineProperty(document,"hidden",{configurable:true,get:()=>false});document.dispatchEvent(new Event("visibilitychange"))')
+        set_visibility(page, False)
         page.wait_for_timeout(100)
         check(f'{label} tab return waits for explicit resume', state(page)['status'] == 'paused')
         page.locator('#resume-btn').click()
+        resumed = state(page)
+        page.evaluate('for(let i=0;i<3;i++)window.dispatchEvent(new Event("blur"))')
+        page.wait_for_timeout(200)
+        check(f'{label} visible blur after resume cannot reopen pause', state(page)['status'] == 'playing' and state(page)['time'] > resumed['time'] + .1 and page.locator('#pause-overlay').evaluate('(el)=>el.hidden'))
         page.locator('#pause-btn').click()
         # A restart must discard a camera left elsewhere in the previous scene.
         page.evaluate('deadSignal.renderer.camera.x=1200;deadSignal.renderer.camera.y=300')
@@ -352,6 +385,53 @@ with sync_playwright() as p:
         check(f'{storage_fixture} storage still deploys normally', state(page)['status'] == 'playing')
         check(f'{storage_fixture} storage causes no JavaScript errors', not errors, errors)
         context.close()
+    # A short viewport represents a phone with substantial in-app browser chrome.
+    # Keep this focused on usable play space and every pause-card action.
+    context = browser.new_context(viewport={'width': 390, 'height': 650}, is_mobile=True, has_touch=True)
+    page = context.new_page()
+    errors = []
+    page.on('pageerror', lambda e: errors.append(str(e)))
+    page.goto(args.url)
+    page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+    page.locator('#start-btn').click()
+    page.wait_for_function('deadSignal.state.status === "playing"')
+    page.wait_for_timeout(200)
+    check('390x650 short viewport deploys through lobby UI', state(page)['status'] == 'playing' and page.locator('#field').is_visible())
+    good, bounds = box_inside(page, '#field', 390, 650)
+    check('390x650 play field fits available content height', good, bounds)
+    controls = {selector: box_inside(page, selector, 390, 650) for selector in ['#joystick', '#grenade-btn', '#pause-btn']}
+    check('390x650 movement grenade and pause controls fit viewport', all(result[0] for result in controls.values()), controls)
+    page.screenshot(path=str(artifacts / '390x650-playing.png'), full_page=True)
+    page.locator('#pause-btn').click()
+    overlay_ok, overlay_bounds = box_inside(page, '#pause-overlay', 390, 650)
+    card_ok, card_bounds = box_inside(page, '#pause-overlay .overlay-card', 390, 650)
+    check('390x650 pause card fits viewport with internal scrolling', overlay_ok and card_ok, {'overlay': overlay_bounds, 'card': card_bounds})
+    page.screenshot(path=str(artifacts / '390x650-paused.png'), full_page=True)
+    accessible = {}
+    for selector in ['#resume-btn', '#restart-btn', '#pause-manual-btn', '#exit-btn']:
+        page.locator(selector).scroll_into_view_if_needed()
+        inside, bounds = box_inside(page, selector, 390, 650)
+        hit = page.locator(selector).evaluate('''button => {
+          const b=button.getBoundingClientRect();
+          const target=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
+          return button===target||button.contains(target);
+        }''')
+        accessible[selector] = {'inside': bool(inside), 'hit': hit, 'bounds': bounds}
+    page.locator('#resume-btn').click()
+    resumed = state(page)['status'] == 'playing'
+    page.locator('#pause-btn').click()
+    page.locator('#restart-btn').click()
+    restarted = state(page)['status'] == 'playing' and state(page)['time'] < 1
+    page.locator('#pause-btn').click()
+    page.locator('#pause-manual-btn').click()
+    manual_open = page.locator('#manual').evaluate('(el)=>el.open')
+    page.locator('#close-manual').click()
+    manual_preserved_pause = state(page)['status'] == 'paused'
+    page.locator('#exit-btn').click()
+    exited = state(page)['status'] == 'ready'
+    check('390x650 all four pause actions remain accessible and work', all(a['inside'] and a['hit'] for a in accessible.values()) and resumed and restarted and manual_open and manual_preserved_pause and exited, {'buttons': accessible, 'resume': resumed, 'restart': restarted, 'manual': manual_open and manual_preserved_pause, 'return': exited})
+    check('390x650 no JavaScript errors', not errors, errors)
+    context.close()
     browser.close()
 
 (artifacts / 'report.json').write_text(json.dumps(checks, indent=2))

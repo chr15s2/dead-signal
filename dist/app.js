@@ -1,8 +1,8 @@
-import { Game, MISSIONS } from './engine.js?v=0.2.0';
-import { Renderer } from './renderer.js?v=0.2.0';
-import { InputController, bindAction } from './input.js?v=0.2.0';
-import { AudioEngine } from './audio.js?v=0.2.0';
-import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.2.0';
+import { Game, MISSIONS } from './engine.js?v=0.3.0';
+import { Renderer } from './renderer.js?v=0.3.0';
+import { InputController, bindAction } from './input.js?v=0.3.0';
+import { AudioEngine } from './audio.js?v=0.3.0';
+import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.3.0';
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -105,20 +105,36 @@ async function toggleSound() {
 }
 
 function drawPortrait(target, index, alive = true) {
-  target.width = target.height = 16;
+  target.width = target.height = 24;
   const context = target.getContext('2d');
-  context.fillStyle = ['#c4ccb1', '#d1c9ac', '#bfc9b2'][index % 3];
-  context.fillRect(0, 0, 16, 16);
+  context.imageSmoothingEnabled = false;
+  context.fillStyle = ['#e5d8ae', '#dfcfac', '#e0dab6'][index % 3];
+  context.fillRect(0, 0, 24, 24);
+  context.fillStyle = '#c6bd95';
+  context.fillRect(1, 2, 5, 1); context.fillRect(18, 20, 4, 1);
   if (!alive) {
-    context.fillStyle = '#66715f'; context.fillRect(5, 4, 6, 6); context.fillRect(6, 10, 4, 2);
-    context.fillStyle = '#d8d8bc'; context.fillRect(6, 6, 1, 2); context.fillRect(9, 6, 1, 2);
+    context.fillStyle = '#7a8573'; context.fillRect(4, 17, 16, 7);
+    context.fillStyle = '#aaa88b'; context.fillRect(7, 7, 10, 9); context.fillRect(9, 16, 6, 3);
+    context.fillStyle = '#485c50'; context.fillRect(8, 10, 3, 3); context.fillRect(14, 10, 3, 3);
+    context.fillRect(11, 14, 2, 2); context.fillRect(9, 17, 1, 2); context.fillRect(12, 17, 1, 2); context.fillRect(15, 17, 1, 2);
     return;
   }
-  context.fillStyle = '#344b33'; context.fillRect(3, 12, 10, 4); context.fillRect(5, 10, 6, 3);
-  context.fillStyle = ['#d2aa7a', '#b88257', '#e0ba8a'][index % 3]; context.fillRect(5, 5, 6, 7); context.fillRect(4, 6, 1, 4); context.fillRect(11, 6, 1, 4);
-  context.fillStyle = '#4a5d39'; context.fillRect(4, 3, 8, 4); context.fillRect(3, 6, 10, 1);
-  context.fillStyle = '#73804c'; context.fillRect(5, 3, 5, 2);
-  context.fillStyle = '#293b2d'; context.fillRect(6, 8, 1, 1); context.fillRect(9, 8, 1, 1); context.fillRect(7, 11, 2, 1);
+  // Tiny original enlistment portraits share the battlefield's squad palette.
+  context.fillStyle = '#173e36'; context.fillRect(3, 18, 18, 6); context.fillRect(5, 16, 14, 4);
+  context.fillStyle = '#2e8074'; context.fillRect(4, 19, 16, 5);
+  context.fillStyle = '#72b89a'; context.fillRect(4, 18, 5, 2); context.fillRect(16, 18, 4, 2);
+  context.fillStyle = '#bea875'; context.fillRect(7, 19, 2, 5); context.fillRect(16, 19, 2, 5);
+  context.fillStyle = ['#dcb588', '#b9865d', '#e4c398'][index % 3];
+  context.fillRect(7, 8, 11, 9); context.fillRect(6, 10, 1, 4); context.fillRect(18, 10, 1, 4); context.fillRect(10, 17, 5, 2);
+  context.fillStyle = ['#b28c65', '#986644', '#c49d73'][index % 3];
+  context.fillRect(15, 9, 3, 7); context.fillRect(8, 16, 9, 1); context.fillRect(12, 12, 1, 2);
+  context.fillStyle = '#233c32'; context.fillRect(8, 11, 2, 1); context.fillRect(15, 11, 2, 1);
+  context.fillRect(11, 15, 3, 1);
+  if (index === 1) { context.fillStyle = '#665c42'; context.fillRect(8, 15, 3, 2); context.fillRect(14, 15, 3, 2); }
+  context.fillStyle = '#173e36'; context.fillRect(6, 6, 13, 3); context.fillRect(8, 3, 9, 3);
+  context.fillStyle = '#28584b'; context.fillRect(7, 5, 11, 3); context.fillRect(9, 3, 7, 3);
+  context.fillStyle = '#769c70'; context.fillRect(9, 4, 6, 1); context.fillRect(8, 5, 2, 1);
+  context.fillStyle = '#d7d5a1'; context.fillRect(6, 8, 13, 1);
 }
 
 function showMissions() {
@@ -383,7 +399,8 @@ function pauseWhenAway() {
     pauseGame(true, false);
   }
 }
-window.addEventListener('blur', pauseWhenAway);
+// In-app mobile browsers can blur a visible page during ordinary interaction.
+// Input still resets on blur; pause only when the page actually backgrounds.
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseWhenAway(); });
 window.addEventListener('pagehide', () => { pauseWhenAway(); input.reset(); audio.pause(true); });
 window.addEventListener('resize', () => renderer.resize());

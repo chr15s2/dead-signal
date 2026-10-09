@@ -48,7 +48,7 @@ export function objectiveFor(state) {
     if (state.extraction.progress > 0) {
       return { label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
     }
-    return { label: 'EXTRACTION OPEN', text: 'Follow the green flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
+    return { label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
   }
   if (state.rescueCount < state.rescueTarget) {
     return { label: 'RESCUE', text: 'Reach the marked survivor. Your squad follows.', counter: `${state.rescueCount} / ${state.rescueTarget} SAFE`, progress: null };
