@@ -31,7 +31,9 @@ Open <http://localhost:8080>. To try it on a phone on the same Wi-Fi, open `http
 | Throw a grenade | Tap the grenade button | G |
 | Pause | Tap pause | Esc |
 
-Keep soldiers near cover and choose when to fire: noise brings zombies. Enemy soldiers and zombies can damage each other. The final mission has a finite number of waves; complete its objective before extracting. To extract, move at least one living squad member inside the extraction circle and wait for the timer to finish. Named soldiers can die, so surviving with the whole squad takes care.
+Keep soldiers near cover and choose when to fire: noise brings zombies. Stop moving for more accurate fire. Enemy soldiers and zombies can damage each other. The final mission has a finite number of waves; complete its objective before extracting. Bring every living squad member and rescued survivor to the extraction circle, then hold position while the timer finishes. The HUD shows when followers need to regroup. Named soldiers can die, so surviving with the whole squad takes care.
+
+The game pauses when you leave the tab or open the field manual. Returning to the tab requires an explicit resume. Use squad cards, or desktop keys 1–3, to change the leader.
 
 ## Privacy and sound
 
@@ -41,9 +43,13 @@ Campaign progress is saved in this browser's `localStorage`. The game sends no g
 
 The game uses browser APIs and buildless HTML, CSS, and JavaScript:
 
-- `dist/engine.js`: game simulation, missions, movement, combat, and objectives.
-- `dist/renderer.js`: original canvas graphics.
-- `dist/app.js`: interface, controls, audio, and browser saves.
+- `dist/engine.js`: deterministic 60 Hz simulation, missions, combat, and objectives. A bounded event journal supplies sound and visual feedback.
+- `dist/navigation.js`: collision-aware routes shared by the leader, followers, and survivors.
+- `dist/renderer.js`: original canvas graphics, camera, coordinate projection, and cached terrain.
+- `dist/input.js`: keyboard, mouse, captured touch joystick, and action buttons.
+- `dist/audio.js`: gesture-activated procedural sound and bounded audio voices.
+- `dist/session.js`: validated browser saves and objective presentation.
+- `dist/app.js`: interface and scene lifecycle, coordinating the systems above.
 - `dist/index.html` and `dist/style.css`: page and responsive layout.
 
 With Node.js installed, run the simulation tests with:
@@ -52,7 +58,17 @@ With Node.js installed, run the simulation tests with:
 node --test tests/*.test.mjs
 ```
 
-The equivalent convenience commands are `npm test` and `npm run serve`; neither needs `npm install`.
+The equivalent convenience commands are `npm test`, `npm run package`, and `npm run serve`; none needs `npm install`.
+
+The Node checks cover deterministic simulation, collisions, routing, whole-squad extraction, input normalization, corrupt saves, and sound lifecycle. Browser regressions also exercise portrait, landscape, desktop, genuine multitouch, pause/restart, sound, and persistence. With Python Playwright and Chromium already installed, serve `dist/`, then run:
+
+```sh
+python3 tests/browser_qa.py --url http://127.0.0.1:8080/
+```
+
+The browser suite uses controlled fixtures for isolated behaviours. Complete each mission using ordinary controls as a separate gameplay check. Emulation does not establish performance or Safari compatibility on a physical phone.
+
+Version 0.2.0 keeps the same three missions and improves the foundations: stable formations, physical regrouping, local combat activation, clearer feedback, mobile controls, and reliable scene resets. The first two missions are deliberately brief; balance, artwork, and real-device coverage can still improve before adding more content.
 
 ## Hosting and licensing
 

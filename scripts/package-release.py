@@ -8,6 +8,44 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DIST = ROOT / 'dist'
 
+def bundle_modules(entry='app.js'):
+    """Bundle our named ES modules in dependency order for offline PLAY.html.
+
+    Browser source stays ordinary ES modules. Unsupported import/export forms
+    fail packaging instead of quietly generating a broken downloadable game.
+    """
+    modules = {}
+    visiting = set()
+    blocks = ['const __modules = Object.create(null);']
+    pattern = re.compile(r'^import\s+\{([^}]+)\}\s+from\s+[\'"]([^\'"]+)[\'"];?', re.MULTILINE)
+
+    def visit(name):
+        if name in modules:
+            return
+        if name in visiting:
+            raise ValueError(f'Circular module dependency: {name}')
+        visiting.add(name)
+        source = (DIST / name).read_text()
+        for match in list(pattern.finditer(source)):
+            dependency = pathlib.Path(match.group(2).split('?')[0]).name
+            if not match.group(2).startswith('./'):
+                raise ValueError('Only local named imports are supported.')
+            visit(dependency)
+        def imported(match):
+            dependency = pathlib.Path(match.group(2).split('?')[0]).name
+            bindings = re.sub(r'\s+as\s+', ': ', match.group(1).strip())
+            return f'const {{ {bindings} }} = __modules["{dependency}"];'
+        source = pattern.sub(imported, source)
+        exports = re.findall(r'^export\s+(?:class|function|const)\s+(\w+)', source, re.MULTILINE)
+        source = re.sub(r'^export\s+(?=class|function|const)', '', source, flags=re.MULTILINE)
+        if re.search(r'^(?:import|export)\s', source, re.MULTILINE):
+            raise ValueError(f'Unsupported module syntax: {name}')
+        blocks.append(f'__modules["{name}"] = (() => {{\n{source}\nreturn {{ {", ".join(exports)} }};\n}})();')
+        modules[name] = True
+        visiting.remove(name)
+    visit(entry)
+    return '\n'.join(blocks), list(modules)
+
 def standalone():
     fonts = (DIST / 'fonts.css').read_text()
     def embed(match):
@@ -16,18 +54,12 @@ def standalone():
         return f'url(data:font/ttf;base64,{data})'
     fonts = re.sub(r'url\((fonts/[^)]+)\)', embed, fonts)
     css = (DIST / 'style.css').read_text().replace("@import url('./fonts.css');", fonts)
-    engine = (DIST / 'engine.js').read_text().replace('export const ', 'const ').replace('export class ', 'class ')
-    renderer = (DIST / 'renderer.js').read_text().replace('export class ', 'class ')
-    app = re.sub(r'^import .*?;\s*', '', (DIST / 'app.js').read_text(), flags=re.MULTILINE)
-    javascript = '\n'.join([
-        'const {Game,MISSIONS} = (() => {', engine, 'return {Game,MISSIONS};})();',
-        'const {Renderer} = (() => {', renderer, 'return {Renderer};})();', app
-    ])
+    javascript, _ = bundle_modules()
     html = (DIST / 'index.html').read_text()
-    html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + css + '</style>')
+    html = re.sub(r'<link rel="stylesheet" href="style\.css[^\"]*">', lambda _: '<style>' + css + '</style>', html)
     icon = base64.b64encode((DIST / 'icon.svg').read_bytes()).decode('ascii')
     html = html.replace('href="icon.svg"', f'href="data:image/svg+xml;base64,{icon}"')
-    html = html.replace('<script type="module" src="app.js"></script>', '<script>\n' + javascript.replace('</script', '<\\/script') + '\n</script>')
+    html = re.sub(r'<script type="module" src="app\.js[^\"]*"></script>', lambda _: '<script>\n' + javascript.replace('</script', '<\\/script') + '\n</script>', html)
     readme = base64.b64encode((ROOT / 'README.md').read_bytes()).decode('ascii')
     html = html.replace('<a href="dead-signal-source.zip" download>GET THE SOURCE ↗</a>', f'<a href="data:text/markdown;base64,{readme}" download="Dead-Signal-README.md">PROJECT README ↗</a>')
     html = html.replace('3 MISSIONS · NO DOWNLOAD', '3 MISSIONS · OFFLINE READY')
@@ -42,9 +74,12 @@ def source_zip():
     files = [ROOT / name for name in [
         '.gitignore', 'README.md', 'CONTRIBUTING.md', 'LICENSE', 'package.json',
         'PLAY.html', 'dist/index.html', 'dist/style.css', 'dist/fonts.css',
-        'dist/icon.svg', 'dist/app.js', 'dist/engine.js', 'dist/renderer.js',
-        'scripts/package-release.py', 'tests/engine.test.mjs', 'tests/browser_qa.py',
+        'dist/icon.svg',
+        'scripts/package-release.py', 'tests/browser_qa.py',
     ]]
+    _, modules = bundle_modules()
+    files.extend(DIST / name for name in modules)
+    files.extend((ROOT / 'tests').glob('*.test.mjs'))
     files.extend((DIST / 'fonts').glob('*.ttf'))
     files.extend((DIST / 'fonts').glob('*-OFL.txt'))
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as output:

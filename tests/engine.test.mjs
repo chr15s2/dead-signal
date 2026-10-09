@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game } from '../dist/engine.js';
+import { Game, CONFIG } from '../dist/engine.js';
 
 function advance(game, seconds, input = {}) {
   for (let remaining = seconds; remaining > 1e-9; remaining -= 1 / 60) {
@@ -93,6 +93,12 @@ test('an extraction requires staying in the zone, loses progress outside, and wi
   advance(game, .1);
   game.leader.x = game.extraction.x;
   game.leader.y = game.extraction.y;
+  for (const [index, soldier] of game.soldiers.entries()) {
+    soldier.x = game.extraction.x - index * 26;
+    soldier.y = game.extraction.y;
+    soldier.path = null;
+    soldier.pathTimer = 0;
+  }
   advance(game, 1);
   const halfway = game.extraction.progress;
   assert.ok(halfway > .4 && halfway < .5);
@@ -216,9 +222,11 @@ test('large update intervals cannot tunnel a moving soldier through cover', () =
   game.state.world.obstacles = [{ type: 'rock', x: 300, y: 900, w: 50, h: 40, hp: Infinity, alive: true }];
   game.rebuildNavigation();
   game.leader.x = 270; game.leader.y = 920;
-  for (let i = 0; i < 20; i++) game.update(10, { moveX: 1 });
-  assert.ok(game.leader.x <= 288);
-  assert.equal(game.blocked(game.leader.x, game.leader.y), false);
+  for (let i = 0; i < 20; i++) {
+    game.update(10, { moveX: 1 });
+    assert.ok(game.leader.x <= 300 - CONFIG.actorRadius + 0.000001);
+    assert.equal(game.blocked(game.leader.x, game.leader.y, CONFIG.actorRadius), false);
+  }
   assert.ok(game.state.time < 3.01);
 });
 
