@@ -1,8 +1,8 @@
-import { Game, MISSIONS } from './engine.js?v=0.4.0';
-import { Renderer } from './renderer.js?v=0.4.0';
-import { InputController, bindAction } from './input.js?v=0.4.0';
-import { AudioEngine } from './audio.js?v=0.4.0';
-import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.4.0';
+import { Game, MISSIONS } from './engine.js?v=0.5.0';
+import { Renderer } from './renderer.js?v=0.5.0';
+import { InputController, bindAction } from './input.js?v=0.5.0';
+import { AudioEngine } from './audio.js?v=0.5.0';
+import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.5.0';
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -144,7 +144,7 @@ function showMissions() {
     const button = document.createElement('button');
     button.className = `mission-card${index === mission ? ' active' : ''}`;
     button.setAttribute('aria-pressed', String(index === mission));
-    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['RECON & RESCUE', 'DEEP ISLAND RECOVERY', 'CLEAR & EXTRACT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
+    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['RECON & RESCUE', 'SABOTAGE & ESCAPE', 'DEFEND & TRANSMIT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
     button.querySelector('h3').textContent = definition.title;
     button.querySelector('p').textContent = definition.subtitle;
     button.addEventListener('click', () => {
@@ -277,7 +277,7 @@ function throwGrenade() {
   if (thrown) {
     audio.cue('grenade');
     if (!reducedMotion.matches && navigator.vibrate) navigator.vibrate(18);
-  } else if (!game.state.grenades) radio('No grenades left. Rescue survivors for supplies.');
+  } else if (!game.state.grenades) radio(mission === 0 ? 'No grenades left. Rescue the survivor for supplies.' : 'No grenades left. Your rifles still work.');
   if (input.pointerType !== 'touch') focusField();
   updateHud();
 }
@@ -294,7 +294,12 @@ function updateHud() {
     if (card) card.hurtUntil = Math.max(card.hurtUntil, event.time + .5);
   }
   text('timer', formatTime(state.time)); text('kills', String(state.kills).padStart(2, '0'));
-  text('rescues', `${state.rescueCount} / ${state.rescueTarget}`);
+  const operation = state.objective;
+  text('operation-stat-label', operation?.type === 'sabotage' ? 'JAMMERS DOWN' : operation?.type === 'holdout' ? 'UPLINK TIME' : 'SURVIVORS');
+  text('rescues', operation?.type === 'sabotage'
+    ? `${operation.targets.filter(target => !target.alive).length} / ${operation.targets.length}`
+    : operation?.type === 'holdout' ? `${Math.floor(operation.held)} / ${operation.duration}s`
+      : `${state.rescueCount} / ${state.rescueTarget}`);
   text('grenade-count', state.grenades);
   $('grenade-btn').disabled = state.grenades === 0;
   $('grenade-btn').setAttribute('aria-label', `Throw grenade, ${state.grenades} remaining`);
@@ -330,6 +335,7 @@ function updateHud() {
   text('mission-goal', objective.label); text('mission-detail', objective.text); text('mission-counter', objective.counter);
   $('mission-progress').hidden = objective.progress === null;
   $('mission-progress').value = objective.progress ?? 0;
+  $('mission-progress').setAttribute('aria-label', state.extraction.active ? 'Extraction progress' : operation?.type === 'holdout' ? 'Radio uplink progress' : 'Mission progress');
   text('footer-tip', hold ? 'HOLD FIRE ACTIVE · MOVE QUIETLY' : 'AUTO FIRE ACTIVE · USE COVER. STAY TOGETHER.');
   if (state.message && state.message !== lastMessage) {
     lastMessage = state.message;
@@ -349,7 +355,11 @@ function showResult(won) {
   $('result-overlay').hidden = false;
   text('result-label', won ? (mission === 2 ? 'OPERATION COMPLETE' : 'MISSION COMPLETE') : 'SQUAD LOST');
   $('result-title').innerHTML = won ? (mission === 2 ? 'SIGNAL<br>RESTORED.' : 'MADE IT<br>OUT ALIVE.') : 'RADIO<br>SILENCE.';
-  text('result-copy', won ? (mission === 2 ? 'Your squad is home. The island is quiet again.' : 'Squad and survivors extracted. Regroup for the next operation.') : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
+  text('result-copy', won ? [
+    'The radio operator and your squad are home. Regroup for the next operation.',
+    'Both jammers are down. Your squad slipped out before the dead closed in.',
+    'Transmission received. Your squad is home, and help knows where to find the island.',
+  ][mission] : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
   const alive = state.soldiers.filter(soldier => soldier.alive).length;
   $('result-stats').innerHTML = `<div><span>TIME</span><b>${formatTime(state.time)}</b></div><div><span>SQUAD ALIVE</span><b>${alive} / 3</b></div><div><span>ELIMINATED</span><b>${state.kills}</b></div>`;
   $('memorial').replaceChildren();

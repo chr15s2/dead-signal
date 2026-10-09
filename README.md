@@ -1,6 +1,6 @@
 # Dead Signal
 
-A small, original, mobile-first squad tactics game inspired by the feel of classic action games. Lead a named squad through three missions, rescue survivors, and extract while enemy soldiers and zombies fight each other. Gunfire attracts the undead.
+A small, original, mobile-first squad tactics game inspired by the feel of classic action games. Lead a named squad through three different missions—rescue, sabotage, and a radio holdout—while enemy soldiers and zombies fight each other. Gunfire attracts the undead.
 
 [Play Dead Signal online](https://chr15s2.github.io/dead-signal/)
 
@@ -31,7 +31,7 @@ Open <http://localhost:8080>. To try it on a phone on the same Wi-Fi, open `http
 | Throw a grenade | Tap the grenade button | G |
 | Pause | Tap pause | Esc |
 
-Keep soldiers near cover and choose when to fire: noise brings zombies. Stop moving for more accurate fire. Enemy soldiers and zombies can damage each other. The final mission has a finite number of waves; complete its objective before extracting. Bring every living squad member and rescued survivor to the extraction circle, then hold position while the timer finishes. The HUD shows when followers need to regroup. Named soldiers can die, so surviving with the whole squad takes care.
+Keep soldiers near cover and choose when to fire: noise brings zombies. Stop moving for more accurate fire. Enemy soldiers and zombies can damage each other. First Contact rescues a radio operator. Bad Frequency sends you after two signal jammers: your squad shoots them when nearby enemies are dealt with, and grenades work too. Last Transmission asks you to hold the relay circle for 25 cumulative seconds while three finite infected waves arrive. Step outside to dodge and the uplink pauses; return to continue. Finishing the transmission opens extraction even if hostiles remain. Bring every living squad member and rescued survivor to the extraction circle, then hold position while the timer finishes. The HUD shows when followers need to regroup. Named soldiers can die, so surviving with the whole squad takes care.
 
 The game pauses when you leave the tab or open the field manual. Returning to the tab requires an explicit resume. Use squad cards, or desktop keys 1–3, to change the leader.
 
@@ -73,6 +73,8 @@ Version 0.2.0 keeps the same three missions and improves the foundations: stable
 Version 0.3.0 gives the island and field interface a more distinctive art direction, with lush pixel scenery, turquoise coastlines, detailed buildings and soldiers, and a sun-bleached field-journal interface. It also fixes repeated automatic pauses in embedded mobile browsers: temporary focus changes clear held input, while automatic pause follows actual page visibility or navigation away. The three missions and their simulation rules are unchanged.
 
 Version 0.4.0 refines existing play: followers respond to turns without chasing stale positions, companions yield to the controlled soldier, and enemies can approach physically reachable targets beside cover. Damage and critical health are clearer in the squad cards, grenade landing markers show the actual blast footprint, terrain orders receive visible confirmation, and friendly identification remains readable behind foliage. Smaller phone viewports retain clear movement hints, noise status, and firing-state icons. No missions, weapons, enemies, or progression systems are added.
+
+Version 0.5.0 gives the existing three missions distinct objectives: rescue the radio operator, sabotage two signal jammers, and defend a relay during its transmission. Mission markers, briefings, counters, progress, and results follow each objective. Rifles can always finish sabotage, relay progress pauses outside its zone, and holdout extraction no longer requires clearing the whole map. Legacy best times for the two redesigned missions reset once; completions, mission-one times, difficulty, and sound preferences remain.
 
 ## Hosting and licensing
 

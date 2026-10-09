@@ -156,8 +156,21 @@ test('simulation events are monotonic, bounded and identify damage recipients', 
 
 // A small commander exercises real missions through public actions only. No
 // altered health, deleted enemies, moved actors or skipped objective conditions.
-function playMission(mission) {
-  const game = new Game({mission, difficulty: 'normal', seed: 1989}).start();
+function jammerFiringPosition(game, target) {
+  // Find an open firing position with a clear view, rather than walking onto a
+  // device or stopping on the far side of a hut. These are read-only decisions;
+  // the commander still issues the same movement orders a player can use.
+  const leader = game.leader;
+  const angle = Math.atan2(leader.y - target.y, leader.x - target.x);
+  const positions = Array.from({length: 16}, (_, i) => {
+    const bearing = angle + i * Math.PI / 8;
+    return {x: target.x + Math.cos(bearing) * 170, y: target.y + Math.sin(bearing) * 170};
+  }).filter(point => !game.blocked(point.x, point.y, 15) && game.hasLOS(point, target));
+  return positions.sort((a, b) => distance(a, leader) - distance(b, leader))[0];
+}
+
+function playMission(mission, seed) {
+  const game = new Game({mission, difficulty: 'normal', seed}).start();
   let decisionAt = 0, grenadeAt = -10;
   for (let frame = 0; frame < 120 * 60 && game.state.status === 'playing'; frame++) {
     if (game.state.time >= decisionAt) {
@@ -166,9 +179,15 @@ function playMission(mission) {
       const enemies = game.enemies.filter(enemy => enemy.alive).sort((a, b) => distance(a, leader) - distance(b, leader));
       const nearby = enemies.filter(enemy => distance(enemy, leader) < 220);
       if (nearby.length >= 2 && game.state.time - grenadeAt > 4 && game.grenade(nearby[0].x, nearby[0].y)) grenadeAt = game.state.time;
-      const destination = game.extraction.active ? game.extraction
-        : mission < 2 ? game.civilians.find(civilian => !civilian.rescued)
-          : enemies[0];
+      let destination;
+      if (game.extraction.active) destination = game.extraction;
+      else if (mission === 0) destination = game.civilians.find(civilian => !civilian.rescued);
+      else if (mission === 1) {
+        const target = game.state.objective.targets.filter(target => target.alive)
+          .sort((a, b) => distance(a, leader) - distance(b, leader))[0];
+        if (target) destination = distance(leader, target) < CONFIG.weaponRange - 35 && game.hasLOS(leader, target)
+          ? leader : jammerFiringPosition(game, target);
+      } else destination = game.state.objective.zone;
       if (destination) game.moveTo(destination.x, destination.y);
     }
     game.update(1 / 60);
@@ -176,9 +195,13 @@ function playMission(mission) {
   return game;
 }
 
-for (const mission of [0, 1, 2]) test(`normal mission ${mission + 1} can extract through real squad actions`, () => {
-  const game = playMission(mission);
-  assert.equal(game.state.status, 'won');
-  assert.ok(game.soldiers.filter(soldier => soldier.alive).every(soldier => distance(soldier, game.extraction) < game.extraction.r + 28));
-  assert.ok(game.civilians.every(civilian => !civilian.rescued || distance(civilian, game.extraction) < game.extraction.r + 85));
-});
+for (const seed of [1, 42, 531, 1989, 2143]) {
+  for (const mission of [0, 1, 2]) test(`normal mission ${mission + 1} extracts through real squad actions (seed ${seed})`, () => {
+    const game = playMission(mission, seed);
+    assert.equal(game.state.status, 'won', `squad did not extract after ${game.state.time.toFixed(1)}s`);
+    assert.ok(game.soldiers.filter(soldier => soldier.alive).every(soldier => distance(soldier, game.extraction) < game.extraction.r + 28));
+    assert.ok(game.civilians.every(civilian => !civilian.rescued || distance(civilian, game.extraction) < game.extraction.r + 85));
+    if (mission === 1) assert.ok(game.state.objective.targets.every(target => !target.alive));
+    if (mission === 2) assert.equal(game.state.objective.held, game.state.objective.duration);
+  });
+}

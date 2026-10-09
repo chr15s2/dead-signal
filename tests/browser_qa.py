@@ -146,6 +146,36 @@ def assert_order_feedback(page, label, touch):
     check(f'{label} order confirmation expires after the accepted move', page.evaluate('id=>!deadSignal.renderer.effects.some(e=>e.type==="order"&&e.id===id)', event_id))
 
 
+def assert_objective_readability(page, label, width, height):
+    presentation = {}
+    for selector in ['#mission-goal', '#mission-detail', '#mission-counter']:
+        inside, bounds = box_inside(page, selector, width, height)
+        text_state = page.locator(selector).evaluate('''el=>{
+          const style=getComputedStyle(el);
+          return {text:el.textContent.trim(),visible:style.display!=='none' && style.visibility!=='hidden',
+            fits:el.scrollWidth<=el.clientWidth+1 && el.scrollHeight<=el.clientHeight+1};
+        }''')
+        presentation[selector] = {**text_state, 'inside': bool(inside), 'bounds': bounds}
+    check(f'{label} objective instructions and count fit without clipping',
+          all(item['text'] and item['visible'] and item['fits'] and item['inside'] for item in presentation.values()), presentation)
+
+
+def objective_bearings(page):
+    # Observe the objective selected for one canvas draw without depending on
+    # random terrain pixels or changing the camera's ongoing behavior.
+    return page.evaluate('''() => {
+      const r=deadSignal.renderer,original=r.drawEdgeMarker,targets=[];
+      r.drawEdgeMarker=function(...args){
+        const target=args[1];
+        if(args[5])targets.push({x:target.x,y:target.y,id:target.id??null});
+        return original.apply(this,args);
+      };
+      try{r.drawObjectiveDirection(r.ctx,deadSignal.state,deadSignal.game.leader);}
+      finally{r.drawEdgeMarker=original;}
+      return targets;
+    }''')
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path='/usr/bin/chromium', headless=True, args=['--no-sandbox'])
     for width, height, touch in [(390, 844, True), (360, 740, True), (844, 390, True), (1440, 1000, False)]:
@@ -415,6 +445,98 @@ with sync_playwright() as p:
         page.locator('#pause-btn').click()
         page.locator('#exit-btn').click()
         check(f'{label} return to base restores selection', state(page)['status'] == 'ready' and page.locator('#start-btn').is_visible())
+        if width == 390 or not touch:
+            # Isolated objective presentation checks. Objective damage and actor
+            # placement are deliberate fixtures; mission balance is playtested
+            # separately without state edits.
+            page.locator('.mission-card').nth(1).click()
+            page.locator('#start-btn').click()
+            page.wait_for_function('deadSignal.state.status === "playing" && deadSignal.state.objective.type === "sabotage"')
+            page.wait_for_function('document.getElementById("mission-counter").textContent.includes("0 / 2")')
+            check(f'{label} mission two explains sabotage rather than survivor rescue',
+                  'JAMMER' in (page.locator('#mission-goal').inner_text() + page.locator('#mission-detail').inner_text()).upper()
+                  and 'SAFE' not in page.locator('#mission-counter').inner_text()
+                  and page.locator('#mission-progress').evaluate('(el)=>el.hidden'))
+            assert_objective_readability(page, f'{label} sabotage', width, height)
+            nearest_jammer = page.evaluate('''() => {
+              const leader=deadSignal.game.leader;
+              return [...deadSignal.state.objective.targets].sort((a,b)=>Math.hypot(a.x-leader.x,a.y-leader.y)-Math.hypot(b.x-leader.x,b.y-leader.y))[0].id;
+            }''')
+            check(f'{label} sabotage bearing points at the nearest live objective',
+                  [target['id'] for target in objective_bearings(page)] == [nearest_jammer])
+            page.screenshot(path=str(artifacts / f'{label}-sabotage.png'), full_page=True)
+            page.evaluate('deadSignal.game.damage(deadSignal.state.objective.targets[0],1000,"player")')
+            page.wait_for_function('document.getElementById("mission-counter").textContent.includes("1 / 2")')
+            check(f'{label} destroying one jammer updates objective counter without opening extraction',
+                  page.evaluate('!deadSignal.state.objective.targets[0].alive && deadSignal.state.objective.targets[1].alive && !deadSignal.state.extraction.active'))
+            check(f'{label} sabotage bearing moves to the remaining live jammer',
+                  [target['id'] for target in objective_bearings(page)] == [page.evaluate('deadSignal.state.objective.targets[1].id')])
+            page.locator('#pause-btn').click()
+            page.locator('#restart-btn').click()
+            page.wait_for_function('document.getElementById("mission-counter").textContent.includes("0 / 2")')
+            check(f'{label} sabotage restart restores both devices and initial guidance',
+                  page.evaluate('deadSignal.state.objective.targets.length===2 && deadSignal.state.objective.targets.every(target=>target.alive && target.hp===target.maxHp) && !deadSignal.state.extraction.active'))
+            page.locator('#pause-btn').click()
+            page.locator('#exit-btn').click()
+            page.locator('.mission-card').nth(2).click()
+            page.locator('#start-btn').click()
+            page.wait_for_function('deadSignal.state.status === "playing" && deadSignal.state.objective.type === "holdout"')
+            page.wait_for_function('!document.getElementById("mission-progress").hidden')
+            check(f'{label} mission three explains the radio holdout with distinct progress',
+                  'RELAY' in page.locator('#mission-goal').inner_text().upper()
+                  and 'Extraction' not in page.locator('#mission-progress').get_attribute('aria-label'))
+            assert_objective_readability(page, f'{label} holdout approach', width, height)
+            relay = page.evaluate('({x:deadSignal.state.objective.zone.x,y:deadSignal.state.objective.zone.y,id:null})')
+            check(f'{label} holdout bearing directs the squad to the relay rather than roaming hostiles',
+                  objective_bearings(page) == [relay])
+            page.screenshot(path=str(artifacts / f'{label}-holdout-approach.png'), full_page=True)
+            page.evaluate('''() => {
+              const g=deadSignal.game,z=g.state.objective.zone;
+              g.state.enemies=[];
+              for(const [i,soldier] of g.soldiers.entries()){
+                soldier.x=z.x-i*24;soldier.y=z.y;soldier.path=null;soldier.pathTimer=0;
+              }
+              g.moveTo(g.leader.x,g.leader.y);
+            }''')
+            page.wait_for_function('deadSignal.state.objective.inside && deadSignal.state.objective.held > .4')
+            page.wait_for_timeout(120)
+            check(f'{label} entering the radio zone updates the live progress display',
+                  page.locator('#mission-progress').evaluate('(el)=>!el.hidden && el.value>0 && el.value<1')
+                  and 'RETURN' not in page.locator('#mission-goal').inner_text())
+            assert_objective_readability(page, f'{label} active holdout', width, height)
+            page.screenshot(path=str(artifacts / f'{label}-holdout-active.png'), full_page=True)
+            page.locator('#pause-btn').click()
+            paused_hold = page.evaluate('({held:deadSignal.state.objective.held,time:deadSignal.state.time})')
+            page.wait_for_timeout(250)
+            check(f'{label} pause freezes radio objective progress alongside mission time',
+                  page.evaluate('({held:deadSignal.state.objective.held,time:deadSignal.state.time})') == paused_hold)
+            page.locator('#resume-btn').click()
+            page.wait_for_function('held=>deadSignal.state.objective.held > held+.15', arg=paused_hold['held'])
+            check(f'{label} resume continues the same accumulated radio progress',
+                  page.locator('#mission-progress').evaluate('(el)=>el.value>0') and state(page)['status'] == 'playing')
+            page.evaluate('''() => {
+              const g=deadSignal.game,z=g.state.objective.zone;
+              g.state.enemies=[];
+              for(const [i,soldier] of g.soldiers.entries()){
+                soldier.x=z.x+z.r+90+i*24;soldier.y=z.y;soldier.path=null;soldier.pathTimer=0;
+              }
+              g.moveTo(g.leader.x,g.leader.y);
+            }''')
+            page.wait_for_function('!deadSignal.state.objective.inside')
+            left_hold = page.evaluate('deadSignal.state.objective.held')
+            page.wait_for_timeout(250)
+            check(f'{label} leaving the radio zone preserves progress and tells the player to return',
+                  page.evaluate('deadSignal.state.objective.held') == left_hold
+                  and 'RETURN' in (page.locator('#mission-goal').inner_text() + page.locator('#mission-detail').inner_text()).upper())
+            page.locator('#pause-btn').click()
+            page.locator('#restart-btn').click()
+            page.wait_for_function('deadSignal.state.objective.held === 0 && !deadSignal.state.objective.started')
+            page.wait_for_timeout(120)
+            check(f'{label} holdout restart clears timer waves and displayed progress',
+                  page.evaluate('deadSignal.state.objective.held===0 && !deadSignal.state.objective.inside && !deadSignal.state.extraction.active && deadSignal.state.objective.elapsed===0')
+                  and page.locator('#mission-progress').evaluate('(el)=>!el.hidden && el.value===0'))
+            page.locator('#pause-btn').click()
+            page.locator('#exit-btn').click()
         page.locator('.mission-card').nth(2).click()
         page.locator('#start-btn').click()
         check(f'{label} mission three selection deploys', state(page)['mission'] == 2 and state(page)['status'] == 'playing')
@@ -424,6 +546,8 @@ with sync_playwright() as p:
           const g=deadSignal.game;
           for(const enemy of g.enemies)g.damage(enemy,1000);
           g.state.wavesRemaining=0;
+          g.state.objective.held=g.state.objective.duration;
+          g.state.objective.started=true;
           for(const soldier of g.soldiers.slice(1))g.damage(soldier,1000);
           g.leader.x=g.extraction.x;g.leader.y=g.extraction.y;
           g.leader.path=null;g.leader.pathTimer=0;
@@ -526,6 +650,26 @@ with sync_playwright() as p:
         released = state(page)['x']
         page.wait_for_timeout(150)
         check(f'{label} releasing compact pad stops steering', abs(state(page)['x'] - released) < 1 and page.evaluate('deadSignal.input.sample().moveX===0 && deadSignal.input.sample().moveY===0'))
+        if width == 360:
+            page.locator('#pause-btn').click()
+            page.locator('#exit-btn').click()
+            page.locator('.mission-card').nth(1).click()
+            page.locator('#start-btn').click()
+            page.wait_for_function('document.getElementById("mission-goal").textContent==="SABOTAGE"')
+            assert_objective_readability(page, f'{label} compact sabotage', width, height)
+            page.screenshot(path=str(artifacts / f'{label}-sabotage.png'), full_page=True)
+            page.locator('#pause-btn').click()
+            page.locator('#exit-btn').click()
+            page.locator('.mission-card').nth(2).click()
+            page.locator('#start-btn').click()
+            # Isolate the longest return instruction without a lengthy holdout.
+            page.evaluate('''() => {
+              deadSignal.state.enemies=[];deadSignal.state.wavesRemaining=0;
+              Object.assign(deadSignal.state.objective,{started:true,inside:false,held:10});
+            }''')
+            page.wait_for_function('document.getElementById("mission-goal").textContent==="RE-ENTER THE SIGNAL"')
+            assert_objective_readability(page, f'{label} compact relay return', width, height)
+            page.screenshot(path=str(artifacts / f'{label}-holdout-return.png'), full_page=True)
         check(f'{label} no JavaScript errors', not errors, errors)
         context.close()
     # A short viewport represents a phone with substantial in-app browser chrome.

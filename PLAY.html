@@ -583,7 +583,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
           <div class="objective-block"><span class="micro-label">CURRENT OBJECTIVE</span><p id="objective-text">Rescue the survivor.</p></div>
           <div id="squad-list" class="squad-list"></div>
           <div class="noise-block"><div><span class="micro-label">NOISE<span class="noise-expanded"> SIGNATURE</span></span><strong id="noise-label">QUIET</strong></div><div class="noise-track" role="meter" aria-label="Noise signature" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="noise-fill"></div></div><p>The dead follow the sound.</p></div>
-          <div class="combat-stats"><div><span class="micro-label">ELIMINATED</span><b id="kills">00</b></div><div><span class="micro-label">SURVIVORS</span><b id="rescues">0 / 1</b></div></div>
+          <div class="combat-stats"><div><span class="micro-label">ELIMINATED</span><b id="kills">00</b></div><div><span id="operation-stat-label" class="micro-label">SURVIVORS</span><b id="rescues">0 / 1</b></div></div>
           <p class="desktop-help">Click terrain to move. Your squad fires automatically. <kbd>WASD</kbd> to steer · <kbd>G</kbd> grenade · <kbd>H</kbd> hold fire · <kbd>Esc</kbd> pause.</p>
           <button id="return-btn" class="text-button return-button">← BACK TO BASE</button>
         </div>
@@ -607,9 +607,9 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
       </div>
     </section>
     <section class="missions-section" id="missions-section" aria-label="Mission selection"><div class="section-label"><span>THE OPERATION</span><span>THREE STOPS. ONE WAY OUT.</span></div><div class="mission-grid" id="mission-grid"></div></section>
-    <footer class="site-footer"><span>SMALL SOLDIERS. BIG TROUBLE.</span><div><span>ORIGINAL ART & CODE · MIT LICENSE</span><a href="data:text/markdown;base64,IyBEZWFkIFNpZ25hbAoKQSBzbWFsbCwgb3JpZ2luYWwsIG1vYmlsZS1maXJzdCBzcXVhZCB0YWN0aWNzIGdhbWUgaW5zcGlyZWQgYnkgdGhlIGZlZWwgb2YgY2xhc3NpYyBhY3Rpb24gZ2FtZXMuIExlYWQgYSBuYW1lZCBzcXVhZCB0aHJvdWdoIHRocmVlIG1pc3Npb25zLCByZXNjdWUgc3Vydml2b3JzLCBhbmQgZXh0cmFjdCB3aGlsZSBlbmVteSBzb2xkaWVycyBhbmQgem9tYmllcyBmaWdodCBlYWNoIG90aGVyLiBHdW5maXJlIGF0dHJhY3RzIHRoZSB1bmRlYWQuCgpbUGxheSBEZWFkIFNpZ25hbCBvbmxpbmVdKGh0dHBzOi8vY2hyMTVzMi5naXRodWIuaW8vZGVhZC1zaWduYWwvKQoKVGhpcyBpcyBhIHBsYXlhYmxlIGJyb3dzZXIgZGVtbywgbm90IGEgY29tbWVyY2lhbCByZW1ha2UuIEl0IGNvbnRhaW5zIG5vIENhbm5vbiBGb2RkZXIgY29kZSwgYXJ0d29yaywgbWFwcywgbXVzaWMsIG9yIG90aGVyIGFzc2V0cy4KCiMjIFBsYXkgbG9jYWxseQoKRm9yIGFuIGltbWVkaWF0ZSBkZXNrdG9wIHBsYXkgc2Vzc2lvbiwgb3BlbiBgUExBWS5odG1sYCBpbiBhIGJyb3dzZXIuIEl0IGJ1bmRsZXMgdGhlIGdhbWUgYW5kIGZvbnRzIGludG8gb25lIGZpbGUgYW5kIHdvcmtzIG9mZmxpbmUuIFRoZSBzb3VyY2UgWklQIGFsc28gaW5jbHVkZXMgdGhlIGVkaXRhYmxlIHByb2plY3QuCgpGb3IgbW9iaWxlIHRlc3Rpbmcgb3Igc3RhdGljIGhvc3RpbmcsIHVzZSB0aGUgZmlsZXMgaW4gYGRpc3QvYC4gWW91IG5lZWQgUHl0aG9uIDMgZm9yIHRoaXMgbG9jYWwtc2VydmVyIG9wdGlvbi4gTm8gYnVpbGQgc3RlcCBvciBkZXBlbmRlbmN5IGluc3RhbGxhdGlvbiBpcyByZXF1aXJlZC4KCmBgYHNoCnB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHkKcHl0aG9uMyAtbSBodHRwLnNlcnZlciA4MDgwIC0tZGlyZWN0b3J5IGRpc3QKYGBgCgpUaGUgcGFja2FnaW5nIGNvbW1hbmQgZ2VuZXJhdGVzIHRoZSBzb3VyY2UgZG93bmxvYWQgb2ZmZXJlZCBieSB0aGUgZ2FtZSdzIGZvb3Rlci4KCk9wZW4gPGh0dHA6Ly9sb2NhbGhvc3Q6ODA4MD4uIFRvIHRyeSBpdCBvbiBhIHBob25lIG9uIHRoZSBzYW1lIFdpLUZpLCBvcGVuIGBodHRwOi8vPHlvdXItY29tcHV0ZXIncy1sb2NhbC1JUD46ODA4MGAgYW5kIGFsbG93IHRoZSBsb2NhbCBzZXJ2ZXIgdGhyb3VnaCB5b3VyIGNvbXB1dGVyJ3MgZmlyZXdhbGwgaWYgbmVjZXNzYXJ5LgoKIyMgQ29udHJvbHMKCnwgQWN0aW9uIHwgVG91Y2ggfCBEZXNrdG9wIHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IE1vdmUgdGhlIHNxdWFkIHwgRHJhZyB0aGUgbW92ZW1lbnQgam95c3RpY2sgb3IgdGFwIHRoZSBiYXR0bGVmaWVsZCB8IFdBU0QgLyBhcnJvdyBrZXlzIG9yIGxlZnQtY2xpY2sgdGhlIGJhdHRsZWZpZWxkIHwKfCBBaW0gYW5kIGZpcmUgfCBTcXVhZCBhdXRvbWF0aWNhbGx5IHNob290cyBuZWFyYnkgdGFyZ2V0cyB8IEhvbGQgcmlnaHQtY2xpY2sgdG8gYWltIGFuZCBmaXJlIHwKfCBIb2xkIGZpcmUgfCBUYXAgdGhlIGhvbGQtZmlyZSBidXR0b24gfCBIIHwKfCBUaHJvdyBhIGdyZW5hZGUgfCBUYXAgdGhlIGdyZW5hZGUgYnV0dG9uIHwgRyB8CnwgUGF1c2UgfCBUYXAgcGF1c2UgfCBFc2MgfAoKS2VlcCBzb2xkaWVycyBuZWFyIGNvdmVyIGFuZCBjaG9vc2Ugd2hlbiB0byBmaXJlOiBub2lzZSBicmluZ3Mgem9tYmllcy4gU3RvcCBtb3ZpbmcgZm9yIG1vcmUgYWNjdXJhdGUgZmlyZS4gRW5lbXkgc29sZGllcnMgYW5kIHpvbWJpZXMgY2FuIGRhbWFnZSBlYWNoIG90aGVyLiBUaGUgZmluYWwgbWlzc2lvbiBoYXMgYSBmaW5pdGUgbnVtYmVyIG9mIHdhdmVzOyBjb21wbGV0ZSBpdHMgb2JqZWN0aXZlIGJlZm9yZSBleHRyYWN0aW5nLiBCcmluZyBldmVyeSBsaXZpbmcgc3F1YWQgbWVtYmVyIGFuZCByZXNjdWVkIHN1cnZpdm9yIHRvIHRoZSBleHRyYWN0aW9uIGNpcmNsZSwgdGhlbiBob2xkIHBvc2l0aW9uIHdoaWxlIHRoZSB0aW1lciBmaW5pc2hlcy4gVGhlIEhVRCBzaG93cyB3aGVuIGZvbGxvd2VycyBuZWVkIHRvIHJlZ3JvdXAuIE5hbWVkIHNvbGRpZXJzIGNhbiBkaWUsIHNvIHN1cnZpdmluZyB3aXRoIHRoZSB3aG9sZSBzcXVhZCB0YWtlcyBjYXJlLgoKVGhlIGdhbWUgcGF1c2VzIHdoZW4geW91IGxlYXZlIHRoZSB0YWIgb3Igb3BlbiB0aGUgZmllbGQgbWFudWFsLiBSZXR1cm5pbmcgdG8gdGhlIHRhYiByZXF1aXJlcyBhbiBleHBsaWNpdCByZXN1bWUuIFVzZSBzcXVhZCBjYXJkcywgb3IgZGVza3RvcCBrZXlzIDHigJMzLCB0byBjaGFuZ2UgdGhlIGxlYWRlci4KCiMjIFByaXZhY3kgYW5kIHNvdW5kCgpDYW1wYWlnbiBwcm9ncmVzcyBpcyBzYXZlZCBpbiB0aGlzIGJyb3dzZXIncyBgbG9jYWxTdG9yYWdlYC4gVGhlIGdhbWUgc2VuZHMgbm8gZ2FtZXBsYXkgZGF0YSB0byBhIHNlcnZlciBhbmQgbmVlZHMgbm8gYWNjb3VudC4gQ2xlYXIgdGhlIHNpdGUncyBicm93c2VyIHN0b3JhZ2UgdG8gcmVtb3ZlIHRoZSBzYXZlZCBwcm9ncmVzcy4gU291bmQgaXMgb3B0aW9uYWwgYW5kIHN5bnRoZXNpemVkIHdpdGggV2ViIEF1ZGlvIGFmdGVyIHlvdSBlbmFibGUgaXQuCgojIyBTb3VyY2UgYW5kIGNoZWNrcwoKVGhlIGdhbWUgdXNlcyBicm93c2VyIEFQSXMgYW5kIGJ1aWxkbGVzcyBIVE1MLCBDU1MsIGFuZCBKYXZhU2NyaXB0OgoKLSBgZGlzdC9lbmdpbmUuanNgOiBkZXRlcm1pbmlzdGljIDYwIEh6IHNpbXVsYXRpb24sIG1pc3Npb25zLCBjb21iYXQsIGFuZCBvYmplY3RpdmVzLiBBIGJvdW5kZWQgZXZlbnQgam91cm5hbCBzdXBwbGllcyBzb3VuZCBhbmQgdmlzdWFsIGZlZWRiYWNrLgotIGBkaXN0L25hdmlnYXRpb24uanNgOiBjb2xsaXNpb24tYXdhcmUgcm91dGVzIHNoYXJlZCBieSB0aGUgbGVhZGVyLCBmb2xsb3dlcnMsIGFuZCBzdXJ2aXZvcnMuCi0gYGRpc3QvcmVuZGVyZXIuanNgOiBvcmlnaW5hbCBjYW52YXMgZ3JhcGhpY3MsIGNhbWVyYSwgY29vcmRpbmF0ZSBwcm9qZWN0aW9uLCBhbmQgY2FjaGVkIHRlcnJhaW4uCi0gYGRpc3QvaW5wdXQuanNgOiBrZXlib2FyZCwgbW91c2UsIGNhcHR1cmVkIHRvdWNoIGpveXN0aWNrLCBhbmQgYWN0aW9uIGJ1dHRvbnMuCi0gYGRpc3QvYXVkaW8uanNgOiBnZXN0dXJlLWFjdGl2YXRlZCBwcm9jZWR1cmFsIHNvdW5kIGFuZCBib3VuZGVkIGF1ZGlvIHZvaWNlcy4KLSBgZGlzdC9zZXNzaW9uLmpzYDogdmFsaWRhdGVkIGJyb3dzZXIgc2F2ZXMgYW5kIG9iamVjdGl2ZSBwcmVzZW50YXRpb24uCi0gYGRpc3QvYXBwLmpzYDogaW50ZXJmYWNlIGFuZCBzY2VuZSBsaWZlY3ljbGUsIGNvb3JkaW5hdGluZyB0aGUgc3lzdGVtcyBhYm92ZS4KLSBgZGlzdC9pbmRleC5odG1sYCBhbmQgYGRpc3Qvc3R5bGUuY3NzYDogcGFnZSBhbmQgcmVzcG9uc2l2ZSBsYXlvdXQuCgpXaXRoIE5vZGUuanMgaW5zdGFsbGVkLCBydW4gdGhlIHNpbXVsYXRpb24gdGVzdHMgd2l0aDoKCmBgYHNoCm5vZGUgLS10ZXN0IHRlc3RzLyoudGVzdC5tanMKYGBgCgpUaGUgZXF1aXZhbGVudCBjb252ZW5pZW5jZSBjb21tYW5kcyBhcmUgYG5wbSB0ZXN0YCwgYG5wbSBydW4gcGFja2FnZWAsIGFuZCBgbnBtIHJ1biBzZXJ2ZWA7IG5vbmUgbmVlZHMgYG5wbSBpbnN0YWxsYC4KClRoZSBOb2RlIGNoZWNrcyBjb3ZlciBkZXRlcm1pbmlzdGljIHNpbXVsYXRpb24sIGNvbGxpc2lvbnMsIHJvdXRpbmcsIHdob2xlLXNxdWFkIGV4dHJhY3Rpb24sIGlucHV0IG5vcm1hbGl6YXRpb24sIGNvcnJ1cHQgc2F2ZXMsIGFuZCBzb3VuZCBsaWZlY3ljbGUuIEJyb3dzZXIgcmVncmVzc2lvbnMgYWxzbyBleGVyY2lzZSBwb3J0cmFpdCwgbGFuZHNjYXBlLCBkZXNrdG9wLCBnZW51aW5lIG11bHRpdG91Y2gsIHBhdXNlL3Jlc3RhcnQsIHNvdW5kLCBhbmQgcGVyc2lzdGVuY2UuIFdpdGggUHl0aG9uIFBsYXl3cmlnaHQgYW5kIENocm9taXVtIGFscmVhZHkgaW5zdGFsbGVkLCBzZXJ2ZSBgZGlzdC9gLCB0aGVuIHJ1bjoKCmBgYHNoCnB5dGhvbjMgdGVzdHMvYnJvd3Nlcl9xYS5weSAtLXVybCBodHRwOi8vMTI3LjAuMC4xOjgwODAvCmBgYAoKVGhlIGJyb3dzZXIgc3VpdGUgdXNlcyBjb250cm9sbGVkIGZpeHR1cmVzIGZvciBpc29sYXRlZCBiZWhhdmlvdXJzLiBDb21wbGV0ZSBlYWNoIG1pc3Npb24gdXNpbmcgb3JkaW5hcnkgY29udHJvbHMgYXMgYSBzZXBhcmF0ZSBnYW1lcGxheSBjaGVjay4gRW11bGF0aW9uIGRvZXMgbm90IGVzdGFibGlzaCBwZXJmb3JtYW5jZSBvciBTYWZhcmkgY29tcGF0aWJpbGl0eSBvbiBhIHBoeXNpY2FsIHBob25lLgoKVmVyc2lvbiAwLjIuMCBrZWVwcyB0aGUgc2FtZSB0aHJlZSBtaXNzaW9ucyBhbmQgaW1wcm92ZXMgdGhlIGZvdW5kYXRpb25zOiBzdGFibGUgZm9ybWF0aW9ucywgcGh5c2ljYWwgcmVncm91cGluZywgbG9jYWwgY29tYmF0IGFjdGl2YXRpb24sIGNsZWFyZXIgZmVlZGJhY2ssIG1vYmlsZSBjb250cm9scywgYW5kIHJlbGlhYmxlIHNjZW5lIHJlc2V0cy4gVGhlIGZpcnN0IHR3byBtaXNzaW9ucyBhcmUgZGVsaWJlcmF0ZWx5IGJyaWVmOyBiYWxhbmNlLCBhcnR3b3JrLCBhbmQgcmVhbC1kZXZpY2UgY292ZXJhZ2UgY2FuIHN0aWxsIGltcHJvdmUgYmVmb3JlIGFkZGluZyBtb3JlIGNvbnRlbnQuCgpWZXJzaW9uIDAuMy4wIGdpdmVzIHRoZSBpc2xhbmQgYW5kIGZpZWxkIGludGVyZmFjZSBhIG1vcmUgZGlzdGluY3RpdmUgYXJ0IGRpcmVjdGlvbiwgd2l0aCBsdXNoIHBpeGVsIHNjZW5lcnksIHR1cnF1b2lzZSBjb2FzdGxpbmVzLCBkZXRhaWxlZCBidWlsZGluZ3MgYW5kIHNvbGRpZXJzLCBhbmQgYSBzdW4tYmxlYWNoZWQgZmllbGQtam91cm5hbCBpbnRlcmZhY2UuIEl0IGFsc28gZml4ZXMgcmVwZWF0ZWQgYXV0b21hdGljIHBhdXNlcyBpbiBlbWJlZGRlZCBtb2JpbGUgYnJvd3NlcnM6IHRlbXBvcmFyeSBmb2N1cyBjaGFuZ2VzIGNsZWFyIGhlbGQgaW5wdXQsIHdoaWxlIGF1dG9tYXRpYyBwYXVzZSBmb2xsb3dzIGFjdHVhbCBwYWdlIHZpc2liaWxpdHkgb3IgbmF2aWdhdGlvbiBhd2F5LiBUaGUgdGhyZWUgbWlzc2lvbnMgYW5kIHRoZWlyIHNpbXVsYXRpb24gcnVsZXMgYXJlIHVuY2hhbmdlZC4KClZlcnNpb24gMC40LjAgcmVmaW5lcyBleGlzdGluZyBwbGF5OiBmb2xsb3dlcnMgcmVzcG9uZCB0byB0dXJucyB3aXRob3V0IGNoYXNpbmcgc3RhbGUgcG9zaXRpb25zLCBjb21wYW5pb25zIHlpZWxkIHRvIHRoZSBjb250cm9sbGVkIHNvbGRpZXIsIGFuZCBlbmVtaWVzIGNhbiBhcHByb2FjaCBwaHlzaWNhbGx5IHJlYWNoYWJsZSB0YXJnZXRzIGJlc2lkZSBjb3Zlci4gRGFtYWdlIGFuZCBjcml0aWNhbCBoZWFsdGggYXJlIGNsZWFyZXIgaW4gdGhlIHNxdWFkIGNhcmRzLCBncmVuYWRlIGxhbmRpbmcgbWFya2VycyBzaG93IHRoZSBhY3R1YWwgYmxhc3QgZm9vdHByaW50LCB0ZXJyYWluIG9yZGVycyByZWNlaXZlIHZpc2libGUgY29uZmlybWF0aW9uLCBhbmQgZnJpZW5kbHkgaWRlbnRpZmljYXRpb24gcmVtYWlucyByZWFkYWJsZSBiZWhpbmQgZm9saWFnZS4gU21hbGxlciBwaG9uZSB2aWV3cG9ydHMgcmV0YWluIGNsZWFyIG1vdmVtZW50IGhpbnRzLCBub2lzZSBzdGF0dXMsIGFuZCBmaXJpbmctc3RhdGUgaWNvbnMuIE5vIG1pc3Npb25zLCB3ZWFwb25zLCBlbmVtaWVzLCBvciBwcm9ncmVzc2lvbiBzeXN0ZW1zIGFyZSBhZGRlZC4KCiMjIEhvc3RpbmcgYW5kIGxpY2Vuc2luZwoKUHVibGlzaCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCB0byBhbnkgc3RhdGljIGhvc3QsIGluY2x1ZGluZyBHaXRIdWIgUGFnZXMuIE5vIHNlcnZlciwgQVBJIGtleXMsIG9yIHNlY3JldHMgYXJlIHJlcXVpcmVkLiBLZWVwIGNoZWNrb3V0LXNwZWNpZmljIGAub3BlbmFpL2AgaG9zdGluZyBtZXRhZGF0YSBvdXQgb2YgcHVibGljIGRpc3RyaWJ1dGlvbnMuCgpUaGlzIHJlcG9zaXRvcnkgdXNlcyBHaXRIdWIgUGFnZXMgd2l0aCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCBwdWJsaXNoZWQgdG8gdGhlIHJvb3Qgb2YgdGhlIGBnaC1wYWdlc2AgYnJhbmNoLiBSdW4gdGhlIHJlbGVhc2UgcGFja2FnaW5nIGNvbW1hbmQgYmVmb3JlIHJlcHVibGlzaGluZywgaW5jbHVkZSB0aGUgZ2VuZXJhdGVkIHNvdXJjZSBaSVAsIGFuZCBhZGQgYC5ub2pla3lsbGAgdG8gdGhlIHB1Ymxpc2hlZCBicmFuY2guIFRoZSBgbWFpbmAgYnJhbmNoIGNvbnRhaW5zIHRoZSBlZGl0YWJsZSBwcm9qZWN0LgoKQ29kZSBhbmQgb3JpZ2luYWwgZ2FtZSBhcnR3b3JrIGFyZSBNSVQgbGljZW5zZWQ7IHNlZSBbTElDRU5TRV0oTElDRU5TRSkuIEJ1bmRsZWQgZm9udCBmaWxlcyByZXRhaW4gdGhlaXIgaW5jbHVkZWQgU0lMIE9wZW4gRm9udCBMaWNlbnNlIG5vdGljZS4gU2VlIFtDT05UUklCVVRJTkcubWRdKENPTlRSSUJVVElORy5tZCkgZm9yIGNvbnRyaWJ1dGluZy4KCiMjIFBhY2thZ2UgYSByZWxlYXNlCgpSdW4gYHB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHlgIHRvIHJlZ2VuZXJhdGUgYFBMQVkuaHRtbGAgYW5kIGBkZWFkLXNpZ25hbC1zb3VyY2UuemlwYCBmcm9tIHRoZSBjdXJyZW50IHNvdXJjZS4gVGhlIFpJUCBleGNsdWRlcyBjaGVja291dCBtZXRhZGF0YSwgY3JlZGVudGlhbHMsIGFuZCBleGlzdGluZyBhcmNoaXZlcy4K" download="Dead-Signal-README.md">PROJECT README ↗</a></div></footer>
+    <footer class="site-footer"><span>SMALL SOLDIERS. BIG TROUBLE.</span><div><span>ORIGINAL ART & CODE · MIT LICENSE</span><a href="data:text/markdown;base64,IyBEZWFkIFNpZ25hbAoKQSBzbWFsbCwgb3JpZ2luYWwsIG1vYmlsZS1maXJzdCBzcXVhZCB0YWN0aWNzIGdhbWUgaW5zcGlyZWQgYnkgdGhlIGZlZWwgb2YgY2xhc3NpYyBhY3Rpb24gZ2FtZXMuIExlYWQgYSBuYW1lZCBzcXVhZCB0aHJvdWdoIHRocmVlIGRpZmZlcmVudCBtaXNzaW9uc+KAlHJlc2N1ZSwgc2Fib3RhZ2UsIGFuZCBhIHJhZGlvIGhvbGRvdXTigJR3aGlsZSBlbmVteSBzb2xkaWVycyBhbmQgem9tYmllcyBmaWdodCBlYWNoIG90aGVyLiBHdW5maXJlIGF0dHJhY3RzIHRoZSB1bmRlYWQuCgpbUGxheSBEZWFkIFNpZ25hbCBvbmxpbmVdKGh0dHBzOi8vY2hyMTVzMi5naXRodWIuaW8vZGVhZC1zaWduYWwvKQoKVGhpcyBpcyBhIHBsYXlhYmxlIGJyb3dzZXIgZGVtbywgbm90IGEgY29tbWVyY2lhbCByZW1ha2UuIEl0IGNvbnRhaW5zIG5vIENhbm5vbiBGb2RkZXIgY29kZSwgYXJ0d29yaywgbWFwcywgbXVzaWMsIG9yIG90aGVyIGFzc2V0cy4KCiMjIFBsYXkgbG9jYWxseQoKRm9yIGFuIGltbWVkaWF0ZSBkZXNrdG9wIHBsYXkgc2Vzc2lvbiwgb3BlbiBgUExBWS5odG1sYCBpbiBhIGJyb3dzZXIuIEl0IGJ1bmRsZXMgdGhlIGdhbWUgYW5kIGZvbnRzIGludG8gb25lIGZpbGUgYW5kIHdvcmtzIG9mZmxpbmUuIFRoZSBzb3VyY2UgWklQIGFsc28gaW5jbHVkZXMgdGhlIGVkaXRhYmxlIHByb2plY3QuCgpGb3IgbW9iaWxlIHRlc3Rpbmcgb3Igc3RhdGljIGhvc3RpbmcsIHVzZSB0aGUgZmlsZXMgaW4gYGRpc3QvYC4gWW91IG5lZWQgUHl0aG9uIDMgZm9yIHRoaXMgbG9jYWwtc2VydmVyIG9wdGlvbi4gTm8gYnVpbGQgc3RlcCBvciBkZXBlbmRlbmN5IGluc3RhbGxhdGlvbiBpcyByZXF1aXJlZC4KCmBgYHNoCnB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHkKcHl0aG9uMyAtbSBodHRwLnNlcnZlciA4MDgwIC0tZGlyZWN0b3J5IGRpc3QKYGBgCgpUaGUgcGFja2FnaW5nIGNvbW1hbmQgZ2VuZXJhdGVzIHRoZSBzb3VyY2UgZG93bmxvYWQgb2ZmZXJlZCBieSB0aGUgZ2FtZSdzIGZvb3Rlci4KCk9wZW4gPGh0dHA6Ly9sb2NhbGhvc3Q6ODA4MD4uIFRvIHRyeSBpdCBvbiBhIHBob25lIG9uIHRoZSBzYW1lIFdpLUZpLCBvcGVuIGBodHRwOi8vPHlvdXItY29tcHV0ZXIncy1sb2NhbC1JUD46ODA4MGAgYW5kIGFsbG93IHRoZSBsb2NhbCBzZXJ2ZXIgdGhyb3VnaCB5b3VyIGNvbXB1dGVyJ3MgZmlyZXdhbGwgaWYgbmVjZXNzYXJ5LgoKIyMgQ29udHJvbHMKCnwgQWN0aW9uIHwgVG91Y2ggfCBEZXNrdG9wIHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IE1vdmUgdGhlIHNxdWFkIHwgRHJhZyB0aGUgbW92ZW1lbnQgam95c3RpY2sgb3IgdGFwIHRoZSBiYXR0bGVmaWVsZCB8IFdBU0QgLyBhcnJvdyBrZXlzIG9yIGxlZnQtY2xpY2sgdGhlIGJhdHRsZWZpZWxkIHwKfCBBaW0gYW5kIGZpcmUgfCBTcXVhZCBhdXRvbWF0aWNhbGx5IHNob290cyBuZWFyYnkgdGFyZ2V0cyB8IEhvbGQgcmlnaHQtY2xpY2sgdG8gYWltIGFuZCBmaXJlIHwKfCBIb2xkIGZpcmUgfCBUYXAgdGhlIGhvbGQtZmlyZSBidXR0b24gfCBIIHwKfCBUaHJvdyBhIGdyZW5hZGUgfCBUYXAgdGhlIGdyZW5hZGUgYnV0dG9uIHwgRyB8CnwgUGF1c2UgfCBUYXAgcGF1c2UgfCBFc2MgfAoKS2VlcCBzb2xkaWVycyBuZWFyIGNvdmVyIGFuZCBjaG9vc2Ugd2hlbiB0byBmaXJlOiBub2lzZSBicmluZ3Mgem9tYmllcy4gU3RvcCBtb3ZpbmcgZm9yIG1vcmUgYWNjdXJhdGUgZmlyZS4gRW5lbXkgc29sZGllcnMgYW5kIHpvbWJpZXMgY2FuIGRhbWFnZSBlYWNoIG90aGVyLiBGaXJzdCBDb250YWN0IHJlc2N1ZXMgYSByYWRpbyBvcGVyYXRvci4gQmFkIEZyZXF1ZW5jeSBzZW5kcyB5b3UgYWZ0ZXIgdHdvIHNpZ25hbCBqYW1tZXJzOiB5b3VyIHNxdWFkIHNob290cyB0aGVtIHdoZW4gbmVhcmJ5IGVuZW1pZXMgYXJlIGRlYWx0IHdpdGgsIGFuZCBncmVuYWRlcyB3b3JrIHRvby4gTGFzdCBUcmFuc21pc3Npb24gYXNrcyB5b3UgdG8gaG9sZCB0aGUgcmVsYXkgY2lyY2xlIGZvciAyNSBjdW11bGF0aXZlIHNlY29uZHMgd2hpbGUgdGhyZWUgZmluaXRlIGluZmVjdGVkIHdhdmVzIGFycml2ZS4gU3RlcCBvdXRzaWRlIHRvIGRvZGdlIGFuZCB0aGUgdXBsaW5rIHBhdXNlczsgcmV0dXJuIHRvIGNvbnRpbnVlLiBGaW5pc2hpbmcgdGhlIHRyYW5zbWlzc2lvbiBvcGVucyBleHRyYWN0aW9uIGV2ZW4gaWYgaG9zdGlsZXMgcmVtYWluLiBCcmluZyBldmVyeSBsaXZpbmcgc3F1YWQgbWVtYmVyIGFuZCByZXNjdWVkIHN1cnZpdm9yIHRvIHRoZSBleHRyYWN0aW9uIGNpcmNsZSwgdGhlbiBob2xkIHBvc2l0aW9uIHdoaWxlIHRoZSB0aW1lciBmaW5pc2hlcy4gVGhlIEhVRCBzaG93cyB3aGVuIGZvbGxvd2VycyBuZWVkIHRvIHJlZ3JvdXAuIE5hbWVkIHNvbGRpZXJzIGNhbiBkaWUsIHNvIHN1cnZpdmluZyB3aXRoIHRoZSB3aG9sZSBzcXVhZCB0YWtlcyBjYXJlLgoKVGhlIGdhbWUgcGF1c2VzIHdoZW4geW91IGxlYXZlIHRoZSB0YWIgb3Igb3BlbiB0aGUgZmllbGQgbWFudWFsLiBSZXR1cm5pbmcgdG8gdGhlIHRhYiByZXF1aXJlcyBhbiBleHBsaWNpdCByZXN1bWUuIFVzZSBzcXVhZCBjYXJkcywgb3IgZGVza3RvcCBrZXlzIDHigJMzLCB0byBjaGFuZ2UgdGhlIGxlYWRlci4KCiMjIFByaXZhY3kgYW5kIHNvdW5kCgpDYW1wYWlnbiBwcm9ncmVzcyBpcyBzYXZlZCBpbiB0aGlzIGJyb3dzZXIncyBgbG9jYWxTdG9yYWdlYC4gVGhlIGdhbWUgc2VuZHMgbm8gZ2FtZXBsYXkgZGF0YSB0byBhIHNlcnZlciBhbmQgbmVlZHMgbm8gYWNjb3VudC4gQ2xlYXIgdGhlIHNpdGUncyBicm93c2VyIHN0b3JhZ2UgdG8gcmVtb3ZlIHRoZSBzYXZlZCBwcm9ncmVzcy4gU291bmQgaXMgb3B0aW9uYWwgYW5kIHN5bnRoZXNpemVkIHdpdGggV2ViIEF1ZGlvIGFmdGVyIHlvdSBlbmFibGUgaXQuCgojIyBTb3VyY2UgYW5kIGNoZWNrcwoKVGhlIGdhbWUgdXNlcyBicm93c2VyIEFQSXMgYW5kIGJ1aWxkbGVzcyBIVE1MLCBDU1MsIGFuZCBKYXZhU2NyaXB0OgoKLSBgZGlzdC9lbmdpbmUuanNgOiBkZXRlcm1pbmlzdGljIDYwIEh6IHNpbXVsYXRpb24sIG1pc3Npb25zLCBjb21iYXQsIGFuZCBvYmplY3RpdmVzLiBBIGJvdW5kZWQgZXZlbnQgam91cm5hbCBzdXBwbGllcyBzb3VuZCBhbmQgdmlzdWFsIGZlZWRiYWNrLgotIGBkaXN0L25hdmlnYXRpb24uanNgOiBjb2xsaXNpb24tYXdhcmUgcm91dGVzIHNoYXJlZCBieSB0aGUgbGVhZGVyLCBmb2xsb3dlcnMsIGFuZCBzdXJ2aXZvcnMuCi0gYGRpc3QvcmVuZGVyZXIuanNgOiBvcmlnaW5hbCBjYW52YXMgZ3JhcGhpY3MsIGNhbWVyYSwgY29vcmRpbmF0ZSBwcm9qZWN0aW9uLCBhbmQgY2FjaGVkIHRlcnJhaW4uCi0gYGRpc3QvaW5wdXQuanNgOiBrZXlib2FyZCwgbW91c2UsIGNhcHR1cmVkIHRvdWNoIGpveXN0aWNrLCBhbmQgYWN0aW9uIGJ1dHRvbnMuCi0gYGRpc3QvYXVkaW8uanNgOiBnZXN0dXJlLWFjdGl2YXRlZCBwcm9jZWR1cmFsIHNvdW5kIGFuZCBib3VuZGVkIGF1ZGlvIHZvaWNlcy4KLSBgZGlzdC9zZXNzaW9uLmpzYDogdmFsaWRhdGVkIGJyb3dzZXIgc2F2ZXMgYW5kIG9iamVjdGl2ZSBwcmVzZW50YXRpb24uCi0gYGRpc3QvYXBwLmpzYDogaW50ZXJmYWNlIGFuZCBzY2VuZSBsaWZlY3ljbGUsIGNvb3JkaW5hdGluZyB0aGUgc3lzdGVtcyBhYm92ZS4KLSBgZGlzdC9pbmRleC5odG1sYCBhbmQgYGRpc3Qvc3R5bGUuY3NzYDogcGFnZSBhbmQgcmVzcG9uc2l2ZSBsYXlvdXQuCgpXaXRoIE5vZGUuanMgaW5zdGFsbGVkLCBydW4gdGhlIHNpbXVsYXRpb24gdGVzdHMgd2l0aDoKCmBgYHNoCm5vZGUgLS10ZXN0IHRlc3RzLyoudGVzdC5tanMKYGBgCgpUaGUgZXF1aXZhbGVudCBjb252ZW5pZW5jZSBjb21tYW5kcyBhcmUgYG5wbSB0ZXN0YCwgYG5wbSBydW4gcGFja2FnZWAsIGFuZCBgbnBtIHJ1biBzZXJ2ZWA7IG5vbmUgbmVlZHMgYG5wbSBpbnN0YWxsYC4KClRoZSBOb2RlIGNoZWNrcyBjb3ZlciBkZXRlcm1pbmlzdGljIHNpbXVsYXRpb24sIGNvbGxpc2lvbnMsIHJvdXRpbmcsIHdob2xlLXNxdWFkIGV4dHJhY3Rpb24sIGlucHV0IG5vcm1hbGl6YXRpb24sIGNvcnJ1cHQgc2F2ZXMsIGFuZCBzb3VuZCBsaWZlY3ljbGUuIEJyb3dzZXIgcmVncmVzc2lvbnMgYWxzbyBleGVyY2lzZSBwb3J0cmFpdCwgbGFuZHNjYXBlLCBkZXNrdG9wLCBnZW51aW5lIG11bHRpdG91Y2gsIHBhdXNlL3Jlc3RhcnQsIHNvdW5kLCBhbmQgcGVyc2lzdGVuY2UuIFdpdGggUHl0aG9uIFBsYXl3cmlnaHQgYW5kIENocm9taXVtIGFscmVhZHkgaW5zdGFsbGVkLCBzZXJ2ZSBgZGlzdC9gLCB0aGVuIHJ1bjoKCmBgYHNoCnB5dGhvbjMgdGVzdHMvYnJvd3Nlcl9xYS5weSAtLXVybCBodHRwOi8vMTI3LjAuMC4xOjgwODAvCmBgYAoKVGhlIGJyb3dzZXIgc3VpdGUgdXNlcyBjb250cm9sbGVkIGZpeHR1cmVzIGZvciBpc29sYXRlZCBiZWhhdmlvdXJzLiBDb21wbGV0ZSBlYWNoIG1pc3Npb24gdXNpbmcgb3JkaW5hcnkgY29udHJvbHMgYXMgYSBzZXBhcmF0ZSBnYW1lcGxheSBjaGVjay4gRW11bGF0aW9uIGRvZXMgbm90IGVzdGFibGlzaCBwZXJmb3JtYW5jZSBvciBTYWZhcmkgY29tcGF0aWJpbGl0eSBvbiBhIHBoeXNpY2FsIHBob25lLgoKVmVyc2lvbiAwLjIuMCBrZWVwcyB0aGUgc2FtZSB0aHJlZSBtaXNzaW9ucyBhbmQgaW1wcm92ZXMgdGhlIGZvdW5kYXRpb25zOiBzdGFibGUgZm9ybWF0aW9ucywgcGh5c2ljYWwgcmVncm91cGluZywgbG9jYWwgY29tYmF0IGFjdGl2YXRpb24sIGNsZWFyZXIgZmVlZGJhY2ssIG1vYmlsZSBjb250cm9scywgYW5kIHJlbGlhYmxlIHNjZW5lIHJlc2V0cy4gVGhlIGZpcnN0IHR3byBtaXNzaW9ucyBhcmUgZGVsaWJlcmF0ZWx5IGJyaWVmOyBiYWxhbmNlLCBhcnR3b3JrLCBhbmQgcmVhbC1kZXZpY2UgY292ZXJhZ2UgY2FuIHN0aWxsIGltcHJvdmUgYmVmb3JlIGFkZGluZyBtb3JlIGNvbnRlbnQuCgpWZXJzaW9uIDAuMy4wIGdpdmVzIHRoZSBpc2xhbmQgYW5kIGZpZWxkIGludGVyZmFjZSBhIG1vcmUgZGlzdGluY3RpdmUgYXJ0IGRpcmVjdGlvbiwgd2l0aCBsdXNoIHBpeGVsIHNjZW5lcnksIHR1cnF1b2lzZSBjb2FzdGxpbmVzLCBkZXRhaWxlZCBidWlsZGluZ3MgYW5kIHNvbGRpZXJzLCBhbmQgYSBzdW4tYmxlYWNoZWQgZmllbGQtam91cm5hbCBpbnRlcmZhY2UuIEl0IGFsc28gZml4ZXMgcmVwZWF0ZWQgYXV0b21hdGljIHBhdXNlcyBpbiBlbWJlZGRlZCBtb2JpbGUgYnJvd3NlcnM6IHRlbXBvcmFyeSBmb2N1cyBjaGFuZ2VzIGNsZWFyIGhlbGQgaW5wdXQsIHdoaWxlIGF1dG9tYXRpYyBwYXVzZSBmb2xsb3dzIGFjdHVhbCBwYWdlIHZpc2liaWxpdHkgb3IgbmF2aWdhdGlvbiBhd2F5LiBUaGUgdGhyZWUgbWlzc2lvbnMgYW5kIHRoZWlyIHNpbXVsYXRpb24gcnVsZXMgYXJlIHVuY2hhbmdlZC4KClZlcnNpb24gMC40LjAgcmVmaW5lcyBleGlzdGluZyBwbGF5OiBmb2xsb3dlcnMgcmVzcG9uZCB0byB0dXJucyB3aXRob3V0IGNoYXNpbmcgc3RhbGUgcG9zaXRpb25zLCBjb21wYW5pb25zIHlpZWxkIHRvIHRoZSBjb250cm9sbGVkIHNvbGRpZXIsIGFuZCBlbmVtaWVzIGNhbiBhcHByb2FjaCBwaHlzaWNhbGx5IHJlYWNoYWJsZSB0YXJnZXRzIGJlc2lkZSBjb3Zlci4gRGFtYWdlIGFuZCBjcml0aWNhbCBoZWFsdGggYXJlIGNsZWFyZXIgaW4gdGhlIHNxdWFkIGNhcmRzLCBncmVuYWRlIGxhbmRpbmcgbWFya2VycyBzaG93IHRoZSBhY3R1YWwgYmxhc3QgZm9vdHByaW50LCB0ZXJyYWluIG9yZGVycyByZWNlaXZlIHZpc2libGUgY29uZmlybWF0aW9uLCBhbmQgZnJpZW5kbHkgaWRlbnRpZmljYXRpb24gcmVtYWlucyByZWFkYWJsZSBiZWhpbmQgZm9saWFnZS4gU21hbGxlciBwaG9uZSB2aWV3cG9ydHMgcmV0YWluIGNsZWFyIG1vdmVtZW50IGhpbnRzLCBub2lzZSBzdGF0dXMsIGFuZCBmaXJpbmctc3RhdGUgaWNvbnMuIE5vIG1pc3Npb25zLCB3ZWFwb25zLCBlbmVtaWVzLCBvciBwcm9ncmVzc2lvbiBzeXN0ZW1zIGFyZSBhZGRlZC4KClZlcnNpb24gMC41LjAgZ2l2ZXMgdGhlIGV4aXN0aW5nIHRocmVlIG1pc3Npb25zIGRpc3RpbmN0IG9iamVjdGl2ZXM6IHJlc2N1ZSB0aGUgcmFkaW8gb3BlcmF0b3IsIHNhYm90YWdlIHR3byBzaWduYWwgamFtbWVycywgYW5kIGRlZmVuZCBhIHJlbGF5IGR1cmluZyBpdHMgdHJhbnNtaXNzaW9uLiBNaXNzaW9uIG1hcmtlcnMsIGJyaWVmaW5ncywgY291bnRlcnMsIHByb2dyZXNzLCBhbmQgcmVzdWx0cyBmb2xsb3cgZWFjaCBvYmplY3RpdmUuIFJpZmxlcyBjYW4gYWx3YXlzIGZpbmlzaCBzYWJvdGFnZSwgcmVsYXkgcHJvZ3Jlc3MgcGF1c2VzIG91dHNpZGUgaXRzIHpvbmUsIGFuZCBob2xkb3V0IGV4dHJhY3Rpb24gbm8gbG9uZ2VyIHJlcXVpcmVzIGNsZWFyaW5nIHRoZSB3aG9sZSBtYXAuIExlZ2FjeSBiZXN0IHRpbWVzIGZvciB0aGUgdHdvIHJlZGVzaWduZWQgbWlzc2lvbnMgcmVzZXQgb25jZTsgY29tcGxldGlvbnMsIG1pc3Npb24tb25lIHRpbWVzLCBkaWZmaWN1bHR5LCBhbmQgc291bmQgcHJlZmVyZW5jZXMgcmVtYWluLgoKIyMgSG9zdGluZyBhbmQgbGljZW5zaW5nCgpQdWJsaXNoIHRoZSBjb250ZW50cyBvZiBgZGlzdC9gIHRvIGFueSBzdGF0aWMgaG9zdCwgaW5jbHVkaW5nIEdpdEh1YiBQYWdlcy4gTm8gc2VydmVyLCBBUEkga2V5cywgb3Igc2VjcmV0cyBhcmUgcmVxdWlyZWQuIEtlZXAgY2hlY2tvdXQtc3BlY2lmaWMgYC5vcGVuYWkvYCBob3N0aW5nIG1ldGFkYXRhIG91dCBvZiBwdWJsaWMgZGlzdHJpYnV0aW9ucy4KClRoaXMgcmVwb3NpdG9yeSB1c2VzIEdpdEh1YiBQYWdlcyB3aXRoIHRoZSBjb250ZW50cyBvZiBgZGlzdC9gIHB1Ymxpc2hlZCB0byB0aGUgcm9vdCBvZiB0aGUgYGdoLXBhZ2VzYCBicmFuY2guIFJ1biB0aGUgcmVsZWFzZSBwYWNrYWdpbmcgY29tbWFuZCBiZWZvcmUgcmVwdWJsaXNoaW5nLCBpbmNsdWRlIHRoZSBnZW5lcmF0ZWQgc291cmNlIFpJUCwgYW5kIGFkZCBgLm5vamVreWxsYCB0byB0aGUgcHVibGlzaGVkIGJyYW5jaC4gVGhlIGBtYWluYCBicmFuY2ggY29udGFpbnMgdGhlIGVkaXRhYmxlIHByb2plY3QuCgpDb2RlIGFuZCBvcmlnaW5hbCBnYW1lIGFydHdvcmsgYXJlIE1JVCBsaWNlbnNlZDsgc2VlIFtMSUNFTlNFXShMSUNFTlNFKS4gQnVuZGxlZCBmb250IGZpbGVzIHJldGFpbiB0aGVpciBpbmNsdWRlZCBTSUwgT3BlbiBGb250IExpY2Vuc2Ugbm90aWNlLiBTZWUgW0NPTlRSSUJVVElORy5tZF0oQ09OVFJJQlVUSU5HLm1kKSBmb3IgY29udHJpYnV0aW5nLgoKIyMgUGFja2FnZSBhIHJlbGVhc2UKClJ1biBgcHl0aG9uMyBzY3JpcHRzL3BhY2thZ2UtcmVsZWFzZS5weWAgdG8gcmVnZW5lcmF0ZSBgUExBWS5odG1sYCBhbmQgYGRlYWQtc2lnbmFsLXNvdXJjZS56aXBgIGZyb20gdGhlIGN1cnJlbnQgc291cmNlLiBUaGUgWklQIGV4Y2x1ZGVzIGNoZWNrb3V0IG1ldGFkYXRhLCBjcmVkZW50aWFscywgYW5kIGV4aXN0aW5nIGFyY2hpdmVzLgo=" download="Dead-Signal-README.md">PROJECT README ↗</a></div></footer>
   </main>
-  <dialog id="manual"><div class="manual-top"><span class="eyebrow">DEAD SIGNAL / FIELD MANUAL</span><button class="close-button" id="close-manual" aria-label="Close field manual">×</button></div><h2>READ. THEN RUN.</h2><p class="manual-intro">Get your people out alive. You command the highlighted soldier; the rest of the squad follows.</p><div class="manual-grid"><div><span class="manual-number">01</span><h3>MOVE AS ONE</h3><p>On a phone, drag the movement pad with your left thumb. Tap the field to order a move. On desktop, click or use WASD / arrow keys. Tap a squad portrait to change leader. Your order follows a route around cover; the coastline cannot be crossed.</p></div><div><span class="manual-number">02</span><h3>MAKE SOME NOISE</h3><p>The squad automatically shoots nearby targets. Stopping to fire improves accuracy. Gunfire brings zombies. Toggle Hold Fire to travel quietly. Enemy soldiers and zombies fight each other too.</p></div><div><span class="manual-number">03</span><h3>BREAK THE DEADLOCK</h3><p>Tap Grenade to throw toward the closest enemy, or in the direction your leader faces. On desktop, point and press G, or hold right-click to aim and fire. Blasts break huts and barrels; your squad is safe from its own grenades. Cover blocks bullets.</p></div><div><span class="manual-number">04</span><h3>BRING THEM HOME</h3><p>Reach the marked survivors, then get your squad to the green extraction circle. Mission three needs the remaining hostiles cleared. Bring all living soldiers and rescued survivors into the zone. Stay together until the extraction timer finishes.</p></div></div><div class="manual-note"><strong>EVERY NAME COUNTS.</strong><p>Lost soldiers stay lost for that mission. Keep an eye on the squad’s health. You can restart, choose Recruit difficulty, or pause at any time.</p></div><button id="manual-done" class="primary-button">UNDERSTOOD <span>→</span></button></dialog>
+  <dialog id="manual"><div class="manual-top"><span class="eyebrow">DEAD SIGNAL / FIELD MANUAL</span><button class="close-button" id="close-manual" aria-label="Close field manual">×</button></div><h2>READ. THEN RUN.</h2><p class="manual-intro">Get your people out alive. You command the highlighted soldier; the rest of the squad follows.</p><div class="manual-grid"><div><span class="manual-number">01</span><h3>MOVE AS ONE</h3><p>On a phone, drag the movement pad with your left thumb. Tap the field to order a move. On desktop, click or use WASD / arrow keys. Tap a squad portrait to change leader. Your order follows a route around cover; the coastline cannot be crossed.</p></div><div><span class="manual-number">02</span><h3>MAKE SOME NOISE</h3><p>The squad automatically shoots nearby enemies, then signal jammers. Stopping to fire improves accuracy. Gunfire brings zombies. Toggle Hold Fire to travel quietly. Enemy soldiers and zombies fight each other too.</p></div><div><span class="manual-number">03</span><h3>BREAK THE DEADLOCK</h3><p>Tap Grenade to throw toward the closest enemy, then a nearby jammer, or in the direction your leader faces. On desktop, point and press G, or hold right-click to aim and fire. Blasts break huts and barrels; your squad is safe from its own grenades. Cover blocks bullets.</p></div><div><span class="manual-number">04</span><h3>THREE JOBS. ONE SQUAD.</h3><p>First Contact: rescue the radio operator. Bad Frequency: destroy both marked jammers with rifles or grenades. Last Transmission: stay in the relay circle for 25 seconds of uplink time. Step out to dodge; progress waits for your return. In every mission, finish the objective, then bring all living soldiers and any rescued survivor to the green flare. Stay together until extraction finishes.</p></div></div><div class="manual-note"><strong>EVERY NAME COUNTS.</strong><p>Lost soldiers stay lost for that mission. Keep an eye on the squad’s health. You can restart, choose Recruit difficulty, or pause at any time.</p></div><button id="manual-done" class="primary-button">UNDERSTOOD <span>→</span></button></dialog>
   <script>
 const __modules = Object.create(null);
 __modules["navigation.js"] = (() => {
@@ -824,16 +824,16 @@ const MISSIONS = Object.freeze([
   {
     id: 1,
     title: 'BAD FREQUENCY',
-    subtitle: 'Two voices. One way out.',
-    briefing: 'Two survivors are trapped beyond the road. Hostile patrols are holding the village, and every shot brings more infected. Rescue both survivors and extract.',
-    objective: 'Rescue 2 survivors and reach extraction',
+    subtitle: 'Break the interference.',
+    briefing: 'Two hostile jammers are blocking the evacuation frequency. Destroy both marked antennas with gunfire or grenades, then get your squad to the flare. Your squad fires at a jammer when nearby hostiles are dealt with.',
+    objective: 'Destroy 2 jammers and reach extraction',
   },
   {
     id: 2,
     title: 'LAST TRANSMISSION',
-    subtitle: 'Clear the signal. Bring them home.',
-    briefing: 'The evacuation zone is overrun. Eliminate the patrol and the finite infected waves. When the area is secure, bring every surviving squad member to the flare.',
-    objective: 'Clear all hostiles and reach extraction',
+    subtitle: 'Keep the signal alive.',
+    briefing: 'Reach the radio relay and keep your selected soldier inside its marked perimeter for 25 seconds. Three infected waves will answer the signal. Step outside to dodge or regroup; transmission progress is saved. Then bring your squad to the flare.',
+    objective: 'Transmit for 25 seconds and reach extraction',
   },
 ]);
 
@@ -976,7 +976,11 @@ class Game {
     const index = clamp(Math.floor(Number(mission) || 0), 0, 2);
     this.state = {
       status: 'ready', mission: index, time: 0, noise: 0, kills: 0,
-      grenades: this.easy ? 5 : 4, rescueCount: 0, rescueTarget: index === 0 ? 1 : index === 1 ? 2 : 0,
+      grenades: this.easy ? 5 : 4, rescueCount: 0, rescueTarget: index === 0 ? 1 : 0,
+      objective: index === 0 ? {type: 'rescue'} : index === 1
+        ? {type: 'sabotage', targets: []}
+        : {type: 'holdout', zone: {x: 1020, y: 520, r: 110}, duration: 25,
+          held: 0, started: false, inside: false, elapsed: 0},
       message: MISSIONS[index].objective,
       extraction: {x: 1380, y: 220, r: 86, active: false, progress: 0},
       world: makeWorld(this.random),
@@ -1008,12 +1012,17 @@ class Game {
         : [[420, 913], [470, 856], [675, 860], [738, 685], [829, 867], [957, 745], [1095, 913], [1230, 860], [1300, 762], [1380, 541], [1200, 268], [1100, 480], [940, 142], [815, 371]];
     for (const [x, y] of patrols) this.spawnEnemy('soldier', x, y);
     for (const [x, y] of infected) this.spawnEnemy('zombie', x, y);
-    if (index < 2) {
-      const locations = index === 0 ? [[1030, 590]] : [[829, 327], [1300, 570]];
-      for (const [x, y] of locations) this.state.civilians.push({
+    if (index === 0) {
+      for (const [x, y] of [[1030, 590]]) this.state.civilians.push({
         id: this.nextId++, x, y, rescued: false, alive: true,
         moveAngle: -Math.PI / 4, moving: false, vx: 0, vy: 0,
         speed: 0, walkPhase: 0, hitFlash: 0, pathTimer: 0,
+      });
+    }
+    if (index === 1) {
+      for (const [x, y] of [[829, 327], [1300, 570]]) this.state.objective.targets.push({
+        id: this.nextId++, type: 'jammer', x, y, r: 18,
+        hp: 90, maxHp: 90, alive: true, hitFlash: 0,
       });
     }
     this.rebuildNavigation();
@@ -1078,8 +1087,9 @@ class Game {
     const leader = this.leader;
     if (!leader || this.state.status !== 'playing' || this.state.grenades <= 0) return false;
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      const nearest = this.enemies.filter(e => e.alive && dist(e, leader) < CONFIG.grenadeRange)
+      const nearby = candidates => candidates.filter(e => e.alive && dist(e, leader) < CONFIG.grenadeRange)
         .sort((a, b) => dist(a, leader) - dist(b, leader))[0];
+      const nearest = nearby(this.enemies) || nearby(this.state.objective.targets || []);
       x = nearest ? nearest.x : leader.x + Math.cos(leader.angle) * 180;
       y = nearest ? nearest.y : leader.y + Math.sin(leader.angle) * 180;
     }
@@ -1276,6 +1286,7 @@ class Game {
   }
 
   damage(actor, amount, source = 'player') {
+    if (actor.type === 'jammer') { this.damageJammer(actor, amount, source); return; }
     if (!actor.alive || actor.invulnerable > 0) return;
     actor.hp = Math.max(0, actor.hp - amount);
     actor.hitFlash = 0.12;
@@ -1299,6 +1310,22 @@ class Game {
     }
   }
 
+  damageJammer(target, amount, source = 'player') {
+    // Objective props are not hostiles: faction combat cannot complete the
+    // sabotage, and destroying equipment earns no kill, corpse or death event.
+    if (!target.alive || source !== 'player' || !Number.isFinite(amount) || amount <= 0) return;
+    target.hp = Math.max(0, target.hp - amount);
+    target.hitFlash = 0.12;
+    this.puff(target.x, target.y, '#e9b364', 3, 'hit');
+    this.emit('hit', target, {team: 'objective', actorId: target.id, targetId: target.id, source, damage: amount});
+    if (target.hp > 0) return;
+    target.alive = false;
+    this.emit('jammer-destroyed', target, {team: 'objective', actorId: target.id, targetId: target.id});
+    this.puff(target.x, target.y, '#ad8959', 14, 'smoke');
+    const destroyed = this.state.objective.targets.filter(device => !device.alive).length;
+    this.say(`JAMMER DOWN · ${destroyed}/2 SILENCED`, 3);
+  }
+
   puff(x, y, color, count = 8, type = 'spark') {
     for (let i = 0; i < count; i++) {
       const angle = this.random() * TAU;
@@ -1308,8 +1335,8 @@ class Game {
     }
   }
 
-  explode(x, y, radius = CONFIG.grenadeRadius, damage = 105, chain = false) {
-    this.emit('explosion', {x, y}, {radius, chain, team: 'player'});
+  explode(x, y, radius = CONFIG.grenadeRadius, damage = 105, chain = false, source = 'player') {
+    this.emit('explosion', {x, y}, {radius, chain, team: source});
     this.puff(x, y, '#ffcd62', 24, 'explosion');
     this.puff(x, y, '#b66739', 12, 'smoke');
     this.state.particles.push({x, y, life: 0.38, maxLife: 0.38, radius, type: 'ring', color: '#ffd26a'});
@@ -1317,7 +1344,11 @@ class Game {
     this.lastShot = {x, y};
     for (const enemy of this.enemies) {
       const distance = Math.hypot(enemy.x - x, enemy.y - y);
-      if (enemy.alive && distance < radius) this.damage(enemy, damage * (1 - distance / (radius * 1.3)), 'player');
+      if (enemy.alive && distance < radius) this.damage(enemy, damage * (1 - distance / (radius * 1.3)), source);
+    }
+    for (const target of this.state.objective.targets || []) {
+      const distance = dist(target, {x, y});
+      if (target.alive && distance < radius) this.damageJammer(target, damage * (1 - distance / (radius * 1.3)), source);
     }
     // Squad grenades are forgiving: no friendly damage, and civilians stay safe.
     let changed = false;
@@ -1335,7 +1366,7 @@ class Game {
       }
     }
     if (changed) this.rebuildNavigation();
-    for (const point of chains) this.explode(point.x, point.y, 88, 85, true);
+    for (const point of chains) this.explode(point.x, point.y, 88, 85, true, source);
   }
 
   update(dt, input = {}) {
@@ -1353,7 +1384,7 @@ class Game {
   step(dt, input) {
     const state = this.state;
     state.time += dt;
-    for (const actor of [...this.soldiers, ...this.enemies, ...this.civilians]) {
+    for (const actor of [...this.soldiers, ...this.enemies, ...this.civilians, ...(state.objective.targets || [])]) {
       actor.moving = false; actor.vx = 0; actor.vy = 0; actor.speed = 0;
       actor.hitFlash = Math.max(0, (actor.hitFlash || 0) - dt);
       actor.aimTimer = Math.max(0, (actor.aimTimer || 0) - dt);
@@ -1405,6 +1436,7 @@ class Game {
           e => dist(e, input.aim) < 100 ? dist(e, input.aim) : Infinity);
       }
       if (!target) target = this.acquireTarget(soldier, this.enemies, CONFIG.weaponRange);
+      if (!target) target = this.acquireTarget(soldier, state.objective.targets || [], CONFIG.weaponRange);
       if (target) this.fire(soldier, target, 'player');
     }
 
@@ -1412,6 +1444,7 @@ class Game {
     this.resolveContacts();
     this.updateBullets(dt);
     this.updateGrenades(dt);
+    this.updateObjective(dt);
     this.updateWaves(dt);
     this.updateRescue(dt);
     this.updateParticles(dt);
@@ -1475,7 +1508,6 @@ class Game {
     if (!leader) return;
     const friendly = this.soldiers.filter(s => s.alive);
     const living = this.enemies.filter(e => e.alive);
-    const finalRecall = this.state.mission === 2 && this.state.time > 36;
     for (const enemy of living) {
       if (!enemy.alive) continue;
       enemy.cooldown = Math.max(0, enemy.cooldown - dt);
@@ -1483,8 +1515,7 @@ class Game {
       enemy.shootFlash = Math.max(0, enemy.shootFlash - dt);
       enemy.invulnerable = Math.max(0, enemy.invulnerable - dt);
       // Off-screen factions remain in place until the squad reaches their area.
-      // Final-mission recall brings every remaining hostile into the objective.
-      enemy.active ||= finalRecall || friendly.some(s => dist(s, enemy) < CONFIG.activationRadius);
+      enemy.active ||= friendly.some(s => dist(s, enemy) < CONFIG.activationRadius);
       if (!enemy.active) continue;
       const opponents = enemy.type === 'zombie'
         ? [...friendly, ...living.filter(e => e.type === 'soldier' && e.active)]
@@ -1516,8 +1547,8 @@ class Game {
           this.damage(target, target.name ? (this.hard ? 13 : this.easy ? 5 : 8) : 15, 'zombie');
           enemy.attackCooldown = 0.95;
         }
-      } else if (finalRecall || enemy.waveSpawn || (enemy.type === 'zombie' && this.state.noise > 15 && dist(enemy, this.lastShot) < 650)) {
-        const destination = finalRecall || enemy.waveSpawn ? leader : this.lastShot;
+      } else if (enemy.waveSpawn || (enemy.type === 'zombie' && this.state.noise > 15 && dist(enemy, this.lastShot) < 650)) {
+        const destination = enemy.waveSpawn ? leader : this.lastShot;
         this.navigate(enemy, destination.x, destination.y, enemy.type === 'zombie' ? 42 : 48, dt);
       } else {
         // Unaware patrols retain a short local route; quiet squads can slip past.
@@ -1546,11 +1577,11 @@ class Game {
         if (fraction !== null && fraction < nearest) { nearest = fraction; hit = obstacle; obstacleHit = true; }
       }
       const targets = bullet.team === 'player'
-        ? this.enemies
+        ? [...this.enemies, ...(this.state.objective.targets || [])]
         : [...this.soldiers, ...this.enemies.filter(e => e.type === 'zombie')];
       for (const target of targets) {
         if (!target.alive || target.id === bullet.shooterId) continue;
-        const fraction = segmentCircle(bullet.x, bullet.y, nx, ny, target.x, target.y, target.type === 'zombie' ? 12 : 11);
+        const fraction = segmentCircle(bullet.x, bullet.y, nx, ny, target.x, target.y, target.r || (target.type === 'zombie' ? 12 : 11));
         if (fraction !== null && fraction < nearest) { nearest = fraction; hit = target; obstacleHit = false; }
       }
       if (hit) {
@@ -1564,7 +1595,7 @@ class Game {
             if (hit.hp <= 0) {
               hit.alive = false;
               this.rebuildNavigation();
-              if (hit.type === 'barrel') this.explode(hit.x + hit.w / 2, hit.y + hit.h / 2, 95, 85, true);
+              if (hit.type === 'barrel') this.explode(hit.x + hit.w / 2, hit.y + hit.h / 2, 95, 85, true, bullet.team);
               else this.puff(hit.x + hit.w / 2, hit.y + hit.h / 2, '#ad8959', 18, 'smoke');
             }
           }
@@ -1592,11 +1623,61 @@ class Game {
     this.state.thrownGrenades = this.state.thrownGrenades.filter(g => g.life > 0);
   }
 
+  updateObjective(dt) {
+    const objective = this.state.objective;
+    if (objective.type !== 'holdout' || this.state.extraction.active) return;
+    const leader = this.leader;
+    objective.inside = Boolean(leader && dist(leader, objective.zone) <= objective.zone.r);
+    if (!objective.started && objective.inside) {
+      objective.started = true;
+      this.emit('holdout-start', objective.zone, {team: 'objective', duration: objective.duration});
+      this.say('RELAY LIVE · hold the signal', 3);
+    }
+    if (!objective.started) return;
+    objective.elapsed += dt;
+    if (objective.inside) {
+      objective.held = Math.min(objective.duration, objective.held + dt);
+      if (objective.duration - objective.held < 1e-9) objective.held = objective.duration;
+    }
+  }
+
+  safeWavePoint(x, y) {
+    const squad = this.soldiers.filter(soldier => soldier.alive);
+    const safe = point => !this.blocked(point.x, point.y, 16)
+      && squad.every(soldier => dist(soldier, point) >= 330);
+    const preferred = this.nearestOpen(clamp(x, 65, WIDTH - 65), clamp(y, 65, HEIGHT - 65));
+    if (safe(preferred)) return preferred;
+    // Clamping near the coast or cover can pull a spawn towards a soldier.
+    // Search valid approaches, checking the final point against the whole squad.
+    const leader = this.leader;
+    const angle = Math.atan2(y - leader.y, x - leader.x);
+    for (let i = 1; i <= 36; i++) {
+      const direction = angle + i * TAU / 36;
+      const point = this.nearestOpen(clamp(leader.x + Math.cos(direction) * 400, 65, WIDTH - 65),
+        clamp(leader.y + Math.sin(direction) * 400, 65, HEIGHT - 65));
+      if (safe(point)) return point;
+    }
+    // Three spread-out soldiers can cover every nearby approach. A finite grid
+    // fallback guarantees that this never becomes an unsafe instant ambush.
+    let best = null, closest = Infinity;
+    for (let gy = 60; gy < HEIGHT - 60; gy += 40) {
+      for (let gx = 60; gx < WIDTH - 60; gx += 40) {
+        const point = {x: gx, y: gy};
+        if (safe(point) && dist(point, preferred) < closest) {
+          best = point; closest = dist(point, preferred);
+        }
+      }
+    }
+    return best;
+  }
+
   updateWaves(dt) {
     if (this.state.wavesRemaining <= 0 || this.state.extraction.active) return;
-    this.waveTimer += dt;
-    const finalMission = this.state.mission === 2;
-    const due = finalMission ? this.waveTimer > 11 : this.waveTimer > 8 && this.state.noise > 35;
+    const objective = this.state.objective;
+    const holdout = objective.type === 'holdout';
+    if (holdout && !objective.started) return;
+    if (!holdout) this.waveTimer += dt;
+    const due = holdout ? objective.elapsed + 1e-9 >= this.waveCount * 8 : this.waveTimer > 8 && this.state.noise > 35;
     if (!due) return;
     this.waveTimer = 0;
     this.waveCount++;
@@ -1605,19 +1686,29 @@ class Game {
     if (!leader) return;
     // Reinforcements emerge beyond the squad's immediate view.
     const angle = this.random() * TAU;
-    const center = this.nearestOpen(
-      clamp(leader.x + Math.cos(angle) * 470, 65, WIDTH - 65),
-      clamp(leader.y + Math.sin(angle) * 470, 65, HEIGHT - 65),
-    );
-    const count = this.hard ? 5 : finalMission ? 4 : 3;
+    const radius = holdout ? 400 : 470;
+    const location = {x: leader.x + Math.cos(angle) * radius, y: leader.y + Math.sin(angle) * radius};
+    const center = holdout ? this.safeWavePoint(location.x, location.y)
+      : this.nearestOpen(clamp(location.x, 65, WIDTH - 65), clamp(location.y, 65, HEIGHT - 65));
+    if (!center) {
+      // An impossible spawn is postponed rather than appearing on a soldier.
+      this.waveCount--; this.state.wavesRemaining++; return;
+    }
+    const count = this.hard ? 5 : holdout && !this.easy ? 4 : 3;
+    let spawned = 0;
     for (let i = 0; i < count; i++) {
-      const point = this.nearestOpen(center.x + (this.random() - 0.5) * 100, center.y + (this.random() - 0.5) * 100);
+      const x = center.x + (this.random() - 0.5) * 100;
+      const y = center.y + (this.random() - 0.5) * 100;
+      const point = holdout ? this.safeWavePoint(x, y) : this.nearestOpen(x, y);
+      if (!point) continue;
       const enemy = this.spawnEnemy('zombie', point.x, point.y);
       enemy.active = true; enemy.waveSpawn = true;
+      spawned++;
     }
-    this.state.totalKills += count;
-    this.emit('wave', center, {count, remaining: this.state.wavesRemaining});
-    this.say(finalMission && this.state.wavesRemaining === 0 ? 'FINAL WAVE · clear the area' : 'THE DEAD HEARD YOU · infected incoming', 3);
+    this.state.totalKills += spawned;
+    this.emit('wave', center, {count: spawned, remaining: this.state.wavesRemaining});
+    this.say(holdout ? `${this.state.wavesRemaining === 0 ? 'FINAL WAVE' : 'SIGNAL ANSWERED'} · keep transmitting`
+      : 'THE DEAD HEARD YOU · infected incoming', 3);
   }
 
   updateRescue(dt) {
@@ -1655,14 +1746,15 @@ class Game {
     const state = this.state;
     const leader = this.leader;
     if (!leader) { state.status = 'lost'; state.message = 'SQUAD LOST · try a quieter approach'; return; }
-    const complete = state.mission < 2
-      ? state.rescueCount >= state.rescueTarget
-      : state.wavesRemaining === 0 && !this.enemies.some(e => e.alive);
+    const objective = state.objective;
+    const complete = objective.type === 'rescue' ? state.rescueCount >= state.rescueTarget
+      : objective.type === 'sabotage' ? objective.targets.every(target => !target.alive)
+        : objective.held + 1e-9 >= objective.duration;
     if (complete && !state.extraction.active) {
       state.extraction.active = true;
       this.emit('objective', state.extraction, {mission: state.mission});
       this.say('OBJECTIVE COMPLETE · get to the flare', 4);
-      // The rescue itself is the objective. No extra waves appear during evacuation.
+      // The marked objective is enough. No map cleanup or evacuation waves.
       state.wavesRemaining = 0;
     }
     const leaderAtFlare = dist(leader, state.extraction) < state.extraction.r;
@@ -1702,6 +1794,7 @@ class Renderer {
     this.width = 1; this.height = 1; this.cache = null; this.terrainWorld = null;
     this.lastTime = 0; this.initialized = false; this.lastState = null;
     this.objects = []; this.effects = []; this.lastEventId = 0; this.shake = 0;
+    this.objectiveArt = new Map(); this.objectiveAlpha = new Map(); this.radioProp = null;
     this.look = {x:0,y:0}; this.transform = {x:0,y:0,zoom:1};
     const margin=document.createElement('canvas');margin.width=margin.height=96;
     const mc=margin.getContext('2d'),mr=seeded(1402);mc.fillStyle='#4f7958';mc.fillRect(0,0,96,96);
@@ -1727,6 +1820,7 @@ class Renderer {
     // A restarted mission has a new state, even when its mission number is unchanged.
     this.initialized=false;this.lastState=null;this.lastTime=0;
     this.look.x=0;this.look.y=0;this.shake=0;this.effects.length=0;this.lastEventId=0;
+    this.radioProp=null;
   }
   screenToWorld(clientX,clientY) {
     const b=this.canvas.getBoundingClientRect();
@@ -1962,6 +2056,7 @@ class Renderer {
     }
     const ex=state.extraction;
     if(ex&&this.visible(ex.x,ex.y,ex.r,ex.r))this.drawExtraction(c,ex,time,reducedMotion);
+    this.drawObjectiveGround(c,state,reducedMotion);
     for(const person of state.civilians||[]){
       if(!person.rescued&&this.visible(person.x,person.y)){
         c.strokeStyle='#b6e4d2';c.lineWidth=1.5;c.setLineDash([3,5]);c.beginPath();c.arc(person.x,person.y,23,0,TAU);c.stroke();c.setLineDash([]);
@@ -1980,9 +2075,17 @@ class Renderer {
     for(const s of soldiers)if(s.alive&&this.visible(s.x,s.y))objects.push(s);
     for(const e of state.enemies||[])if(e.alive&&this.visible(e.x,e.y))objects.push(e);
     for(const p of state.civilians||[])if(p.alive!==false&&this.visible(p.x,p.y))objects.push(p);
+    const objective=state.objective;
+    if(objective?.type==='sabotage'){
+      for(const device of objective.targets||[])if(this.visible(device.x,device.y))objects.push(device);
+    }else if(objective?.type==='holdout'&&objective.zone){
+      if(!this.radioProp)this.radioProp={type:'relay',x:objective.zone.x,y:objective.zone.y};
+      if(this.visible(this.radioProp.x,this.radioProp.y))objects.push(this.radioProp);
+    }
     objects.sort((a,b)=>(a.y+(a.h||0))-(b.y+(b.h||0)));
     for(const o of objects){
-      if(o.w!==undefined)this.drawObstacle(c,o,state);
+      if(o.type==='jammer'||o.type==='relay')this.drawObjectiveProp(c,o,state,reducedMotion);
+      else if(o.w!==undefined)this.drawObstacle(c,o,state);
       else this.drawPerson(c,o,o.name?'squad':o.type==='zombie'?'zombie':o.type==='soldier'?'enemy':'civilian',state,o.id===state.leaderId);
     }
     for(const b of state.bullets||[])if(this.visible(b.x,b.y)){
@@ -2017,6 +2120,132 @@ class Renderer {
   visible(x,y,w=0,h=0){const b=this.bounds;return x+w>=b.left&&x<=b.right&&y+h>=b.top&&y<=b.bottom;}
   // Interaction marks keep the same readable CSS size at every camera scale.
   worldPixels(cssPixels){return cssPixels*this.width/this.cssWidth/this.camera.zoom;}
+  drawObjectiveGround(c,state,reducedMotion){
+    const objective=state.objective;if(!objective)return;
+    if(objective.type==='sabotage'){
+      for(const device of objective.targets||[]){
+        if(!this.visible(device.x,device.y))continue;
+        c.save();c.translate(device.x,device.y);
+        if(device.alive){
+          // A four-corner target is visually distinct from survivor and flare rings.
+          c.beginPath();for(const [x,y,dx,dy]of [[-26,-15,1,1],[26,-15,-1,1],[-26,17,1,-1],[26,17,-1,-1]]){
+            c.moveTo(x+dx*8,y);c.lineTo(x,y);c.lineTo(x,y+dy*7);
+          }
+          c.strokeStyle='rgba(31,56,42,.65)';c.lineWidth=this.worldPixels(3);c.stroke();
+          c.strokeStyle='#edbd77';c.lineWidth=this.worldPixels(1.1);c.stroke();
+        }else{
+          c.strokeStyle='#b9d9ba';c.lineWidth=this.worldPixels(1.2);c.beginPath();
+          c.moveTo(20,9);c.lineTo(24,13);c.lineTo(31,4);c.stroke();
+        }
+        c.restore();
+      }
+    }else if(objective.type==='holdout'&&objective.zone){
+      const zone=objective.zone,r=zone.r,complete=objective.held>=objective.duration;
+      if(!this.visible(zone.x-r,zone.y-r,r*2,r*2))return;
+      const color=complete?'#bbdcc1':objective.inside?'#f1cd88':'#e4be7d';
+      c.save();c.translate(zone.x,zone.y);
+      // The relay has survey posts and a segmented perimeter; extraction keeps its cross.
+      c.setLineDash([this.worldPixels(6),this.worldPixels(5)]);c.beginPath();c.arc(0,0,r,0,TAU);
+      c.strokeStyle='rgba(26,51,37,.6)';c.lineWidth=this.worldPixels(3.2);c.stroke();
+      c.strokeStyle=rgba(color,complete?.55:.83);c.lineWidth=this.worldPixels(1.1);c.stroke();c.setLineDash([]);
+      for(let i=0;i<4;i++){
+        const a=i*Math.PI/2,x=Math.cos(a)*r,y=Math.sin(a)*r;
+        c.fillStyle='#2c4c3a';c.fillRect(x-3,y-3,6,6);c.fillStyle=color;c.fillRect(x-1.5,y-1.5,3,3);
+      }
+      const progress=clamp(objective.held/objective.duration,0,1);
+      if(progress>0){
+        c.strokeStyle='#2a4b36';c.lineWidth=this.worldPixels(4);c.beginPath();c.arc(0,0,r-7,-Math.PI/2,-Math.PI/2+TAU*progress);c.stroke();
+        c.strokeStyle=color;c.lineWidth=this.worldPixels(2);c.stroke();
+      }
+      if(objective.started&&!complete){
+        // A quiet inner dial confirms the hold without washing out actors or gunfire.
+        c.strokeStyle=rgba(color,.5);c.lineWidth=this.worldPixels(.8);
+        const dial=reducedMotion?0:((state.time||0)*.12)%1;
+        c.beginPath();c.arc(0,0,30,-Math.PI/2+TAU*dial,Math.PI/2+TAU*dial);c.stroke();
+      }
+      c.restore();
+    }
+  }
+  drawObjectiveProp(c,prop,state,reducedMotion){
+    const alive=prop.type==='relay'||prop.alive!==false,key=prop.type+(alive?'-live':'-wreck');
+    let art=this.objectiveArt.get(key);
+    if(!art){
+      art=document.createElement('canvas');art.width=128;art.height=128;
+      const a=art.getContext('2d');a.imageSmoothingEnabled=false;a.translate(64,96);
+      this.paintObjectiveProp(a,prop.type,alive);this.objectiveArt.set(key,art);
+    }
+    const scale=clamp(.46/this.camera.zoom,1,1.25);
+    c.save();c.translate(Math.round(prop.x),Math.round(prop.y));c.scale(scale,scale);c.drawImage(art,-64,-96);
+    if(prop.type==='jammer'&&alive){
+      const health=clamp(prop.hp/(prop.maxHp||1),0,1),width=this.worldPixels(24)/scale,y=-72;
+      c.fillStyle='#203f32';c.fillRect(-width/2-1,y-1,width+2,4);
+      c.fillStyle='#edbd77';c.fillRect(-width/2,y,Math.max(0,width*health),2);
+      c.fillStyle='#f4d99f';c.fillRect(3,-13,2,2);
+      const signal=reducedMotion?1:Math.floor((state.time||0)*2)%3;
+      c.strokeStyle=rgba('#f1cd88',.48);c.lineWidth=1;c.beginPath();
+      c.arc(8,-58,8+signal*2,-.95,.65);c.stroke();
+    }else if(prop.type==='relay'){
+      const objective=state.objective,complete=objective.held>=objective.duration;
+      c.fillStyle=complete?'#b9dcc3':objective.inside?'#f1d296':'#829b75';c.fillRect(-9,-17,2,2);
+      if(objective.started&&!complete){
+        const length=reducedMotion?9:4+Math.floor((state.time||0)*4)%6;
+        c.fillStyle='#b9d7ae';c.fillRect(-5,-16,length,1);
+      }
+      // A tiny meter stays below the equipment, clear of the squad's head/health cues.
+      if(objective.started||complete){
+        const width=this.worldPixels(26)/scale;
+        c.fillStyle='#294a37';c.fillRect(-width/2-1,15,width+2,4);
+        c.fillStyle=complete?'#b9dcc3':'#f1cd88';c.fillRect(-width/2,16,width*clamp(objective.held/objective.duration,0,1),2);
+      }
+    }
+    c.restore();
+  }
+  paintObjectiveProp(c,type,alive){
+    c.fillStyle='rgba(24,45,31,.28)';c.beginPath();c.ellipse(6,7,27,11,.12,0,TAU);c.fill();
+    if(type==='jammer'&&!alive){
+      c.fillStyle='#485442';c.fillRect(-19,-9,38,17);c.fillStyle='#6b6c4c';c.fillRect(-18,-8,34,4);
+      c.fillStyle='#263e31';c.fillRect(-13,-3,25,8);c.fillStyle='#996344';c.fillRect(-8,-7,7,6);c.fillRect(8,1,6,4);
+      c.strokeStyle='#364c38';c.lineWidth=3;c.beginPath();c.moveTo(3,-3);c.lineTo(22,-27);c.lineTo(32,-23);c.stroke();
+      c.strokeStyle='#a69b6c';c.lineWidth=1;c.beginPath();c.moveTo(3,-4);c.lineTo(22,-28);c.stroke();
+      c.fillStyle='#536044';c.fillRect(-27,3,5,3);c.fillRect(22,10,8,3);c.fillStyle='#ae8760';c.fillRect(-23,10,5,2);
+      c.strokeStyle='#475141';c.lineWidth=1;c.beginPath();c.moveTo(-14,-6);c.lineTo(-27,-13);c.lineTo(-33,-8);c.stroke();return;
+    }
+    if(type==='jammer'){
+      // A field generator, telescopic aerial and small parabolic dish form the jammer.
+      c.fillStyle='#243f34';c.fillRect(-21,-17,42,25);c.fillStyle='#607364';c.fillRect(-19,-16,38,21);
+      c.fillStyle='#a6aa79';c.fillRect(-19,-17,37,3);c.fillStyle='#405846';c.fillRect(12,-13,6,18);
+      c.fillStyle='#223d31';c.fillRect(-15,-11,12,13);c.fillStyle='#829176';
+      for(let y=-10;y<1;y+=3)c.fillRect(-14,y,10,1);
+      c.fillStyle='#243f32';c.fillRect(0,-12,9,7);c.fillStyle='#d1ab70';c.fillRect(1,-11,7,5);
+      c.fillStyle='#4b5e42';c.fillRect(3,-10,3,3);c.fillStyle='#b78c52';c.fillRect(-18,2,8,3);c.fillRect(1,2,8,3);
+      c.fillStyle='#263f34';c.fillRect(-17,6,8,4);c.fillRect(10,6,8,4);
+      c.fillStyle='#314c3a';c.fillRect(5,-63,4,46);c.fillStyle='#b7bc91';c.fillRect(6,-62,1,44);
+      c.strokeStyle='#42644d';c.lineWidth=2;c.beginPath();c.moveTo(7,-40);c.lineTo(-11,-18);c.moveTo(8,-40);c.lineTo(18,-18);c.stroke();
+      c.fillStyle='#223f34';c.fillRect(-7,-58,28,3);c.fillRect(-3,-49,20,3);
+      c.fillStyle='#b9b88b';c.fillRect(-8,-59,28,1);c.fillRect(-4,-50,20,1);
+      for(const x of [-6,0,14,20]){c.fillStyle='#e4c78b';c.fillRect(x,-64,1,10);}
+      c.fillStyle='#f0cc84';c.fillRect(5,-67,4,3);
+      c.fillStyle='#3a5140';c.beginPath();c.moveTo(-17,-39);c.lineTo(-24,-34);c.lineTo(-12,-25);c.lineTo(-7,-32);c.closePath();c.fill();
+      c.fillStyle='#c7c19a';c.beginPath();c.moveTo(-17,-40);c.lineTo(-23,-35);c.lineTo(-12,-28);c.lineTo(-8,-33);c.closePath();c.fill();
+      c.strokeStyle='#6d825e';c.lineWidth=1;c.beginPath();c.moveTo(-20,-35);c.lineTo(-12,-30);c.moveTo(-15,-35);c.lineTo(-10,-43);c.stroke();
+      c.fillStyle='#d7ba7b';c.fillRect(-11,-44,3,2);
+      c.strokeStyle='#324e36';c.lineWidth=1;c.beginPath();c.moveTo(-13,-26);c.lineTo(-10,-17);c.lineTo(1,-13);c.stroke();
+    }else{
+      // A portable receiver in a canvas case is friendly equipment, unlike the jammers.
+      c.fillStyle='#476449';c.fillRect(-25,2,48,8);c.fillStyle='#9d9e71';c.fillRect(-24,2,45,3);
+      c.fillStyle='#243f34';c.fillRect(-19,-23,36,26);c.fillStyle='#adad7c';c.fillRect(-18,-22,34,22);
+      c.fillStyle='#d8d1a0';c.fillRect(-18,-23,34,3);c.fillStyle='#7c8d63';c.fillRect(12,-19,4,20);
+      c.fillStyle='#214c3e';c.fillRect(-12,-18,20,9);c.fillStyle='#69a88c';c.fillRect(-10,-17,16,6);
+      c.fillStyle='#c9d9a7';c.fillRect(-8,-16,3,1);c.fillStyle='#2c6551';c.fillRect(-3,-15,7,2);
+      c.fillStyle='#40593c';c.fillRect(-12,-6,20,5);c.fillStyle='#d9d0a0';
+      for(const x of [-9,-1,7])c.fillRect(x,-5,3,3);
+      c.fillStyle='#35513c';c.fillRect(-8,-27,17,4);c.fillStyle='#b5bc87';c.fillRect(-6,-27,13,1);
+      c.fillStyle='#385741';c.fillRect(21,-47,2,49);c.fillStyle='#cad0a0';c.fillRect(21,-46,1,46);
+      c.fillStyle='#9cae7d';c.fillRect(12,-42,21,2);c.fillRect(16,-35,13,2);c.fillStyle='#d5d9a7';c.fillRect(20,-49,3,3);
+      c.strokeStyle='#3b5a40';c.lineWidth=1;c.beginPath();c.moveTo(21,-15);c.lineTo(14,-10);c.moveTo(-18,-12);c.lineTo(-26,-12);c.lineTo(-26,-21);c.stroke();
+      c.fillStyle='#284639';c.fillRect(-29,-27,7,8);c.fillStyle='#aab78a';c.fillRect(-28,-26,5,2);c.fillStyle='#5a7350';c.fillRect(-23,7,8,2);c.fillRect(12,7,8,2);
+    }
+  }
   drawOrderMarker(c,target){
     const radius=this.worldPixels(10),tick=this.worldPixels(3),dot=this.worldPixels(2);
     c.save();c.translate(target.x,target.y);
@@ -2048,17 +2277,23 @@ class Renderer {
   friendlyOccluded(soldier){
     const scale=this.personScale||1;
     for(const obstacle of this.objects){
-      if(obstacle.w===undefined||obstacle.y+obstacle.h<=soldier.y)continue;
-      const art=this.obstacleArt?.get(obstacle);if(!art)continue;
-      const left=obstacle.x-art.pad,top=obstacle.y-art.pad;
+      const device=obstacle.type==='jammer'||obstacle.type==='relay';
+      if(device?obstacle.y<=soldier.y:obstacle.w===undefined||obstacle.y+obstacle.h<=soldier.y)continue;
+      const key=device?obstacle.type+(obstacle.type==='relay'||obstacle.alive!==false?'-live':'-wreck'):null;
+      const canvas=device?this.objectiveArt.get(key):this.obstacleArt?.get(obstacle)?.canvas;
+      if(!canvas)continue;
+      const art=device?{canvas,alpha:this.objectiveAlpha.get(key)}:this.obstacleArt.get(obstacle);
+      const artScale=device?clamp(.46/this.camera.zoom,1,1.25):1;
+      const left=obstacle.x-(device?64*artScale:art.pad),top=obstacle.y-(device?96*artScale:art.pad);
       for(const [dx,dy]of FRIENDLY_SAMPLES){
-        const x=Math.floor(soldier.x+dx*scale-left),y=Math.floor(soldier.y+dy*scale-top);
+        const x=Math.floor((soldier.x+dx*scale-left)/artScale),y=Math.floor((soldier.y+dy*scale-top)/artScale);
         if(x<0||y<0||x>=art.canvas.width||y>=art.canvas.height)continue;
         // Cache alpha once per static cover sprite, avoiding canvas reads in later frames.
         if(!art.alpha){
           const pixels=art.canvas.getContext('2d').getImageData(0,0,art.canvas.width,art.canvas.height).data;
           art.alpha=new Uint8Array(art.canvas.width*art.canvas.height);
           for(let i=0;i<art.alpha.length;i++)art.alpha[i]=pixels[i*4+3];
+          if(device)this.objectiveAlpha.set(key,art.alpha);
         }
         if(art.alpha[y*art.canvas.width+x]>=170)return true;
       }
@@ -2300,15 +2535,21 @@ class Renderer {
   drawObjectiveDirection(c,state,leader,safeTop=30,safeBottom=76) {
     if(!leader)return;
     let target=null,nearest=Infinity,color='#c2e8d7';
-    for(const person of state.civilians||[])if(!person.rescued&&person.alive!==false){
-      const d=Math.hypot(person.x-leader.x,person.y-leader.y);if(d<nearest){target=person;nearest=d;}
+    const objective=state.objective;
+    if(objective?.type==='sabotage'){
+      for(const device of objective.targets||[])if(device.alive){
+        const d=Math.hypot(device.x-leader.x,device.y-leader.y);if(d<nearest){target=device;nearest=d;color='#edc080';}
+      }
+    }else if(objective?.type==='holdout'&&objective.held<objective.duration){
+      target=objective.zone;color='#edc080';
+    }else{
+      for(const person of state.civilians||[])if(!person.rescued&&person.alive!==false){
+        const d=Math.hypot(person.x-leader.x,person.y-leader.y);if(d<nearest){target=person;nearest=d;}
+      }
     }
     if(!target&&state.extraction?.active){target=state.extraction;color='#d6e9ac';}
-    if(!target&&Number(state.mission)===2){
-      for(const enemy of state.enemies||[])if(enemy.alive){const d=Math.hypot(enemy.x-leader.x,enemy.y-leader.y);if(d<nearest){target=enemy;nearest=d;color='#dfb37c';}}
-    }
     const edges={left:10,right:this.width-10,top:safeTop+9,bottom:Math.max(safeTop+28,this.height-safeBottom-9)};
-    if(target)this.drawEdgeMarker(c,target,leader,edges,color,true);
+    if(target)this.drawEdgeMarker(c,target,leader,edges,color,true,target.type==='jammer'||target===objective?.zone);
     // A nearby offscreen threat receives a small bearing, without obscuring the objective.
     let threat=null,distance=Infinity;
     for(const enemy of state.enemies||[])if(enemy.alive&&enemy!==target){
@@ -2318,8 +2559,10 @@ class Renderer {
     }
     if(threat)this.drawEdgeMarker(c,threat,leader,edges,threat.type==='zombie'?'#b9c68d':'#e3ac75',false);
   }
-  drawEdgeMarker(c,target,leader,edges,color,objective){
+  drawEdgeMarker(c,target,leader,edges,color,objective,visibleProp=false){
     const t=this.transform,sx=target.x*t.zoom+t.x,sy=target.y*t.zoom+t.y;
+    // Equipment already visible at the top of a short field needs no arrow over its sprite.
+    if(visibleProp&&sx>=4&&sx<=this.width-4&&sy>=4&&sy<=this.height-4)return;
     if(sx>=edges.left&&sx<=edges.right&&sy>=edges.top&&sy<=edges.bottom)return;
     const ox=clamp(leader.x*t.zoom+t.x,edges.left+1,edges.right-1),oy=clamp(leader.y*t.zoom+t.y,edges.top+1,edges.bottom-1);
     const vx=sx-ox,vy=sy-oy;let reach=Infinity;
@@ -2349,6 +2592,20 @@ class Renderer {
     for(const o of state.world.obstacles||[])if(o.alive!==false){c.fillStyle=o.type==='hut'?'#a69d7b':'#40553f';c.fillRect(x+o.x/ww*mw,y+o.y/wh*mh,Math.max(1,o.w/ww*mw),Math.max(1,o.h/wh*mh));}
     if(state.extraction){const ex=state.extraction;c.strokeStyle=ex.active?'#dbecad':'#aba878';c.strokeRect(x+ex.x/ww*mw-2,y+ex.y/wh*mh-2,4,4);}
     for(const p of state.civilians||[])if(!p.rescued&&p.alive!==false){c.fillStyle='#caecda';c.fillRect(Math.round(x+p.x/ww*mw)-1,Math.round(y+p.y/wh*mh)-1,2,2);}
+    const objective=state.objective;
+    if(objective?.type==='sabotage'){
+      for(const device of objective.targets||[]){
+        const px=Math.round(x+device.x/ww*mw),py=Math.round(y+device.y/wh*mh);
+        if(device.alive){c.fillStyle='#edc080';c.beginPath();c.moveTo(px,py-2);c.lineTo(px+2,py);c.lineTo(px,py+2);c.lineTo(px-2,py);c.closePath();c.fill();}
+        else{c.strokeStyle='#a7c3a4';c.lineWidth=.8;c.beginPath();c.moveTo(px-1.5,py);c.lineTo(px,py+1.5);c.lineTo(px+2,py-1.5);c.stroke();}
+      }
+    }else if(objective?.type==='holdout'&&objective.zone){
+      const zone=objective.zone,complete=objective.held>=objective.duration;
+      const px=x+zone.x/ww*mw,py=y+zone.y/wh*mh;
+      c.strokeStyle=complete?'#a7c3a4':'#edc080';c.lineWidth=.8;
+      c.beginPath();c.ellipse(px,py,zone.r/ww*mw,zone.r/wh*mh,0,0,TAU);c.stroke();
+      c.fillStyle=complete?'#a7c3a4':'#edc080';c.fillRect(Math.round(px)-1,Math.round(py)-1,2,2);
+    }
     for(const e of state.enemies||[])if(e.alive){c.fillStyle=e.type==='zombie'?'#bbc48b':'#e0ac70';c.fillRect(Math.round(x+e.x/ww*mw),Math.round(y+e.y/wh*mh),1,1);}
     const vw=this.width/this.camera.zoom/ww*mw,vh=this.height/this.camera.zoom/wh*mh;
     c.strokeStyle='rgba(211,233,205,.43)';c.lineWidth=.7;c.strokeRect(clamp(x+this.camera.x/ww*mw-vw/2,x,x+mw),clamp(y+this.camera.y/wh*mh-vh/2,y,y+mh),Math.min(vw,mw),Math.min(vh,mh));
@@ -2820,6 +3077,7 @@ class AudioEngine {
           case 'rescue': this._radio('rescue'); break;
           case 'wave': this._radio('wave'); break;
           case 'objective': this._radio('objective'); break;
+          case 'jammer-destroyed': this._radio('objective'); break;
           case 'extracted': this._radio('extracted'); break;
           case 'holdfire': this.cue('select'); break;
           default: continue;
@@ -3052,15 +3310,19 @@ return { AudioEngine };
 __modules["session.js"] = (() => {
 /** Browser progress and objective text. No DOM or simulation side effects. */
 const SAVE_KEY = 'dead-signal-v1';
+const MISSION_REVISION = 1;
 
 function normalizeProgress(value) {
-  const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false };
+  const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false, missionRevision: MISSION_REVISION };
   if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
   if (Array.isArray(value.completed)) {
     result.completed = [...new Set(value.completed.filter(id => Number.isInteger(id) && id >= 0 && id < 3))].sort();
   }
   if (value.best && typeof value.best === 'object' && !Array.isArray(value.best)) {
-    for (let id = 0; id < 3; id++) {
+    // The new sabotage and relay runs cannot be compared to their old rescue
+    // and clear-the-map times. Keep campaign completion, preferences and M1.
+    const unchangedTimes = value.missionRevision === MISSION_REVISION;
+    for (let id = 0; id < (unchangedTimes ? 3 : 1); id++) {
       const time = value.best[id];
       if (typeof time === 'number' && Number.isFinite(time) && time > 0) result.best[id] = time;
     }
@@ -3092,28 +3354,35 @@ function saveProgress(storage, value) {
 }
 
 function objectiveFor(state) {
-  const remaining = state.enemies.filter(enemy => enemy.alive).length;
   if (state.extraction.active) {
     if (state.extraction.regrouping) {
-      return { label: 'REGROUP', text: 'Bring your squad and survivors into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
+      return { label: 'REGROUP', text: state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
     }
     if (state.extraction.progress > 0) {
       return { label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
     }
     return { label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
   }
-  if (state.rescueCount < state.rescueTarget) {
+  const objective = state.objective || {type: 'rescue'};
+  if (objective.type === 'rescue') {
     return { label: 'RESCUE', text: 'Reach the marked survivor. Your squad follows.', counter: `${state.rescueCount} / ${state.rescueTarget} SAFE`, progress: null };
   }
-  return {
-    label: remaining ? 'SECURE THE AREA' : 'HOLD THE PERIMETER',
-    text: state.wavesRemaining > 0 ? `${state.wavesRemaining} infected ${state.wavesRemaining === 1 ? 'wave remains' : 'waves remain'}. Watch your noise.` : 'Clear the last hostiles to open extraction.',
-    counter: `${remaining} HOSTILE${remaining === 1 ? '' : 'S'}`,
-    progress: null,
-  };
+  if (objective.type === 'sabotage') {
+    const destroyed = objective.targets.filter(target => !target.alive).length;
+    return {label: 'SABOTAGE', text: 'Destroy both marked jammers. Gunfire or grenades work.',
+      counter: `${destroyed} / ${objective.targets.length} SILENCED`, progress: null};
+  }
+  const seconds = Math.max(0, Math.ceil(objective.duration - objective.held - 1e-9));
+  if (!objective.started) {
+    return {label: 'REACH THE RELAY', text: 'Enter the marked perimeter to start transmitting.',
+      counter: `${objective.duration} SEC SIGNAL`, progress: 0};
+  }
+  return {label: objective.inside ? 'HOLD THE SIGNAL' : 'RE-ENTER THE SIGNAL',
+    text: objective.inside ? 'Keep your selected soldier inside. Survive the infected waves.' : 'Return to the perimeter. Transmission progress is saved.',
+    counter: `${seconds} SEC LEFT`, progress: Math.min(1, objective.held / objective.duration)};
 }
 
-return { SAVE_KEY, normalizeProgress, loadProgress, saveProgress, objectiveFor };
+return { SAVE_KEY, MISSION_REVISION, normalizeProgress, loadProgress, saveProgress, objectiveFor };
 })();
 __modules["app.js"] = (() => {
 const { Game, MISSIONS } = __modules["engine.js"];
@@ -3262,7 +3531,7 @@ function showMissions() {
     const button = document.createElement('button');
     button.className = `mission-card${index === mission ? ' active' : ''}`;
     button.setAttribute('aria-pressed', String(index === mission));
-    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['RECON & RESCUE', 'DEEP ISLAND RECOVERY', 'CLEAR & EXTRACT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
+    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['RECON & RESCUE', 'SABOTAGE & ESCAPE', 'DEFEND & TRANSMIT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
     button.querySelector('h3').textContent = definition.title;
     button.querySelector('p').textContent = definition.subtitle;
     button.addEventListener('click', () => {
@@ -3395,7 +3664,7 @@ function throwGrenade() {
   if (thrown) {
     audio.cue('grenade');
     if (!reducedMotion.matches && navigator.vibrate) navigator.vibrate(18);
-  } else if (!game.state.grenades) radio('No grenades left. Rescue survivors for supplies.');
+  } else if (!game.state.grenades) radio(mission === 0 ? 'No grenades left. Rescue the survivor for supplies.' : 'No grenades left. Your rifles still work.');
   if (input.pointerType !== 'touch') focusField();
   updateHud();
 }
@@ -3412,7 +3681,12 @@ function updateHud() {
     if (card) card.hurtUntil = Math.max(card.hurtUntil, event.time + .5);
   }
   text('timer', formatTime(state.time)); text('kills', String(state.kills).padStart(2, '0'));
-  text('rescues', `${state.rescueCount} / ${state.rescueTarget}`);
+  const operation = state.objective;
+  text('operation-stat-label', operation?.type === 'sabotage' ? 'JAMMERS DOWN' : operation?.type === 'holdout' ? 'UPLINK TIME' : 'SURVIVORS');
+  text('rescues', operation?.type === 'sabotage'
+    ? `${operation.targets.filter(target => !target.alive).length} / ${operation.targets.length}`
+    : operation?.type === 'holdout' ? `${Math.floor(operation.held)} / ${operation.duration}s`
+      : `${state.rescueCount} / ${state.rescueTarget}`);
   text('grenade-count', state.grenades);
   $('grenade-btn').disabled = state.grenades === 0;
   $('grenade-btn').setAttribute('aria-label', `Throw grenade, ${state.grenades} remaining`);
@@ -3448,6 +3722,7 @@ function updateHud() {
   text('mission-goal', objective.label); text('mission-detail', objective.text); text('mission-counter', objective.counter);
   $('mission-progress').hidden = objective.progress === null;
   $('mission-progress').value = objective.progress ?? 0;
+  $('mission-progress').setAttribute('aria-label', state.extraction.active ? 'Extraction progress' : operation?.type === 'holdout' ? 'Radio uplink progress' : 'Mission progress');
   text('footer-tip', hold ? 'HOLD FIRE ACTIVE · MOVE QUIETLY' : 'AUTO FIRE ACTIVE · USE COVER. STAY TOGETHER.');
   if (state.message && state.message !== lastMessage) {
     lastMessage = state.message;
@@ -3467,7 +3742,11 @@ function showResult(won) {
   $('result-overlay').hidden = false;
   text('result-label', won ? (mission === 2 ? 'OPERATION COMPLETE' : 'MISSION COMPLETE') : 'SQUAD LOST');
   $('result-title').innerHTML = won ? (mission === 2 ? 'SIGNAL<br>RESTORED.' : 'MADE IT<br>OUT ALIVE.') : 'RADIO<br>SILENCE.';
-  text('result-copy', won ? (mission === 2 ? 'Your squad is home. The island is quiet again.' : 'Squad and survivors extracted. Regroup for the next operation.') : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
+  text('result-copy', won ? [
+    'The radio operator and your squad are home. Regroup for the next operation.',
+    'Both jammers are down. Your squad slipped out before the dead closed in.',
+    'Transmission received. Your squad is home, and help knows where to find the island.',
+  ][mission] : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
   const alive = state.soldiers.filter(soldier => soldier.alive).length;
   $('result-stats').innerHTML = `<div><span>TIME</span><b>${formatTime(state.time)}</b></div><div><span>SQUAD ALIVE</span><b>${alive} / 3</b></div><div><span>ELIMINATED</span><b>${state.kills}</b></div>`;
   $('memorial').replaceChildren();
