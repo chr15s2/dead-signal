@@ -1,6 +1,6 @@
 # Dead Signal
 
-A small, original, mobile-first squad tactics game inspired by the feel of classic action games. Lead a named squad through three different missions—rescue, sabotage, and a radio holdout—while enemy soldiers and zombies fight each other. Gunfire attracts the undead.
+A small, original, mobile-first squad tactics game inspired by the feel of classic action games. Lead a named squad through three different missions—a village rescue operation, sabotage, and a radio holdout—while enemy soldiers and zombies fight each other. Gunfire attracts the undead.
 
 [Play Dead Signal online](https://chr15s2.github.io/dead-signal/)
 
@@ -31,19 +31,25 @@ Open <http://localhost:8080>. To try it on a phone on the same Wi-Fi, open `http
 | Throw a grenade | Tap the grenade button | G |
 | Pause | Tap pause | Esc |
 
-Keep soldiers near cover and choose when to fire: noise brings zombies. Stop moving for more accurate fire. Enemy soldiers and zombies can damage each other. First Contact rescues a radio operator. Bad Frequency sends you after two signal jammers: your squad shoots them when nearby enemies are dealt with, and grenades work too. Last Transmission asks you to hold the relay circle for 25 cumulative seconds while three finite infected waves arrive. Step outside to dodge and the uplink pauses; return to continue. Finishing the transmission opens extraction even if hostiles remain. Bring every living squad member and rescued survivor to the extraction circle, then hold position while the timer finishes. The HUD shows when followers need to regroup. Named soldiers can die, so surviving with the whole squad takes care.
+Keep soldiers near cover and choose when to fire: noise brings zombies. Stop moving for more accurate fire. Enemy soldiers and zombies can damage each other. First Contact starts at the village entrance, then sends you to rescue the clinic medic and school radio operator in either order. Clear the local defenders counted in the HUD, secure the harbour, and escort everyone through an infected escape encounter. Exposed streets offer shorter routes; covered lanes offer another approach. Near a defended site, the objective bearing points toward its remaining guards.
+
+Bad Frequency sends you after two signal jammers: your squad shoots them when nearby enemies are dealt with, and grenades work too. Last Transmission asks you to hold the relay circle for 25 cumulative seconds while three finite infected waves arrive. Step outside to dodge and the uplink pauses; return to continue. Finishing the transmission opens extraction even if hostiles remain. Bring every living squad member and rescued survivor to the extraction circle, then hold position while the timer finishes. The HUD shows when followers need to regroup. Named soldiers can die, so surviving with the whole squad takes care.
 
 The game pauses when you leave the tab or open the field manual. Returning to the tab requires an explicit resume. Use squad cards, or desktop keys 1–3, to change the leader.
 
 ## Privacy and sound
 
-Campaign progress is saved in this browser's `localStorage`. The game sends no gameplay data to a server and needs no account. Clear the site's browser storage to remove the saved progress. Sound is optional and synthesized with Web Audio after you enable it.
+Campaign progress is saved in this browser's `localStorage`. First Contact also saves checkpoints after securing the entrance, each rescue, and securing the harbour. Return to base or reload and choose Continue Checkpoint; after losing, choose Retry Checkpoint. Continuing preserves casualties, supplies, destroyed cover, and the escape response. It requires an explicit start and resumes in the saved difficulty. Start Fresh or Restart Mission clears that mission's checkpoint; victory clears it too. Checkpoint victories count as completions, while best times require a fresh run. Storage must be available for saves to work.
+
+The game sends no gameplay data to a server and needs no account. Clear the site's browser storage to remove the saved progress. Sound is optional and synthesized with Web Audio after you enable it.
 
 ## Source and checks
 
 The game uses browser APIs and buildless HTML, CSS, and JavaScript:
 
 - `dist/engine.js`: deterministic 60 Hz simulation, missions, combat, and objectives. A bounded event journal supplies sound and visual feedback.
+- `dist/mission-data.js`: the authored First Contact village, encounter groups, roads, cover and rescue sites.
+- `dist/checkpoint.js`: bounded, validated First Contact snapshots and explicit paused restoration.
 - `dist/navigation.js`: collision-aware routes shared by the leader, followers, and survivors.
 - `dist/renderer.js`: original canvas graphics, camera, coordinate projection, and cached terrain.
 - `dist/actors.js`, `dist/effects.js`, `dist/lighting.js`, and `dist/scenery.js`: bounded, renderer-only character poses, combat feedback, cached sunlight and shadows, and original environmental details.
@@ -78,6 +84,8 @@ Version 0.4.0 refines existing play: followers respond to turns without chasing 
 Version 0.5.0 gives the existing three missions distinct objectives: rescue the radio operator, sabotage two signal jammers, and defend a relay during its transmission. Mission markers, briefings, counters, progress, and results follow each objective. Rifles can always finish sabotage, relay progress pauses outside its zone, and holdout extraction no longer requires clearing the whole map. Legacy best times for the two redesigned missions reset once; completions, mission-one times, difficulty, and sound preferences remain.
 
 Version 0.6.0 polishes the existing art: warm afternoon light and cool projected shadows, more detailed characters with faction-specific movement and recoil, restrained material-aware combat effects, sparse roadside equipment and weathered buildings, and clearer squad portraits, health, noise status, and field dispatches. Visual effects use their own deterministic randomness and bounded caches; they do not change the simulation, mission rules, or saves. Pausing freezes simulation-clock animation, and reduced motion removes decorative movement and interface transitions. Small phone results keep both action buttons visible.
+
+Version 0.7.0 rebuilds First Contact as a four-stage operation across an authored 2800×2200 village: secure the entrance, rescue two people in either order, secure the harbour, and evacuate through one finite infected response. Local garrisons guard their own districts, with connecting-road encounters and several approaches around cover. Navigation and rendering support mission-specific world sizes. Milestone checkpoints preserve the full run and never automatically start after a reload. Old First Contact best times reset once because the mission changed; other mission records, completions, and preferences remain. Bad Frequency and Last Transmission retain their existing layouts and rules. Mission duration depends on route and tactics; there is no enforced minimum.
 
 ## Hosting and licensing
 

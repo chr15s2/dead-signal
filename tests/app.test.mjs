@@ -45,15 +45,21 @@ test('successful save roundtrips clean completion, difficulty and opt-in audio',
   assert.equal(normalizeProgress({ difficulty: 'easy' }).difficulty, 'easy');
 });
 
-test('legacy progress keeps completion, preferences and rescue time but resets changed mission times once', () => {
-  const storage = memoryStorage(JSON.stringify({completed: [0, 1, 2], best: {0: 20, 1: 30, 2: 40}, difficulty: 'hard', soundOn: true}));
+test('revision one retains unchanged mission times and retires the short First Contact time once', () => {
+  const storage = memoryStorage(JSON.stringify({completed: [0, 1, 2], best: {0: 15, 1: 30, 2: 40}, difficulty: 'hard', soundOn: true, missionRevision: 1}));
   const migrated = loadProgress(storage);
-  assert.deepEqual(migrated, {completed: [0, 1, 2], best: {0: 20}, difficulty: 'hard', soundOn: true, missionRevision: MISSION_REVISION});
-  migrated.best[1] = 45;
-  migrated.best[2] = 55;
+  assert.deepEqual(migrated, {completed: [0, 1, 2], best: {1: 30, 2: 40}, difficulty: 'hard', soundOn: true, missionRevision: MISSION_REVISION});
+  migrated.best[0] = 145;
   assert.equal(saveProgress(storage, migrated), true);
-  assert.deepEqual(loadProgress(storage), migrated, 'new-objective times survive later loads');
+  assert.deepEqual(loadProgress(storage), migrated, 'new operation time survives subsequent loads');
   assert.deepEqual(normalizeProgress(migrated), migrated, 'migration is idempotent');
+});
+
+test('legacy and unknown mission revisions retain progress and preferences without incomparable times', () => {
+  for (const revision of [undefined, 0, -1, 3, '2']) {
+    const migrated = normalizeProgress({completed: [0, 1, 2], best: {0: 15, 1: 30, 2: 40}, difficulty: 'easy', soundOn: true, missionRevision: revision});
+    assert.deepEqual(migrated, {completed: [0, 1, 2], best: {}, difficulty: 'easy', soundOn: true, missionRevision: MISSION_REVISION});
+  }
 });
 
 test('malformed saves cannot introduce inherited progress fields', () => {
@@ -115,4 +121,27 @@ test('extraction HUD gives explicit regrouping and hold-position feedback', () =
   const open = objectiveFor(objectiveState({ extraction: { active: true, progress: 0, regrouping: false } }));
   assert.equal(open.label, 'EXTRACTION OPEN');
   assert.equal(open.counter, 'REACH THE FLARE');
+});
+
+
+test('operation HUD gives four distinct stages and local clearance instructions', () => {
+  const objective = {type: 'operation', phase: 0, stageCount: 4, currentPoints: [{remaining: 3}]};
+  const state = objectiveState({rescueTarget: 2, objective});
+  const entry = objectiveFor(state);
+  assert.deepEqual([entry.label, entry.counter, entry.stage, entry.stages], ['SECURE THE VILLAGE', '3 HOSTILES', 1, 4]);
+  assert.match(entry.text, /marked defenders/);
+  objective.currentPoints[0].remaining = 0;
+  assert.equal(objectiveFor(state).counter, 'REACH CHECKPOINT');
+  assert.match(objectiveFor(state).text, /leader/);
+  objective.phase = 1; state.rescueCount = 1;
+  objective.currentPoints = [{id: 'school', remaining: 2}];
+  const rescue = objectiveFor(state);
+  assert.deepEqual([rescue.label, rescue.counter, rescue.stage], ['RESCUE BOTH SURVIVORS', '1 / 2 SAFE', 2]);
+  assert.match(rescue.text, /School: 2 hostiles/);
+  objective.currentPoints = [{id: 'clinic', remaining: 0}, {id: 'school', remaining: 0}];
+  assert.match(objectiveFor(state).text, /either marked survivor/);
+  objective.phase = 2; objective.currentPoints[0].remaining = 1;
+  assert.deepEqual([objectiveFor(state).label, objectiveFor(state).counter, objectiveFor(state).stage], ['SECURE THE HARBOUR', '1 HOSTILE', 3]);
+  objective.phase = 3; state.extraction.active = true;
+  assert.deepEqual([objectiveFor(state).label, objectiveFor(state).stage, objectiveFor(state).stages], ['EXTRACTION OPEN', 4, 4]);
 });

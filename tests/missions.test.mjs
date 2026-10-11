@@ -14,11 +14,11 @@ function isolated(mission) {
   return game;
 }
 
-test('the three missions have distinct objectives and only the rescue has a civilian', () => {
+test('the three missions have distinct objectives and only First Contact has its two rescue civilians', () => {
   const games = [0, 1, 2].map(mission => new Game({mission}));
-  assert.deepEqual(games.map(game => game.state.objective.type), ['rescue', 'sabotage', 'holdout']);
-  assert.deepEqual(games.map(game => game.civilians.length), [1, 0, 0]);
-  assert.deepEqual(games.map(game => game.state.rescueTarget), [1, 0, 0]);
+  assert.deepEqual(games.map(game => game.state.objective.type), ['operation', 'sabotage', 'holdout']);
+  assert.deepEqual(games.map(game => game.civilians.length), [2, 0, 0]);
+  assert.deepEqual(games.map(game => game.state.rescueTarget), [2, 0, 0]);
   const targets = games[1].state.objective.targets;
   assert.deepEqual(targets.map(({x, y, hp, maxHp, r}) => [x, y, hp, maxHp, r]), [[829, 327, 90, 90, 18], [1300, 570, 90, 90, 18]]);
   assert.ok(targets.every(target => !games[1].enemies.includes(target) && !games[1].world.obstacles.includes(target)));

@@ -1,8 +1,9 @@
-import { Game, MISSIONS } from './engine.js?v=0.6.0';
-import { Renderer } from './renderer.js?v=0.6.0';
-import { InputController, bindAction } from './input.js?v=0.6.0';
-import { AudioEngine } from './audio.js?v=0.6.0';
-import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.6.0';
+import { Game, MISSIONS } from './engine.js?v=0.7.0';
+import { Renderer } from './renderer.js?v=0.7.0';
+import { InputController, bindAction } from './input.js?v=0.7.0';
+import { AudioEngine } from './audio.js?v=0.7.0';
+import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.7.0';
+import { loadCheckpoint, saveCheckpoint, clearCheckpoint, restoreCheckpoint } from './checkpoint.js?v=0.7.0';
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -30,6 +31,9 @@ let sessionId = 0;
 let hintUntil = 0;
 let cards = [];
 let cardCleanups = [];
+let lastCheckpointSequence = 0;
+let checkpointUsed = false;
+let checkpointStorageWarning = false;
 const metrics = { updates: 0, frames: 0, updateMs: 0, renderMs: 0, updateSamples: [], renderSamples: [] };
 
 const input = new InputController({
@@ -158,10 +162,11 @@ function showMissions() {
     const button = document.createElement('button');
     button.className = `mission-card${index === mission ? ' active' : ''}`;
     button.setAttribute('aria-pressed', String(index === mission));
-    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['RECON & RESCUE', 'SABOTAGE & ESCAPE', 'DEFEND & TRANSMIT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
+    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['VILLAGE RESCUE OPERATION', 'SABOTAGE & ESCAPE', 'DEFEND & TRANSMIT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
     button.querySelector('h3').textContent = definition.title;
     button.querySelector('p').textContent = definition.subtitle;
     button.addEventListener('click', () => {
+      clearScene();
       mission = index;
       game = new Game({ mission, difficulty: progress.difficulty });
       renderer.reset();
@@ -174,7 +179,17 @@ function showMissions() {
 
 function showBriefing() {
   text('briefing-title', `MISSION ${String(mission + 1).padStart(2, '0')} / ${MISSIONS[mission].title}`);
-  text('briefing-copy', MISSIONS[mission].objective);
+  text('briefing-copy', mission === 0
+    ? 'Secure the village. Rescue the clinic medic and school radio operator in either order, clear the harbour, then escort everyone to the flare. Choose the exposed road or a longer route through cover. The HUD counts defenders at each objective.'
+    : MISSIONS[mission].objective);
+  const checkpoint = loadCheckpoint(undefined, { mission, difficulty: progress.difficulty });
+  $('start-btn').innerHTML = checkpoint ? 'CONTINUE CHECKPOINT <span>→</span>' : 'DEPLOY SQUAD <span>↗</span>';
+  $('fresh-btn').hidden = !checkpoint;
+  $('checkpoint-note').hidden = !checkpoint;
+  if (checkpoint) {
+    const state = checkpoint.state;
+    text('checkpoint-note', `Saved at ${formatTime(state.time)} · Stage ${state.objective.phase + 1}/4 · ${state.rescueCount}/${state.rescueTarget} survivors. Continue in ${progress.difficulty === 'easy' ? 'Recruit' : progress.difficulty === 'hard' ? 'Veteran' : 'Standard'}.`);
+  }
 }
 
 function createSquadCards() {
@@ -213,6 +228,9 @@ function clearScene() {
   hintUntil = 0; radioUntil = 0;
   lastMessage = ''; lastSquadEvent = 0; lastHud = -Infinity; previousFrame = null;
   metrics.updateSamples.length = 0; metrics.renderSamples.length = 0;
+  for (const cleanup of cardCleanups) cleanup();
+  cards = []; cardCleanups = [];
+  $('squad-list').replaceChildren();
   $('manual').close();
   document.querySelector('.game-toast')?.remove();
   $('touch-hint').hidden = true;
@@ -224,9 +242,17 @@ function clearScene() {
   delete $('result-overlay').dataset.outcome;
 }
 
-function startMission() {
+function startMission({ continueCheckpoint = false } = {}) {
+  const checkpoint = continueCheckpoint ? loadCheckpoint(undefined, { mission, difficulty: progress.difficulty }) : null;
+  const restored = checkpoint ? restoreCheckpoint(checkpoint) : null;
+  if (!restored && mission === 0) clearCheckpoint();
   clearScene();
-  game = new Game({ mission, difficulty: progress.difficulty }).start();
+  game = restored || new Game({ mission, difficulty: progress.difficulty }).start();
+  if (restored) game.pause(false);
+  checkpointUsed = !!restored;
+  game.state.checkpointRestoreUsed = checkpointUsed;
+  lastCheckpointSequence = game.state.checkpointSequence || 0;
+  checkpointStorageWarning = false;
   mode = 'game'; lastStatus = 'playing';
   document.body.classList.add('playing');
   $('intro').hidden = true; $('combat-panel').hidden = false;
@@ -238,7 +264,7 @@ function startMission() {
   text('live-title', MISSIONS[mission].title);
   text('field-location', `MISSION ${String(mission + 1).padStart(2, '0')}`);
   createSquadCards();
-  radio('Squad deployed. Move together. The dead are listening.', 4);
+  radio(restored ? 'Checkpoint restored. Your squad is ready; follow the current objective.' : 'Squad deployed. Move together. The dead are listening.', 4);
   hintUntil = matchMedia('(pointer: coarse)').matches ? 8 : 0;
   $('touch-hint').hidden = hintUntil === 0;
   const deploymentId = sessionId;
@@ -294,7 +320,7 @@ function throwGrenade() {
   if (thrown) {
     audio.cue('grenade');
     if (!reducedMotion.matches && navigator.vibrate) navigator.vibrate(18);
-  } else if (!game.state.grenades) radio(mission === 0 ? 'No grenades left. Rescue the survivor for supplies.' : 'No grenades left. Your rifles still work.');
+  } else if (!game.state.grenades) radio(mission === 0 ? 'No grenades left. Rescue a survivor for supplies.' : 'No grenades left. Your rifles still work.');
   if (input.pointerType !== 'touch') focusField();
   updateHud();
 }
@@ -351,6 +377,11 @@ function updateHud() {
   const objective = objectiveFor(state);
   text('objective-text', objective.text);
   text('mission-goal', objective.label); text('mission-detail', objective.text); text('mission-counter', objective.counter);
+  $('mission-stage').hidden = !objective.stage;
+  if (objective.stage) {
+    text('mission-stage', `${objective.stage}/${objective.stages}`);
+    $('mission-stage').setAttribute('aria-label', `Stage ${objective.stage} of ${objective.stages}`);
+  }
   const strip = $('mission-strip');
   const phase = `${mission}:${objective.label}`;
   if (strip.dataset.phase !== phase) {
@@ -383,7 +414,7 @@ function showResult(won) {
   text('result-label', won ? (mission === 2 ? 'OPERATION COMPLETE' : 'MISSION COMPLETE') : 'SQUAD LOST');
   $('result-title').innerHTML = won ? (mission === 2 ? 'SIGNAL<br>RESTORED.' : 'MADE IT<br>OUT ALIVE.') : 'RADIO<br>SILENCE.';
   text('result-copy', won ? [
-    'The radio operator and your squad are home. Regroup for the next operation.',
+    'The medic, radio operator and your surviving squad are home. The village route is secure. Regroup for the next operation.',
     'Both jammers are down. Your squad slipped out before the dead closed in.',
     'Transmission received. Your squad is home, and help knows where to find the island.',
   ][mission] : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
@@ -394,11 +425,16 @@ function showResult(won) {
   if (lost.length) {
     const element = document.createElement('p'); element.className = 'memorial'; element.textContent = 'IN MEMORY: ' + lost.join(' · '); $('memorial').append(element);
   }
-  $('next-btn').innerHTML = won ? (mission === 2 ? 'PLAY AGAIN <span>↗</span>' : 'NEXT MISSION <span>→</span>') : 'TRY AGAIN <span>↗</span>';
+  const retryCheckpoint = !won && !!loadCheckpoint(undefined, { mission, difficulty: progress.difficulty });
+  $('next-btn').innerHTML = won ? (mission === 2 ? 'PLAY AGAIN <span>↗</span>' : 'NEXT MISSION <span>→</span>')
+    : retryCheckpoint ? 'RETRY CHECKPOINT <span>↗</span>' : 'TRY AGAIN <span>↗</span>';
+  if (retryCheckpoint) text('result-copy', 'Return to your last secured checkpoint with the squad, supplies and progress saved there. Use cover on the next approach.');
   if (won) {
+    if (mission === 0) clearCheckpoint();
     if (!progress.completed.includes(mission)) progress.completed.push(mission);
-    progress.best[mission] = Math.min(progress.best[mission] ?? Infinity, state.time);
+    if (!checkpointUsed) progress.best[mission] = Math.min(progress.best[mission] ?? Infinity, state.time);
     persist();
+    if (checkpointUsed) text('result-copy', 'The medic, radio operator and your surviving squad are home. Mission complete from a checkpoint; best times are recorded for fresh runs.');
   }
   audio.cue(won ? 'win' : 'lose');
 }
@@ -416,15 +452,17 @@ function closeManual() {
 }
 
 bindAction($('sound-btn'), toggleSound);
-bindAction($('start-btn'), startMission);
+bindAction($('start-btn'), () => startMission({ continueCheckpoint: true }));
+bindAction($('fresh-btn'), () => startMission());
 bindAction($('pause-btn'), () => pauseGame(game.state.status !== 'paused'));
 bindAction($('resume-btn'), () => pauseGame(false));
-bindAction($('restart-btn'), startMission);
+bindAction($('restart-btn'), () => startMission());
 bindAction($('hold-btn'), toggleHold);
 bindAction($('grenade-btn'), throwGrenade);
 bindAction($('next-btn'), () => {
-  if (game.state.status === 'won') mission = mission === 2 ? 0 : mission + 1;
-  startMission();
+  const won = game.state.status === 'won';
+  if (won) mission = mission === 2 ? 0 : mission + 1;
+  startMission({ continueCheckpoint: !won });
 });
 for (const id of ['return-btn', 'exit-btn', 'result-base-btn']) bindAction($(id), backToBase);
 for (const id of ['manual-btn', 'pause-manual-btn']) bindAction($(id), openManual);
@@ -438,7 +476,7 @@ $('manual').addEventListener('click', event => {
 $('difficulty').value = progress.difficulty;
 $('difficulty').addEventListener('change', () => {
   progress.difficulty = $('difficulty').value; persist();
-  if (mode === 'base') { game = new Game({ mission, difficulty: progress.difficulty }); renderer.reset(); }
+  if (mode === 'base') { clearScene(); game = new Game({ mission, difficulty: progress.difficulty }); renderer.reset(); showBriefing(); }
 });
 
 function pauseWhenAway() {
@@ -468,6 +506,17 @@ function frame(now) {
   const updateStart = performance.now();
   if (mode === 'game') {
     game.update(delta, input.sample());
+    const sequence = game.state.checkpointSequence || 0;
+    if (sequence > lastCheckpointSequence && game.state.status === 'playing') {
+      lastCheckpointSequence = sequence;
+      if (saveCheckpoint(undefined, game)) {
+        lastMessage = game.state.message;
+        radio(`Checkpoint saved. ${game.state.message || 'Your squad can return here after a loss.'}`, 4);
+      } else if (!checkpointStorageWarning) {
+        checkpointStorageWarning = true;
+        toast('This browser could not save the checkpoint. Keep this tab open to continue playing.');
+      }
+    }
     audio.consume(game.state);
     metrics.updates++;
     if (now - lastHud >= 80 || ['won', 'lost'].includes(game.state.status) && lastStatus !== game.state.status) {

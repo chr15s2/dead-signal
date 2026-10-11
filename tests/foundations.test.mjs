@@ -7,7 +7,7 @@ const advance = (game, seconds, input = {}) => {
   for (let i = 0; i < Math.round(seconds * 60); i++) game.update(1 / 60, input);
 };
 function isolatedGame() {
-  const game = new Game().start();
+  const game = new Game({mission: 1}).start();
   game.state.enemies = [];
   game.setHoldFire(true);
   return game;
@@ -60,8 +60,9 @@ test('squad and rescued survivors route around cover without teleporting', () =>
     if (!i) continue;
     soldier.x = 400; soldier.y = 510 + i * 28;
   }
-  const civilian = game.civilians[0];
-  civilian.rescued = true; civilian.x = 410; civilian.y = 590;
+  // Deliberate rescue-following fixture; this is a navigation contract, not a mission run.
+  const civilian = {id: 100, type: 'civilian', alive: true, rescued: true, x: 410, y: 590, hp: 1, maxHp: 1, path: null, pathTimer: 0};
+  game.state.civilians = [civilian];
   const followers = [...game.soldiers.slice(1), civilian];
   for (let frame = 0; frame < 12 * 60; frame++) {
     const before = followers.map(actor => ({x: actor.x, y: actor.y}));
@@ -132,7 +133,7 @@ test('water collision uses the coastline supplied to the renderer', () => {
 
 test('extraction waits for living squad and survivors to regroup', () => {
   const game = isolatedGame();
-  game.state.rescueCount = game.state.rescueTarget;
+  for (const target of game.state.objective.targets) game.damage(target, 1000, 'player');
   game.leader.x = game.extraction.x; game.leader.y = game.extraction.y;
   game.soldiers[1].x = 1080; game.soldiers[1].y = 300;
   game.soldiers[2].x = 1100; game.soldiers[2].y = 450;
@@ -156,7 +157,7 @@ test('simulation events are monotonic, bounded and identify damage recipients', 
 
 // A small commander exercises real missions through public actions only. No
 // altered health, deleted enemies, moved actors or skipped objective conditions.
-function jammerFiringPosition(game, target) {
+function jammerFiringPosition(game, target, range = 170) {
   // Find an open firing position with a clear view, rather than walking onto a
   // device or stopping on the far side of a hut. These are read-only decisions;
   // the commander still issues the same movement orders a player can use.
@@ -164,7 +165,7 @@ function jammerFiringPosition(game, target) {
   const angle = Math.atan2(leader.y - target.y, leader.x - target.x);
   const positions = Array.from({length: 16}, (_, i) => {
     const bearing = angle + i * Math.PI / 8;
-    return {x: target.x + Math.cos(bearing) * 170, y: target.y + Math.sin(bearing) * 170};
+    return {x: target.x + Math.cos(bearing) * range, y: target.y + Math.sin(bearing) * range};
   }).filter(point => !game.blocked(point.x, point.y, 15) && game.hasLOS(point, target));
   return positions.sort((a, b) => distance(a, leader) - distance(b, leader))[0];
 }
@@ -172,16 +173,41 @@ function jammerFiringPosition(game, target) {
 function playMission(mission, seed) {
   const game = new Game({mission, difficulty: 'normal', seed}).start();
   let decisionAt = 0, grenadeAt = -10;
-  for (let frame = 0; frame < 120 * 60 && game.state.status === 'playing'; frame++) {
+  for (let frame = 0; frame < 240 * 60 && game.state.status === 'playing'; frame++) {
     if (game.state.time >= decisionAt) {
       decisionAt = game.state.time + .35;
+      if (mission === 0 && game.leader.hp < 35) {
+        const replacement = game.soldiers.filter(soldier => soldier.alive)
+          .sort((a, b) => b.hp - a.hp)[0];
+        if (replacement.hp > game.leader.hp + 25) game.selectSoldier(replacement.id);
+      }
       const leader = game.leader;
       const enemies = game.enemies.filter(enemy => enemy.alive).sort((a, b) => distance(a, leader) - distance(b, leader));
       const nearby = enemies.filter(enemy => distance(enemy, leader) < 220);
-      if (nearby.length >= 2 && game.state.time - grenadeAt > 4 && game.grenade(nearby[0].x, nearby[0].y)) grenadeAt = game.state.time;
+      if (mission === 0) {
+        const candidate = enemies.find(enemy => distance(enemy, leader) < 315);
+        const soldierClose = candidate?.type === 'soldier' && distance(candidate, leader) < 240;
+        const clustered = candidate && enemies.some(enemy => enemy !== candidate && distance(enemy, candidate) < CONFIG.grenadeRadius);
+        if ((soldierClose || clustered) && game.state.time - grenadeAt > 3 && game.grenade()) grenadeAt = game.state.time;
+      } else if (nearby.length >= 2 && game.state.time - grenadeAt > 4 && game.grenade(nearby[0].x, nearby[0].y)) grenadeAt = game.state.time;
       let destination;
       if (game.extraction.active) destination = game.extraction;
-      else if (mission === 0) destination = game.civilians.find(civilian => !civilian.rescued);
+      else if (mission === 0) {
+        // Fight only the current marked guard detail. Read-only route lengths
+        // choose a rescue site; the same tap orders and autofire do the work.
+        const points = game.state.objective.currentPoints;
+        const routeLength = point => {
+          const route = game.findPath(leader.x, leader.y, point.x, point.y);
+          let previous = leader, length = 0;
+          for (const waypoint of route) { length += distance(previous, waypoint); previous = waypoint; }
+          return route.length ? length : Infinity;
+        };
+        const point = [...points].sort((a, b) => routeLength(a) - routeLength(b))[0];
+        const guard = point && enemies.find(enemy => enemy.operationGroup === point.group);
+        if (guard) destination = distance(leader, guard) < 160 && game.hasLOS(leader, guard)
+          ? leader : jammerFiringPosition(game, guard, 158);
+        else destination = point;
+      }
       else if (mission === 1) {
         const target = game.state.objective.targets.filter(target => target.alive)
           .sort((a, b) => distance(a, leader) - distance(b, leader))[0];
@@ -201,6 +227,12 @@ for (const seed of [1, 42, 531, 1989, 2143]) {
     assert.equal(game.state.status, 'won', `squad did not extract after ${game.state.time.toFixed(1)}s`);
     assert.ok(game.soldiers.filter(soldier => soldier.alive).every(soldier => distance(soldier, game.extraction) < game.extraction.r + 28));
     assert.ok(game.civilians.every(civilian => !civilian.rescued || distance(civilian, game.extraction) < game.extraction.r + 85));
+    if (mission === 0) {
+      assert.equal(game.state.objective.completed, 4);
+      assert.equal(game.state.rescueCount, 2);
+      assert.equal(game.state.checkpointSequence, 4);
+      assert.ok(game.civilians.every(civilian => civilian.rescued));
+    }
     if (mission === 1) assert.ok(game.state.objective.targets.every(target => !target.alive));
     if (mission === 2) assert.equal(game.state.objective.held, game.state.objective.duration);
   });
