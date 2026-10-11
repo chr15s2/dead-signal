@@ -3,7 +3,7 @@
  * Dependency-free ES module. Coordinates and velocities are world pixels / second.
  * MIT licensed; see the project LICENSE.
  */
-import { findRoute } from './navigation.js?v=0.5.0';
+import { findRoute } from './navigation.js?v=0.6.0';
 
 export const MISSIONS = Object.freeze([
   {
