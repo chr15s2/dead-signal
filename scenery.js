@@ -57,13 +57,16 @@ export function buildScenery(state) {
   const world = state?.world;
   if (!world) return [];
   const mission = Math.max(0, Math.min(2, Math.floor(Number(state.mission) || 0)));
-  const protectedPoints = [{x: 220, y: 970, r: 70}];
+  const protectedPoints = [{...(world.spawn||{x:220,y:970}),r:70}];
   if (state.extraction) protectedPoints.push({...state.extraction, r: state.extraction.r + 20});
   for (const person of state.civilians || []) protectedPoints.push({x: person.x, y: person.y, r: 64});
   if (state.objective?.zone) protectedPoints.push({...state.objective.zone, r: state.objective.zone.r + 34});
   for (const device of state.objective?.targets || []) protectedPoints.push({x: device.x, y: device.y, r: 62});
+  for (const stage of state.objective?.stages || []) protectedPoints.push({x:stage.x,y:stage.y,r:65});
   const props = [];
-  for (const [type, x, y, variant, radius] of [...COMMON, ...MISSION_PROPS[mission]]) {
+  const candidates=world.scenery||[...COMMON,...MISSION_PROPS[mission]];
+  for (const candidate of candidates) {
+    const [type,x,y,variant=0,radius=14]=Array.isArray(candidate)?candidate:[candidate.type,candidate.x,candidate.y,candidate.variant,candidate.radius];
     if (x < 30 || y < 40 || x > world.width - 50 || y > world.height - 35) continue;
     if (protectedPoints.some(point => Math.hypot(x - point.x, y - point.y) < point.r)) continue;
     // Keep the sprite footprint clear of actual cover. Existing roof weathering

@@ -1,6 +1,6 @@
 /** Browser progress and objective text. No DOM or simulation side effects. */
 export const SAVE_KEY = 'dead-signal-v1';
-export const MISSION_REVISION = 1;
+export const MISSION_REVISION = 2;
 
 export function normalizeProgress(value) {
   const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false, missionRevision: MISSION_REVISION };
@@ -9,10 +9,11 @@ export function normalizeProgress(value) {
     result.completed = [...new Set(value.completed.filter(id => Number.isInteger(id) && id >= 0 && id < 3))].sort();
   }
   if (value.best && typeof value.best === 'object' && !Array.isArray(value.best)) {
-    // The new sabotage and relay runs cannot be compared to their old rescue
-    // and clear-the-map times. Keep campaign completion, preferences and M1.
-    const unchangedTimes = value.missionRevision === MISSION_REVISION;
-    for (let id = 0; id < (unchangedTimes ? 3 : 1); id++) {
+    // First Contact is now a longer operation. Revision 1's other two missions
+    // are unchanged; older or unknown revisions have no comparable times.
+    const comparable = value.missionRevision === MISSION_REVISION ? [0, 1, 2]
+      : value.missionRevision === 1 ? [1, 2] : [];
+    for (const id of comparable) {
       const time = value.best[id];
       if (typeof time === 'number' && Number.isFinite(time) && time > 0) result.best[id] = time;
     }
@@ -44,16 +45,36 @@ export function saveProgress(storage, value) {
 }
 
 export function objectiveFor(state) {
+  const objective = state.objective || {type: 'rescue'};
+  const stage = objective.type === 'operation' ? { stage: objective.phase + 1, stages: objective.stageCount || 4 } : {};
   if (state.extraction.active) {
     if (state.extraction.regrouping) {
-      return { label: 'REGROUP', text: state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
+      return { ...stage, label: 'REGROUP', text: state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
     }
     if (state.extraction.progress > 0) {
-      return { label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
+      return { ...stage, label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
     }
-    return { label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
+    return { ...stage, label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
   }
-  const objective = state.objective || {type: 'rescue'};
+  if (objective.type === 'operation') {
+    const point = objective.currentPoints?.[0];
+    if (objective.phase === 3) {
+      return { ...stage, label: 'EVACUATE EVERYONE', text: 'Escort your squad and both survivors to the flare.', counter: 'REACH THE FLARE', progress: 0 };
+    }
+    if (objective.phase === 1) {
+      const sites = objective.currentPoints || [];
+      const siteName = site => site.id === 'clinic' ? 'Clinic' : 'School';
+      const detail = !sites.length ? 'Survivors rescued. Regroup for the harbour.' : sites.every(site => !site.remaining)
+        ? sites.length > 1 ? 'Both sites clear. Reach either marked survivor.' : `${siteName(sites[0] || {})} clear. Reach the marked survivor.`
+        : sites.map(site => site.remaining ? `${siteName(site)}: ${site.remaining} hostile${site.remaining === 1 ? '' : 's'}` : `${siteName(site)} clear`).join(' · ') + '.';
+      return { ...stage, label: 'RESCUE BOTH SURVIVORS', text: detail,
+        counter: `${state.rescueCount} / ${state.rescueTarget} SAFE`, progress: null };
+    }
+    const remaining = Math.max(0, point?.remaining || 0);
+    return { ...stage, label: objective.phase === 0 ? 'SECURE THE VILLAGE' : 'SECURE THE HARBOUR',
+      text: remaining ? 'Clear marked defenders. Approach through cover.' : 'Reach the cleared checkpoint with your leader.',
+      counter: remaining ? `${remaining} HOSTILE${remaining === 1 ? '' : 'S'}` : 'REACH CHECKPOINT', progress: null };
+  }
   if (objective.type === 'rescue') {
     return { label: 'RESCUE', text: 'Reach the marked survivor. Your squad follows.', counter: `${state.rescueCount} / ${state.rescueTarget} SAFE`, progress: null };
   }

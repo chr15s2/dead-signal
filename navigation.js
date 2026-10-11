@@ -5,11 +5,6 @@
  */
 
 const CELL = 40;
-const WIDTH = 1600;
-const HEIGHT = 1200;
-const COLS = WIDTH / CELL;
-const ROWS = HEIGHT / CELL;
-const COUNT = COLS * ROWS;
 const BODY_RADIUS = 15;
 const ACTOR_RADIUS = 11;
 const DIRECTIONS = [
@@ -17,17 +12,28 @@ const DIRECTIONS = [
   [-1, -1], [1, -1], [-1, 1], [1, 1],
 ];
 const edgeCaches = new WeakMap();
-const pointAt = index => ({
-  x: (index % COLS) * CELL + CELL / 2,
-  y: Math.floor(index / COLS) * CELL + CELL / 2,
+const geometryCaches = new WeakMap();
+function dimensions(game) {
+  let geometry = geometryCaches.get(game);
+  const {width, height} = game.world;
+  if (!geometry || geometry.width !== width || geometry.height !== height) {
+    const cols = Math.ceil(width / CELL), rows = Math.ceil(height / CELL);
+    geometry = {width, height, cols, rows, count: cols * rows};
+    geometryCaches.set(game, geometry);
+  }
+  return geometry;
+}
+const pointAt = (index, cols) => ({
+  x: (index % cols) * CELL + CELL / 2,
+  y: Math.floor(index / cols) * CELL + CELL / 2,
 });
 
 // The graph only changes when obstacles change. Cache expensive body-clear edge
 // queries across actors; a rebuilt grid or new navigation version invalidates it.
-function edgeCache(game) {
+function edgeCache(game, geometry) {
   let cache = edgeCaches.get(game);
-  if (!cache || cache.grid !== game.grid || cache.version !== game.navVersion) {
-    cache = {grid: game.grid, version: game.navVersion, edges: new Uint8Array(COUNT * 8)};
+  if (!cache || cache.grid !== game.grid || cache.version !== game.navVersion || cache.geometry !== geometry) {
+    cache = {grid: game.grid, version: game.navVersion, geometry, edges: new Uint8Array(geometry.count * 8)};
     edgeCaches.set(game, cache);
   }
   return cache.edges;
@@ -37,6 +43,7 @@ function edgeCache(game) {
 // Nearby visible centres form virtual edges to the precise actor position. Keep
 // one additional ring so a local grid dead end cannot hide the other route out.
 function connectors(game, x, y, radius = BODY_RADIUS) {
+  const {cols: COLS, rows: ROWS} = dimensions(game);
   const cx = Math.max(0, Math.min(COLS - 1, Math.floor(x / CELL)));
   const cy = Math.max(0, Math.min(ROWS - 1, Math.floor(y / CELL)));
   const result = [];
@@ -50,7 +57,7 @@ function connectors(game, x, y, radius = BODY_RADIUS) {
         if (gx < 0 || gy < 0 || gx >= COLS || gy >= ROWS) continue;
         const index = gy * COLS + gx;
         if (game.grid[index]) continue;
-        const point = pointAt(index);
+        const point = pointAt(index, COLS);
         if (!game.walkableSegment(x, y, point.x, point.y, radius)) continue;
         result.push({index, cost: Math.hypot(point.x - x, point.y - y)});
       }
@@ -111,6 +118,8 @@ function smooth(game, sx, sy, points) {
 
 /** Return safe waypoints, or [] when the exact destination is unreachable. */
 export function findRoute(game, sx, sy, ex, ey) {
+  const geometry = dimensions(game);
+  const {cols: COLS, rows: ROWS, count: COUNT} = geometry;
   if (![sx, sy, ex, ey].every(Number.isFinite)) return [];
   if (game.blocked(sx, sy, ACTOR_RADIUS) || game.blocked(ex, ey, BODY_RADIUS)) return [];
   const escapingPadding = game.blocked(sx, sy, BODY_RADIUS);
@@ -123,11 +132,11 @@ export function findRoute(game, sx, sy, ex, ey) {
   const endCosts = new Float64Array(COUNT).fill(Infinity);
   for (const end of ends) endCosts[end.index] = end.cost;
   const costs = new Float64Array(COUNT).fill(Infinity);
-  const parents = new Int16Array(COUNT).fill(-1);
+  const parents = new Int32Array(COUNT).fill(-1);
   const closed = new Uint8Array(COUNT);
-  const edges = edgeCache(game);
+  const edges = edgeCache(game, geometry);
   const heuristic = index => {
-    const point = pointAt(index);
+    const point = pointAt(index, COLS);
     return Math.hypot(point.x - ex, point.y - ey);
   };
   const heap = [];
@@ -147,7 +156,7 @@ export function findRoute(game, sx, sy, ex, ey) {
     if (Number.isFinite(endCosts[current])) { end = current; break; }
     const cx = current % COLS;
     const cy = Math.floor(current / COLS);
-    const point = pointAt(current);
+    const point = pointAt(current, COLS);
     for (let direction = 0; direction < DIRECTIONS.length; direction++) {
       const [dx, dy] = DIRECTIONS[direction];
       const nx = cx + dx;
@@ -158,7 +167,7 @@ export function findRoute(game, sx, sy, ex, ey) {
       if (dx && dy && (game.grid[cy * COLS + nx] || game.grid[ny * COLS + cx])) continue;
       const edge = current * 8 + direction;
       if (!edges[edge]) {
-        const neighbor = pointAt(next);
+        const neighbor = pointAt(next, COLS);
         edges[edge] = game.walkableSegment(point.x, point.y, neighbor.x, neighbor.y) ? 2 : 1;
       }
       if (edges[edge] !== 2) continue;
@@ -172,7 +181,7 @@ export function findRoute(game, sx, sy, ex, ey) {
   if (end < 0) return [];
 
   const points = [];
-  for (let current = end; current >= 0; current = parents[current]) points.push(pointAt(current));
+  for (let current = end; current >= 0; current = parents[current]) points.push(pointAt(current, COLS));
   points.reverse();
   points.push({x: ex, y: ey});
   if (escapingPadding) {

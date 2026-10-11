@@ -74,6 +74,8 @@ h1 > span { color: var(--orange); }
 .primary-button span { font-size: 24px; line-height: 1; }
 .primary-button:hover { background: #c95335; }
 .primary-button:active { transform: translateY(1px); }
+.checkpoint-note { margin: 11px 0 0; padding-left: 9px; border-left: 2px solid #77966d; color: var(--muted); font: 500 9px/1.6 var(--mono); }
+.fresh-button { width: 100%; min-height: 44px; font-size: 8px; text-align: center; }
 .play-note { display: flex; justify-content: space-between; gap: 7px; margin-top: 13px; font: 500 7px var(--mono); letter-spacing: .02em; color: var(--muted); }
 .touch-note::before { content: '●'; color: var(--ink); font-size: 6px; margin-right: 5px; }
 .field-panel { display: flex; flex-direction: column; min-width: 0; background: var(--ink); }
@@ -176,6 +178,8 @@ kbd { font: 9px var(--mono); border: 1px solid var(--line); padding: 0 3px; }
 .return-button { font-size: 8px; }
 .mission-strip { position: relative; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 61px; gap: 16px; padding: 10px 18px 12px; background: linear-gradient(100deg, #12332d, #173e33); color: #f2ecd0; border-bottom: 1px solid #aec49955; box-shadow: inset 0 1px #e5e9bf08; }
 .mission-status { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.mission-instruction { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.mission-stage { flex-shrink: 0; padding: 2px 4px; border: 1px solid #aec49977; color: #f2ecd0; font: 600 8px/1 var(--mono); letter-spacing: 0; }
 .mission-status strong { font: 600 10px var(--mono); letter-spacing: .065em; color: #e0e6b9; }
 .mission-status > span { font-size: 11px; line-height: 1.35; color: #c1d0b8; }
 .mission-strip[data-reveal=a] .mission-status { animation: objective-note-a .22s ease-out; }
@@ -226,6 +230,7 @@ kbd { font: 9px var(--mono); border: 1px solid var(--line); padding: 0 3px; }
 .secondary-button { display: block; width: 100%; min-height: 44px; padding: 12px 10px; border: 1px solid var(--line); margin-top: 8px; background: transparent; font: 600 9px var(--mono); letter-spacing: .035em; }
 .secondary-button:hover { background: #e3e5c3; }
 .overlay-card > .text-button { width: 100%; min-height: 42px; margin: 8px 0 -7px; font-size: 8px; }
+#pause-overlay .overlay-card > button { min-height: 44px; }
 .result-stats { display: flex; justify-content: space-between; gap: 10px; margin: 15px 0; padding: 12px 0; border-top: 1px solid #9fab8c; border-bottom: 1px solid #9fab8c; }
 .result-stats span { display: block; font: 500 7px var(--mono); color: var(--muted); }
 .result-stats b { display: block; margin-top: 3px; font: 600 29px var(--display); font-variant-numeric: tabular-nums; }
@@ -296,6 +301,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .difficulty select { font-size: 10px; padding: 7px 2px; }
   .primary-button { grid-column: 1 / -1; min-height: 51px; font-size: 10px; }
   .play-note { grid-column: 1 / -1; margin-top: 12px; font-size: 7px; }
+  .checkpoint-note, .fresh-button { grid-column: 1 / -1; }
   .viewport { min-height: 315px; }
   .field-heading { height: 31px; padding: 0 12px; font-size: 7px; }
   .preview-caption { left: 20px; right: 20px; bottom: 22px; }
@@ -349,6 +355,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .playing .feed-divider { margin: 0 7px; }
   .mission-strip { min-height: 60px; padding: 9px 12px 11px; gap: 10px; }
   .mission-status strong { font-size: 9px; }
+  .mission-stage { font-size: 7px; padding: 2px 3px; }
   .mission-status > span { font-size: 10px; line-height: 1.4; }
   .mission-readout b { font-size: 9px; }
   #weapon-status { font-size: 6px; }
@@ -402,6 +409,16 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .playing .mission-readout { gap: 4px; }
   .playing .field-footer { min-height: calc(24px + env(safe-area-inset-bottom)); }
   .playing .radio { top: 8px; padding-top: 6px; padding-bottom: 6px; font-size: 8px; }
+  #pause-overlay { padding: 10px 14px; }
+  #pause-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.1fr; gap: 6px 12px; padding: 12px 15px; }
+  #pause-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; padding-bottom: 7px; font-size: 7px; }
+  #pause-overlay h2 { grid-column: 1; grid-row: 2; font-size: 34px; margin: 2px 0; }
+  #pause-overlay .overlay-card > p { grid-column: 2; grid-row: 2; align-self: center; margin: 0; font-size: 10px; line-height: 1.45; }
+  #pause-overlay #resume-btn { grid-column: 1 / -1; grid-row: 3; }
+  #pause-overlay #restart-btn { grid-column: 1; grid-row: 4; }
+  #pause-overlay #pause-manual-btn { grid-column: 2; grid-row: 4; }
+  #pause-overlay #exit-btn { grid-column: 1 / -1; grid-row: 5; }
+  #pause-overlay .overlay-card > button { min-height: 44px; margin: 0; padding: 9px 10px; font-size: 8px; }
   #result-overlay { padding: 10px 14px; }
   #result-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.1fr; gap: 6px 12px; padding: 13px 15px; }
   #result-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; padding-bottom: 7px; font-size: 7px; }
@@ -468,16 +485,15 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .overlay-card > p { font-size: 10px; margin-bottom: 13px; }
   .overlay-card .primary-button, .overlay-card .secondary-button { min-height: 40px; padding: 9px 14px; }
   .overlay-card > .text-button { min-height: 36px; }
-  #pause-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.15fr; gap: 7px 20px; max-width: 510px; overflow: visible; }
-  #pause-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; margin-bottom: 4px; }
-  #pause-overlay h2 { grid-column: 1; grid-row: 2 / 4; font-size: 39px; margin: 2px 0 0; }
-  #pause-overlay .overlay-card > p { grid-column: 1; grid-row: 4 / 6; margin: 0; max-width: 165px; font-size: 11px; }
-  #pause-overlay #resume-btn { grid-column: 2; grid-row: 2; }
+  #pause-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.15fr; gap: 6px 12px; padding: 10px 15px; max-width: 510px; overflow: visible; }
+  #pause-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; padding-bottom: 5px; margin: 0; font-size: 7px; }
+  #pause-overlay h2 { grid-column: 1; grid-row: 2; font-size: 30px; margin: 0; }
+  #pause-overlay .overlay-card > p { grid-column: 2; grid-row: 2; align-self: center; margin: 0; font-size: 10px; line-height: 1.45; }
+  #pause-overlay #resume-btn { grid-column: 1; grid-row: 3; }
   #pause-overlay #restart-btn { grid-column: 2; grid-row: 3; }
-  #pause-overlay #pause-manual-btn { grid-column: 2; grid-row: 4; }
-  #pause-overlay #exit-btn { grid-column: 2; grid-row: 5; }
-  #pause-overlay .secondary-button, #pause-overlay .text-button { margin: 0; }
-  #pause-overlay .overlay-card > .text-button { min-height: 32px; }
+  #pause-overlay #pause-manual-btn { grid-column: 1; grid-row: 4; }
+  #pause-overlay #exit-btn { grid-column: 2; grid-row: 4; }
+  #pause-overlay .overlay-card > button { min-height: 44px; margin: 0; padding: 9px 10px; font-size: 8px; }
   #result-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.15fr; gap: 9px 20px; max-width: 510px; }
   #result-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; margin-bottom: 3px; }
   #result-overlay h2 { grid-column: 1; grid-row: 2; margin: 2px 0 0; }
