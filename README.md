@@ -46,6 +46,7 @@ The game uses browser APIs and buildless HTML, CSS, and JavaScript:
 - `dist/engine.js`: deterministic 60 Hz simulation, missions, combat, and objectives. A bounded event journal supplies sound and visual feedback.
 - `dist/navigation.js`: collision-aware routes shared by the leader, followers, and survivors.
 - `dist/renderer.js`: original canvas graphics, camera, coordinate projection, and cached terrain.
+- `dist/actors.js`, `dist/effects.js`, `dist/lighting.js`, and `dist/scenery.js`: bounded, renderer-only character poses, combat feedback, cached sunlight and shadows, and original environmental details.
 - `dist/input.js`: keyboard, mouse, captured touch joystick, and action buttons.
 - `dist/audio.js`: gesture-activated procedural sound and bounded audio voices.
 - `dist/session.js`: validated browser saves and objective presentation.
@@ -75,6 +76,8 @@ Version 0.3.0 gives the island and field interface a more distinctive art direct
 Version 0.4.0 refines existing play: followers respond to turns without chasing stale positions, companions yield to the controlled soldier, and enemies can approach physically reachable targets beside cover. Damage and critical health are clearer in the squad cards, grenade landing markers show the actual blast footprint, terrain orders receive visible confirmation, and friendly identification remains readable behind foliage. Smaller phone viewports retain clear movement hints, noise status, and firing-state icons. No missions, weapons, enemies, or progression systems are added.
 
 Version 0.5.0 gives the existing three missions distinct objectives: rescue the radio operator, sabotage two signal jammers, and defend a relay during its transmission. Mission markers, briefings, counters, progress, and results follow each objective. Rifles can always finish sabotage, relay progress pauses outside its zone, and holdout extraction no longer requires clearing the whole map. Legacy best times for the two redesigned missions reset once; completions, mission-one times, difficulty, and sound preferences remain.
+
+Version 0.6.0 polishes the existing art: warm afternoon light and cool projected shadows, more detailed characters with faction-specific movement and recoil, restrained material-aware combat effects, sparse roadside equipment and weathered buildings, and clearer squad portraits, health, noise status, and field dispatches. Visual effects use their own deterministic randomness and bounded caches; they do not change the simulation, mission rules, or saves. Pausing freezes simulation-clock animation, and reduced motion removes decorative movement and interface transitions. Small phone results keep both action buttons visible.
 
 ## Hosting and licensing
 
