@@ -1,8 +1,8 @@
-import { Game, MISSIONS } from './engine.js?v=0.5.0';
-import { Renderer } from './renderer.js?v=0.5.0';
-import { InputController, bindAction } from './input.js?v=0.5.0';
-import { AudioEngine } from './audio.js?v=0.5.0';
-import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.5.0';
+import { Game, MISSIONS } from './engine.js?v=0.6.0';
+import { Renderer } from './renderer.js?v=0.6.0';
+import { InputController, bindAction } from './input.js?v=0.6.0';
+import { AudioEngine } from './audio.js?v=0.6.0';
+import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.6.0';
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -111,11 +111,16 @@ function drawPortrait(target, index, alive = true) {
   context.imageSmoothingEnabled = false;
   context.fillStyle = ['#e5d8ae', '#dfcfac', '#e0dab6'][index % 3];
   context.fillRect(0, 0, 24, 24);
-  context.fillStyle = '#c6bd95';
-  context.fillRect(1, 2, 5, 1); context.fillRect(18, 20, 4, 1);
+  // Hand-inked enlistment photographs: quiet paper grain, a sunlit face and
+  // individual kit details that remain legible at the phone's 21px size.
+  context.fillStyle = '#f4e8c5'; context.fillRect(1, 1, 22, 1); context.fillRect(1, 2, 1, 20);
+  context.fillStyle = '#b9b891';
+  context.fillRect(20, 2, 2, 20); context.fillRect(2, 21, 18, 1);
+  context.fillStyle = '#d0c5a0';
+  context.fillRect(3, 4, 3, 1); context.fillRect(18, 7, 2, 1); context.fillRect(3, 12, 2, 1);
   if (!alive) {
-    context.fillStyle = '#7a8573'; context.fillRect(4, 17, 16, 7);
-    context.fillStyle = '#aaa88b'; context.fillRect(7, 7, 10, 9); context.fillRect(9, 16, 6, 3);
+    context.fillStyle = '#66786a'; context.fillRect(4, 17, 16, 7);
+    context.fillStyle = '#c2bda0'; context.fillRect(7, 7, 10, 9); context.fillRect(9, 16, 6, 3);
     context.fillStyle = '#485c50'; context.fillRect(8, 10, 3, 3); context.fillRect(14, 10, 3, 3);
     context.fillRect(11, 14, 2, 2); context.fillRect(9, 17, 1, 2); context.fillRect(12, 17, 1, 2); context.fillRect(15, 17, 1, 2);
     return;
@@ -125,17 +130,26 @@ function drawPortrait(target, index, alive = true) {
   context.fillStyle = '#2e8074'; context.fillRect(4, 19, 16, 5);
   context.fillStyle = '#72b89a'; context.fillRect(4, 18, 5, 2); context.fillRect(16, 18, 4, 2);
   context.fillStyle = '#bea875'; context.fillRect(7, 19, 2, 5); context.fillRect(16, 19, 2, 5);
+  context.fillStyle = '#ecdbac'; context.fillRect(7, 19, 1, 4); context.fillRect(16, 19, 1, 4);
+  context.fillStyle = '#183e36'; context.fillRect(11, 20, 3, 4);
+  context.fillStyle = '#648b75'; context.fillRect(11, 20, 3, 1);
   context.fillStyle = ['#dcb588', '#b9865d', '#e4c398'][index % 3];
   context.fillRect(7, 8, 11, 9); context.fillRect(6, 10, 1, 4); context.fillRect(18, 10, 1, 4); context.fillRect(10, 17, 5, 2);
   context.fillStyle = ['#b28c65', '#986644', '#c49d73'][index % 3];
   context.fillRect(15, 9, 3, 7); context.fillRect(8, 16, 9, 1); context.fillRect(12, 12, 1, 2);
+  context.fillStyle = ['#f0cc9e', '#d8a777', '#f5d6aa'][index % 3];
+  context.fillRect(8, 9, 4, 1); context.fillRect(8, 12, 1, 2); context.fillRect(11, 14, 2, 1);
   context.fillStyle = '#233c32'; context.fillRect(8, 11, 2, 1); context.fillRect(15, 11, 2, 1);
   context.fillRect(11, 15, 3, 1);
-  if (index === 1) { context.fillStyle = '#665c42'; context.fillRect(8, 15, 3, 2); context.fillRect(14, 15, 3, 2); }
+  if (index === 0) { context.fillStyle = '#b47957'; context.fillRect(9, 13, 1, 2); }
+  if (index === 1) { context.fillStyle = '#665c42'; context.fillRect(8, 15, 3, 2); context.fillRect(14, 15, 3, 2); context.fillRect(11, 17, 3, 1); }
+  if (index === 2) { context.fillStyle = '#73553e'; context.fillRect(6, 9, 1, 7); context.fillRect(18, 9, 1, 7); }
   context.fillStyle = '#173e36'; context.fillRect(6, 6, 13, 3); context.fillRect(8, 3, 9, 3);
   context.fillStyle = '#28584b'; context.fillRect(7, 5, 11, 3); context.fillRect(9, 3, 7, 3);
   context.fillStyle = '#769c70'; context.fillRect(9, 4, 6, 1); context.fillRect(8, 5, 2, 1);
   context.fillStyle = '#d7d5a1'; context.fillRect(6, 8, 13, 1);
+  context.fillStyle = ['#d86c49', '#d9cc96', '#9ec3a0'][index % 3];
+  context.fillRect(14, 5, 2, 2);
 }
 
 function showMissions() {
@@ -205,6 +219,9 @@ function clearScene() {
   $('radio').hidden = true;
   $('pause-overlay').hidden = true;
   $('result-overlay').hidden = true;
+  delete $('mission-strip').dataset.phase;
+  delete $('mission-strip').dataset.reveal;
+  delete $('result-overlay').dataset.outcome;
 }
 
 function startMission() {
@@ -313,6 +330,7 @@ function updateHud() {
   $('noise-fill').style.width = noise + '%';
   $('noise-fill').style.background = noise > 65 ? '#d46b43' : noise > 30 ? '#b49b54' : '#859b68';
   text('noise-label', noise > 65 ? 'HORDE ALERT' : noise > 30 ? 'HEARD' : 'QUIET');
+  $('noise-label').dataset.level = noise > 65 ? 'alert' : noise > 30 ? 'heard' : 'quiet';
   $('noise-fill').parentElement.setAttribute('aria-valuenow', Math.round(noise));
   for (const card of cards) {
     const { soldier, button, health, hp } = card;
@@ -333,6 +351,14 @@ function updateHud() {
   const objective = objectiveFor(state);
   text('objective-text', objective.text);
   text('mission-goal', objective.label); text('mission-detail', objective.text); text('mission-counter', objective.counter);
+  const strip = $('mission-strip');
+  const phase = `${mission}:${objective.label}`;
+  if (strip.dataset.phase !== phase) {
+    // Alternate two identical CSS reveals only on a new instruction. Counter
+    // updates never restart the animation; hiding a scene cancels it naturally.
+    if (strip.dataset.phase) strip.dataset.reveal = strip.dataset.reveal === 'a' ? 'b' : 'a';
+    strip.dataset.phase = phase;
+  }
   $('mission-progress').hidden = objective.progress === null;
   $('mission-progress').value = objective.progress ?? 0;
   $('mission-progress').setAttribute('aria-label', state.extraction.active ? 'Extraction progress' : operation?.type === 'holdout' ? 'Radio uplink progress' : 'Mission progress');
@@ -353,6 +379,7 @@ function showResult(won) {
   input.reset(); audio.pause(true);
   $('touch-controls').hidden = true; $('touch-hint').hidden = true; $('radio').hidden = true;
   $('result-overlay').hidden = false;
+  $('result-overlay').dataset.outcome = won ? 'won' : 'lost';
   text('result-label', won ? (mission === 2 ? 'OPERATION COMPLETE' : 'MISSION COMPLETE') : 'SQUAD LOST');
   $('result-title').innerHTML = won ? (mission === 2 ? 'SIGNAL<br>RESTORED.' : 'MADE IT<br>OUT ALIVE.') : 'RADIO<br>SILENCE.';
   text('result-copy', won ? [
