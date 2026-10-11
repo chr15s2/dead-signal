@@ -167,6 +167,8 @@ h1 > span { color: var(--orange); }
 .primary-button span { font-size: 24px; line-height: 1; }
 .primary-button:hover { background: #c95335; }
 .primary-button:active { transform: translateY(1px); }
+.checkpoint-note { margin: 11px 0 0; padding-left: 9px; border-left: 2px solid #77966d; color: var(--muted); font: 500 9px/1.6 var(--mono); }
+.fresh-button { width: 100%; min-height: 44px; font-size: 8px; text-align: center; }
 .play-note { display: flex; justify-content: space-between; gap: 7px; margin-top: 13px; font: 500 7px var(--mono); letter-spacing: .02em; color: var(--muted); }
 .touch-note::before { content: '●'; color: var(--ink); font-size: 6px; margin-right: 5px; }
 .field-panel { display: flex; flex-direction: column; min-width: 0; background: var(--ink); }
@@ -269,6 +271,8 @@ kbd { font: 9px var(--mono); border: 1px solid var(--line); padding: 0 3px; }
 .return-button { font-size: 8px; }
 .mission-strip { position: relative; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 61px; gap: 16px; padding: 10px 18px 12px; background: linear-gradient(100deg, #12332d, #173e33); color: #f2ecd0; border-bottom: 1px solid #aec49955; box-shadow: inset 0 1px #e5e9bf08; }
 .mission-status { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.mission-instruction { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.mission-stage { flex-shrink: 0; padding: 2px 4px; border: 1px solid #aec49977; color: #f2ecd0; font: 600 8px/1 var(--mono); letter-spacing: 0; }
 .mission-status strong { font: 600 10px var(--mono); letter-spacing: .065em; color: #e0e6b9; }
 .mission-status > span { font-size: 11px; line-height: 1.35; color: #c1d0b8; }
 .mission-strip[data-reveal=a] .mission-status { animation: objective-note-a .22s ease-out; }
@@ -319,6 +323,7 @@ kbd { font: 9px var(--mono); border: 1px solid var(--line); padding: 0 3px; }
 .secondary-button { display: block; width: 100%; min-height: 44px; padding: 12px 10px; border: 1px solid var(--line); margin-top: 8px; background: transparent; font: 600 9px var(--mono); letter-spacing: .035em; }
 .secondary-button:hover { background: #e3e5c3; }
 .overlay-card > .text-button { width: 100%; min-height: 42px; margin: 8px 0 -7px; font-size: 8px; }
+#pause-overlay .overlay-card > button { min-height: 44px; }
 .result-stats { display: flex; justify-content: space-between; gap: 10px; margin: 15px 0; padding: 12px 0; border-top: 1px solid #9fab8c; border-bottom: 1px solid #9fab8c; }
 .result-stats span { display: block; font: 500 7px var(--mono); color: var(--muted); }
 .result-stats b { display: block; margin-top: 3px; font: 600 29px var(--display); font-variant-numeric: tabular-nums; }
@@ -389,6 +394,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .difficulty select { font-size: 10px; padding: 7px 2px; }
   .primary-button { grid-column: 1 / -1; min-height: 51px; font-size: 10px; }
   .play-note { grid-column: 1 / -1; margin-top: 12px; font-size: 7px; }
+  .checkpoint-note, .fresh-button { grid-column: 1 / -1; }
   .viewport { min-height: 315px; }
   .field-heading { height: 31px; padding: 0 12px; font-size: 7px; }
   .preview-caption { left: 20px; right: 20px; bottom: 22px; }
@@ -442,6 +448,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .playing .feed-divider { margin: 0 7px; }
   .mission-strip { min-height: 60px; padding: 9px 12px 11px; gap: 10px; }
   .mission-status strong { font-size: 9px; }
+  .mission-stage { font-size: 7px; padding: 2px 3px; }
   .mission-status > span { font-size: 10px; line-height: 1.4; }
   .mission-readout b { font-size: 9px; }
   #weapon-status { font-size: 6px; }
@@ -495,6 +502,16 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .playing .mission-readout { gap: 4px; }
   .playing .field-footer { min-height: calc(24px + env(safe-area-inset-bottom)); }
   .playing .radio { top: 8px; padding-top: 6px; padding-bottom: 6px; font-size: 8px; }
+  #pause-overlay { padding: 10px 14px; }
+  #pause-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.1fr; gap: 6px 12px; padding: 12px 15px; }
+  #pause-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; padding-bottom: 7px; font-size: 7px; }
+  #pause-overlay h2 { grid-column: 1; grid-row: 2; font-size: 34px; margin: 2px 0; }
+  #pause-overlay .overlay-card > p { grid-column: 2; grid-row: 2; align-self: center; margin: 0; font-size: 10px; line-height: 1.45; }
+  #pause-overlay #resume-btn { grid-column: 1 / -1; grid-row: 3; }
+  #pause-overlay #restart-btn { grid-column: 1; grid-row: 4; }
+  #pause-overlay #pause-manual-btn { grid-column: 2; grid-row: 4; }
+  #pause-overlay #exit-btn { grid-column: 1 / -1; grid-row: 5; }
+  #pause-overlay .overlay-card > button { min-height: 44px; margin: 0; padding: 9px 10px; font-size: 8px; }
   #result-overlay { padding: 10px 14px; }
   #result-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.1fr; gap: 6px 12px; padding: 13px 15px; }
   #result-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; padding-bottom: 7px; font-size: 7px; }
@@ -561,16 +578,15 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
   .overlay-card > p { font-size: 10px; margin-bottom: 13px; }
   .overlay-card .primary-button, .overlay-card .secondary-button { min-height: 40px; padding: 9px 14px; }
   .overlay-card > .text-button { min-height: 36px; }
-  #pause-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.15fr; gap: 7px 20px; max-width: 510px; overflow: visible; }
-  #pause-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; margin-bottom: 4px; }
-  #pause-overlay h2 { grid-column: 1; grid-row: 2 / 4; font-size: 39px; margin: 2px 0 0; }
-  #pause-overlay .overlay-card > p { grid-column: 1; grid-row: 4 / 6; margin: 0; max-width: 165px; font-size: 11px; }
-  #pause-overlay #resume-btn { grid-column: 2; grid-row: 2; }
+  #pause-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.15fr; gap: 6px 12px; padding: 10px 15px; max-width: 510px; overflow: visible; }
+  #pause-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; padding-bottom: 5px; margin: 0; font-size: 7px; }
+  #pause-overlay h2 { grid-column: 1; grid-row: 2; font-size: 30px; margin: 0; }
+  #pause-overlay .overlay-card > p { grid-column: 2; grid-row: 2; align-self: center; margin: 0; font-size: 10px; line-height: 1.45; }
+  #pause-overlay #resume-btn { grid-column: 1; grid-row: 3; }
   #pause-overlay #restart-btn { grid-column: 2; grid-row: 3; }
-  #pause-overlay #pause-manual-btn { grid-column: 2; grid-row: 4; }
-  #pause-overlay #exit-btn { grid-column: 2; grid-row: 5; }
-  #pause-overlay .secondary-button, #pause-overlay .text-button { margin: 0; }
-  #pause-overlay .overlay-card > .text-button { min-height: 32px; }
+  #pause-overlay #pause-manual-btn { grid-column: 1; grid-row: 4; }
+  #pause-overlay #exit-btn { grid-column: 2; grid-row: 4; }
+  #pause-overlay .overlay-card > button { min-height: 44px; margin: 0; padding: 9px 10px; font-size: 8px; }
   #result-overlay .overlay-card { display: grid; grid-template-columns: 1fr 1.15fr; gap: 9px 20px; max-width: 510px; }
   #result-overlay .overlay-card > .eyebrow { grid-column: 1 / -1; margin-bottom: 3px; }
   #result-overlay h2 { grid-column: 1; grid-row: 2; margin: 2px 0 0; }
@@ -601,7 +617,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
     <section class="game-shell" aria-label="Dead Signal game">
       <aside class="command-panel">
         <div id="intro">
-          <div class="eyebrow">NO BACKUP. NO SECOND CHANCES.</div>
+          <div class="eyebrow">NO BACKUP. KEEP THEM CLOSE.</div>
           <h1>DEAD<br><span>SIGNAL<span class="title-dot">.</span></span></h1>
           <div class="outbreak-mark" aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44"/><circle class="seal-inner" cx="50" cy="50" r="36"/><path class="seal-coast" d="m45 19 8 7 2 10 13 3-6 9 7 8-7 13-11 3-6 12-7-5 1-13-8-7 5-12-7-7 6-10 9-3z"/><path d="M50 1v10m0 78v10M1 50h10m78 0h10M46 50h8m-4-4v8"/><path class="seal-signal" d="m71 23 7-6m-1 18 8-2M65 16l3-8"/></svg><span>CONTACT LOST</span><b>06:42</b></div>
           <p class="intro-copy">A tiny squad.<br>A very big outbreak.</p>
@@ -610,6 +626,8 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
           <div class="mission-brief"><span id="briefing-title"></span><p id="briefing-copy"></p></div>
           <div class="difficulty"><label for="difficulty">ENGAGEMENT</label><select id="difficulty"><option value="normal">Standard</option><option value="easy">Recruit · more forgiving</option><option value="hard">Veteran · less forgiving</option></select></div>
           <button id="start-btn" class="primary-button">DEPLOY SQUAD <span>↗</span></button>
+          <p id="checkpoint-note" class="checkpoint-note" hidden></p>
+          <button id="fresh-btn" class="text-button fresh-button" hidden>START FRESH · DISCARD CHECKPOINT</button>
           <div class="play-note"><span class="touch-note">TOUCH READY</span><span>3 MISSIONS · OFFLINE READY</span></div>
         </div>
         <div id="combat-panel" hidden>
@@ -624,7 +642,7 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
       </aside>
       <div class="field-panel">
         <div class="field-heading"><span><i></i><b id="field-status">RECON FEED</b><span class="feed-divider">/</span><span id="field-location">ST. ORAN ISLAND</span></span><span id="timer">00:00</span></div>
-        <div id="mission-strip" class="mission-strip" hidden><div class="mission-status"><strong id="mission-goal">RESCUE</strong><span id="mission-detail">Reach the marked survivor.</span></div><div class="mission-readout"><b id="mission-counter">0 / 1 SAFE</b><span id="weapon-status">WEAPONS FREE</span></div><progress id="mission-progress" max="1" value="0" aria-label="Extraction progress" hidden></progress></div>
+        <div id="mission-strip" class="mission-strip" hidden><div class="mission-status"><div class="mission-instruction"><span id="mission-stage" class="mission-stage" aria-label="Mission stage" hidden></span><strong id="mission-goal">RESCUE</strong></div><span id="mission-detail">Reach the marked survivor.</span></div><div class="mission-readout"><b id="mission-counter">0 / 1 SAFE</b><span id="weapon-status">WEAPONS FREE</span></div><progress id="mission-progress" max="1" value="0" aria-label="Extraction progress" hidden></progress></div>
         <div class="viewport" id="viewport">
           <canvas id="field" aria-label="Top-down battlefield. Use the movement pad to steer your squad or tap the terrain." tabindex="0"></canvas>
           <div id="preview-caption" class="preview-caption"><span class="coordinate">23° 17′ N &nbsp; 81° 09′ W</span><div><span class="crosshair">⊕</span><p>ST. ORAN ISLAND<small>Last transmission: 06:42. Then nothing.</small></p></div></div>
@@ -634,16 +652,16 @@ dialog h2 { font: 800 61px/.95 var(--display); letter-spacing: -.01em; margin: 2
             <div class="joystick" id="joystick" role="group" aria-label="Touch movement pad"><span class="joy-axis horizontal"></span><span class="joy-axis vertical"></span><span class="joystick-knob" id="joystick-knob"></span><span class="joy-label">MOVE</span></div>
             <div class="action-controls"><button id="hold-btn" class="hold-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h12v5H9v6H5v-6H3V8m13 1h5"/><path class="fire-slash" d="M3 3l18 18"/></svg><span id="fire-label">AUTO FIRE</span></button><button id="grenade-btn" class="grenade-button" aria-label="Throw grenade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v4H9zM8 7h8l3 5v7l-3 3H8l-3-3v-7zM16 3h4v7M5 14h14M10 8v13m4-13v13"/></svg><span id="grenade-count">3</span></button><span class="grenade-label">GRENADE</span></div>
           </div>
-          <div id="pause-overlay" class="game-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="overlay-card"><span class="eyebrow">FIELD DISPATCH / PAUSED</span><h2 id="pause-title">MISSION<br>ON HOLD.</h2><p>Your squad is holding position.</p><button id="resume-btn" class="primary-button">RESUME MISSION <span>→</span></button><button id="restart-btn" class="secondary-button">RESTART MISSION</button><button id="pause-manual-btn" class="secondary-button">FIELD MANUAL</button><button id="exit-btn" class="text-button">RETURN TO BASE</button></div></div>
+          <div id="pause-overlay" class="game-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="overlay-card"><span class="eyebrow">FIELD DISPATCH / PAUSED</span><h2 id="pause-title">MISSION<br>ON HOLD.</h2><p>Your squad is holding position.</p><button id="resume-btn" class="primary-button">RESUME MISSION <span>→</span></button><button id="restart-btn" class="secondary-button">RESTART MISSION · FRESH</button><button id="pause-manual-btn" class="secondary-button">FIELD MANUAL</button><button id="exit-btn" class="text-button">RETURN TO BASE</button></div></div>
           <div id="result-overlay" class="game-overlay" role="dialog" aria-modal="true" aria-labelledby="result-title" hidden><div class="overlay-card"><svg class="dispatch-seal" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14"/><circle cx="16" cy="16" r="10"/><path class="seal-confirmed" d="m9 16 5 5 10-11"/><path class="seal-lost" d="M11 11l10 10m0-10L11 21"/></svg><span class="eyebrow" id="result-label">MISSION COMPLETE</span><h2 id="result-title">SIGNAL<br>RESTORED.</h2><p id="result-copy"></p><div class="result-stats" id="result-stats"></div><div id="memorial"></div><button id="next-btn" class="primary-button">NEXT MISSION <span>→</span></button><button id="result-base-btn" class="secondary-button">RETURN TO BASE</button></div></div>
         </div>
         <div class="field-footer"><span><span class="tiny-cross">+</span> <span id="footer-tip">KEEP YOUR SQUAD CLOSE. KEEP YOUR OPTIONS OPEN.</span></span><span class="signal-bars">▂▄▆█</span></div>
       </div>
     </section>
     <section class="missions-section" id="missions-section" aria-label="Mission selection"><div class="section-label"><span>THE OPERATION</span><span>THREE STOPS. ONE WAY OUT.</span></div><div class="mission-grid" id="mission-grid"></div></section>
-    <footer class="site-footer"><span>SMALL SOLDIERS. BIG TROUBLE.</span><div><span>ORIGINAL ART & CODE · MIT LICENSE</span><a href="data:text/markdown;base64,IyBEZWFkIFNpZ25hbAoKQSBzbWFsbCwgb3JpZ2luYWwsIG1vYmlsZS1maXJzdCBzcXVhZCB0YWN0aWNzIGdhbWUgaW5zcGlyZWQgYnkgdGhlIGZlZWwgb2YgY2xhc3NpYyBhY3Rpb24gZ2FtZXMuIExlYWQgYSBuYW1lZCBzcXVhZCB0aHJvdWdoIHRocmVlIGRpZmZlcmVudCBtaXNzaW9uc+KAlHJlc2N1ZSwgc2Fib3RhZ2UsIGFuZCBhIHJhZGlvIGhvbGRvdXTigJR3aGlsZSBlbmVteSBzb2xkaWVycyBhbmQgem9tYmllcyBmaWdodCBlYWNoIG90aGVyLiBHdW5maXJlIGF0dHJhY3RzIHRoZSB1bmRlYWQuCgpbUGxheSBEZWFkIFNpZ25hbCBvbmxpbmVdKGh0dHBzOi8vY2hyMTVzMi5naXRodWIuaW8vZGVhZC1zaWduYWwvKQoKVGhpcyBpcyBhIHBsYXlhYmxlIGJyb3dzZXIgZGVtbywgbm90IGEgY29tbWVyY2lhbCByZW1ha2UuIEl0IGNvbnRhaW5zIG5vIENhbm5vbiBGb2RkZXIgY29kZSwgYXJ0d29yaywgbWFwcywgbXVzaWMsIG9yIG90aGVyIGFzc2V0cy4KCiMjIFBsYXkgbG9jYWxseQoKRm9yIGFuIGltbWVkaWF0ZSBkZXNrdG9wIHBsYXkgc2Vzc2lvbiwgb3BlbiBgUExBWS5odG1sYCBpbiBhIGJyb3dzZXIuIEl0IGJ1bmRsZXMgdGhlIGdhbWUgYW5kIGZvbnRzIGludG8gb25lIGZpbGUgYW5kIHdvcmtzIG9mZmxpbmUuIFRoZSBzb3VyY2UgWklQIGFsc28gaW5jbHVkZXMgdGhlIGVkaXRhYmxlIHByb2plY3QuCgpGb3IgbW9iaWxlIHRlc3Rpbmcgb3Igc3RhdGljIGhvc3RpbmcsIHVzZSB0aGUgZmlsZXMgaW4gYGRpc3QvYC4gWW91IG5lZWQgUHl0aG9uIDMgZm9yIHRoaXMgbG9jYWwtc2VydmVyIG9wdGlvbi4gTm8gYnVpbGQgc3RlcCBvciBkZXBlbmRlbmN5IGluc3RhbGxhdGlvbiBpcyByZXF1aXJlZC4KCmBgYHNoCnB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHkKcHl0aG9uMyAtbSBodHRwLnNlcnZlciA4MDgwIC0tZGlyZWN0b3J5IGRpc3QKYGBgCgpUaGUgcGFja2FnaW5nIGNvbW1hbmQgZ2VuZXJhdGVzIHRoZSBzb3VyY2UgZG93bmxvYWQgb2ZmZXJlZCBieSB0aGUgZ2FtZSdzIGZvb3Rlci4KCk9wZW4gPGh0dHA6Ly9sb2NhbGhvc3Q6ODA4MD4uIFRvIHRyeSBpdCBvbiBhIHBob25lIG9uIHRoZSBzYW1lIFdpLUZpLCBvcGVuIGBodHRwOi8vPHlvdXItY29tcHV0ZXIncy1sb2NhbC1JUD46ODA4MGAgYW5kIGFsbG93IHRoZSBsb2NhbCBzZXJ2ZXIgdGhyb3VnaCB5b3VyIGNvbXB1dGVyJ3MgZmlyZXdhbGwgaWYgbmVjZXNzYXJ5LgoKIyMgQ29udHJvbHMKCnwgQWN0aW9uIHwgVG91Y2ggfCBEZXNrdG9wIHwKfCAtLS0gfCAtLS0gfCAtLS0gfAp8IE1vdmUgdGhlIHNxdWFkIHwgRHJhZyB0aGUgbW92ZW1lbnQgam95c3RpY2sgb3IgdGFwIHRoZSBiYXR0bGVmaWVsZCB8IFdBU0QgLyBhcnJvdyBrZXlzIG9yIGxlZnQtY2xpY2sgdGhlIGJhdHRsZWZpZWxkIHwKfCBBaW0gYW5kIGZpcmUgfCBTcXVhZCBhdXRvbWF0aWNhbGx5IHNob290cyBuZWFyYnkgdGFyZ2V0cyB8IEhvbGQgcmlnaHQtY2xpY2sgdG8gYWltIGFuZCBmaXJlIHwKfCBIb2xkIGZpcmUgfCBUYXAgdGhlIGhvbGQtZmlyZSBidXR0b24gfCBIIHwKfCBUaHJvdyBhIGdyZW5hZGUgfCBUYXAgdGhlIGdyZW5hZGUgYnV0dG9uIHwgRyB8CnwgUGF1c2UgfCBUYXAgcGF1c2UgfCBFc2MgfAoKS2VlcCBzb2xkaWVycyBuZWFyIGNvdmVyIGFuZCBjaG9vc2Ugd2hlbiB0byBmaXJlOiBub2lzZSBicmluZ3Mgem9tYmllcy4gU3RvcCBtb3ZpbmcgZm9yIG1vcmUgYWNjdXJhdGUgZmlyZS4gRW5lbXkgc29sZGllcnMgYW5kIHpvbWJpZXMgY2FuIGRhbWFnZSBlYWNoIG90aGVyLiBGaXJzdCBDb250YWN0IHJlc2N1ZXMgYSByYWRpbyBvcGVyYXRvci4gQmFkIEZyZXF1ZW5jeSBzZW5kcyB5b3UgYWZ0ZXIgdHdvIHNpZ25hbCBqYW1tZXJzOiB5b3VyIHNxdWFkIHNob290cyB0aGVtIHdoZW4gbmVhcmJ5IGVuZW1pZXMgYXJlIGRlYWx0IHdpdGgsIGFuZCBncmVuYWRlcyB3b3JrIHRvby4gTGFzdCBUcmFuc21pc3Npb24gYXNrcyB5b3UgdG8gaG9sZCB0aGUgcmVsYXkgY2lyY2xlIGZvciAyNSBjdW11bGF0aXZlIHNlY29uZHMgd2hpbGUgdGhyZWUgZmluaXRlIGluZmVjdGVkIHdhdmVzIGFycml2ZS4gU3RlcCBvdXRzaWRlIHRvIGRvZGdlIGFuZCB0aGUgdXBsaW5rIHBhdXNlczsgcmV0dXJuIHRvIGNvbnRpbnVlLiBGaW5pc2hpbmcgdGhlIHRyYW5zbWlzc2lvbiBvcGVucyBleHRyYWN0aW9uIGV2ZW4gaWYgaG9zdGlsZXMgcmVtYWluLiBCcmluZyBldmVyeSBsaXZpbmcgc3F1YWQgbWVtYmVyIGFuZCByZXNjdWVkIHN1cnZpdm9yIHRvIHRoZSBleHRyYWN0aW9uIGNpcmNsZSwgdGhlbiBob2xkIHBvc2l0aW9uIHdoaWxlIHRoZSB0aW1lciBmaW5pc2hlcy4gVGhlIEhVRCBzaG93cyB3aGVuIGZvbGxvd2VycyBuZWVkIHRvIHJlZ3JvdXAuIE5hbWVkIHNvbGRpZXJzIGNhbiBkaWUsIHNvIHN1cnZpdmluZyB3aXRoIHRoZSB3aG9sZSBzcXVhZCB0YWtlcyBjYXJlLgoKVGhlIGdhbWUgcGF1c2VzIHdoZW4geW91IGxlYXZlIHRoZSB0YWIgb3Igb3BlbiB0aGUgZmllbGQgbWFudWFsLiBSZXR1cm5pbmcgdG8gdGhlIHRhYiByZXF1aXJlcyBhbiBleHBsaWNpdCByZXN1bWUuIFVzZSBzcXVhZCBjYXJkcywgb3IgZGVza3RvcCBrZXlzIDHigJMzLCB0byBjaGFuZ2UgdGhlIGxlYWRlci4KCiMjIFByaXZhY3kgYW5kIHNvdW5kCgpDYW1wYWlnbiBwcm9ncmVzcyBpcyBzYXZlZCBpbiB0aGlzIGJyb3dzZXIncyBgbG9jYWxTdG9yYWdlYC4gVGhlIGdhbWUgc2VuZHMgbm8gZ2FtZXBsYXkgZGF0YSB0byBhIHNlcnZlciBhbmQgbmVlZHMgbm8gYWNjb3VudC4gQ2xlYXIgdGhlIHNpdGUncyBicm93c2VyIHN0b3JhZ2UgdG8gcmVtb3ZlIHRoZSBzYXZlZCBwcm9ncmVzcy4gU291bmQgaXMgb3B0aW9uYWwgYW5kIHN5bnRoZXNpemVkIHdpdGggV2ViIEF1ZGlvIGFmdGVyIHlvdSBlbmFibGUgaXQuCgojIyBTb3VyY2UgYW5kIGNoZWNrcwoKVGhlIGdhbWUgdXNlcyBicm93c2VyIEFQSXMgYW5kIGJ1aWxkbGVzcyBIVE1MLCBDU1MsIGFuZCBKYXZhU2NyaXB0OgoKLSBgZGlzdC9lbmdpbmUuanNgOiBkZXRlcm1pbmlzdGljIDYwIEh6IHNpbXVsYXRpb24sIG1pc3Npb25zLCBjb21iYXQsIGFuZCBvYmplY3RpdmVzLiBBIGJvdW5kZWQgZXZlbnQgam91cm5hbCBzdXBwbGllcyBzb3VuZCBhbmQgdmlzdWFsIGZlZWRiYWNrLgotIGBkaXN0L25hdmlnYXRpb24uanNgOiBjb2xsaXNpb24tYXdhcmUgcm91dGVzIHNoYXJlZCBieSB0aGUgbGVhZGVyLCBmb2xsb3dlcnMsIGFuZCBzdXJ2aXZvcnMuCi0gYGRpc3QvcmVuZGVyZXIuanNgOiBvcmlnaW5hbCBjYW52YXMgZ3JhcGhpY3MsIGNhbWVyYSwgY29vcmRpbmF0ZSBwcm9qZWN0aW9uLCBhbmQgY2FjaGVkIHRlcnJhaW4uCi0gYGRpc3QvYWN0b3JzLmpzYCwgYGRpc3QvZWZmZWN0cy5qc2AsIGBkaXN0L2xpZ2h0aW5nLmpzYCwgYW5kIGBkaXN0L3NjZW5lcnkuanNgOiBib3VuZGVkLCByZW5kZXJlci1vbmx5IGNoYXJhY3RlciBwb3NlcywgY29tYmF0IGZlZWRiYWNrLCBjYWNoZWQgc3VubGlnaHQgYW5kIHNoYWRvd3MsIGFuZCBvcmlnaW5hbCBlbnZpcm9ubWVudGFsIGRldGFpbHMuCi0gYGRpc3QvaW5wdXQuanNgOiBrZXlib2FyZCwgbW91c2UsIGNhcHR1cmVkIHRvdWNoIGpveXN0aWNrLCBhbmQgYWN0aW9uIGJ1dHRvbnMuCi0gYGRpc3QvYXVkaW8uanNgOiBnZXN0dXJlLWFjdGl2YXRlZCBwcm9jZWR1cmFsIHNvdW5kIGFuZCBib3VuZGVkIGF1ZGlvIHZvaWNlcy4KLSBgZGlzdC9zZXNzaW9uLmpzYDogdmFsaWRhdGVkIGJyb3dzZXIgc2F2ZXMgYW5kIG9iamVjdGl2ZSBwcmVzZW50YXRpb24uCi0gYGRpc3QvYXBwLmpzYDogaW50ZXJmYWNlIGFuZCBzY2VuZSBsaWZlY3ljbGUsIGNvb3JkaW5hdGluZyB0aGUgc3lzdGVtcyBhYm92ZS4KLSBgZGlzdC9pbmRleC5odG1sYCBhbmQgYGRpc3Qvc3R5bGUuY3NzYDogcGFnZSBhbmQgcmVzcG9uc2l2ZSBsYXlvdXQuCgpXaXRoIE5vZGUuanMgaW5zdGFsbGVkLCBydW4gdGhlIHNpbXVsYXRpb24gdGVzdHMgd2l0aDoKCmBgYHNoCm5vZGUgLS10ZXN0IHRlc3RzLyoudGVzdC5tanMKYGBgCgpUaGUgZXF1aXZhbGVudCBjb252ZW5pZW5jZSBjb21tYW5kcyBhcmUgYG5wbSB0ZXN0YCwgYG5wbSBydW4gcGFja2FnZWAsIGFuZCBgbnBtIHJ1biBzZXJ2ZWA7IG5vbmUgbmVlZHMgYG5wbSBpbnN0YWxsYC4KClRoZSBOb2RlIGNoZWNrcyBjb3ZlciBkZXRlcm1pbmlzdGljIHNpbXVsYXRpb24sIGNvbGxpc2lvbnMsIHJvdXRpbmcsIHdob2xlLXNxdWFkIGV4dHJhY3Rpb24sIGlucHV0IG5vcm1hbGl6YXRpb24sIGNvcnJ1cHQgc2F2ZXMsIGFuZCBzb3VuZCBsaWZlY3ljbGUuIEJyb3dzZXIgcmVncmVzc2lvbnMgYWxzbyBleGVyY2lzZSBwb3J0cmFpdCwgbGFuZHNjYXBlLCBkZXNrdG9wLCBnZW51aW5lIG11bHRpdG91Y2gsIHBhdXNlL3Jlc3RhcnQsIHNvdW5kLCBhbmQgcGVyc2lzdGVuY2UuIFdpdGggUHl0aG9uIFBsYXl3cmlnaHQgYW5kIENocm9taXVtIGFscmVhZHkgaW5zdGFsbGVkLCBzZXJ2ZSBgZGlzdC9gLCB0aGVuIHJ1bjoKCmBgYHNoCnB5dGhvbjMgdGVzdHMvYnJvd3Nlcl9xYS5weSAtLXVybCBodHRwOi8vMTI3LjAuMC4xOjgwODAvCmBgYAoKVGhlIGJyb3dzZXIgc3VpdGUgdXNlcyBjb250cm9sbGVkIGZpeHR1cmVzIGZvciBpc29sYXRlZCBiZWhhdmlvdXJzLiBDb21wbGV0ZSBlYWNoIG1pc3Npb24gdXNpbmcgb3JkaW5hcnkgY29udHJvbHMgYXMgYSBzZXBhcmF0ZSBnYW1lcGxheSBjaGVjay4gRW11bGF0aW9uIGRvZXMgbm90IGVzdGFibGlzaCBwZXJmb3JtYW5jZSBvciBTYWZhcmkgY29tcGF0aWJpbGl0eSBvbiBhIHBoeXNpY2FsIHBob25lLgoKVmVyc2lvbiAwLjIuMCBrZWVwcyB0aGUgc2FtZSB0aHJlZSBtaXNzaW9ucyBhbmQgaW1wcm92ZXMgdGhlIGZvdW5kYXRpb25zOiBzdGFibGUgZm9ybWF0aW9ucywgcGh5c2ljYWwgcmVncm91cGluZywgbG9jYWwgY29tYmF0IGFjdGl2YXRpb24sIGNsZWFyZXIgZmVlZGJhY2ssIG1vYmlsZSBjb250cm9scywgYW5kIHJlbGlhYmxlIHNjZW5lIHJlc2V0cy4gVGhlIGZpcnN0IHR3byBtaXNzaW9ucyBhcmUgZGVsaWJlcmF0ZWx5IGJyaWVmOyBiYWxhbmNlLCBhcnR3b3JrLCBhbmQgcmVhbC1kZXZpY2UgY292ZXJhZ2UgY2FuIHN0aWxsIGltcHJvdmUgYmVmb3JlIGFkZGluZyBtb3JlIGNvbnRlbnQuCgpWZXJzaW9uIDAuMy4wIGdpdmVzIHRoZSBpc2xhbmQgYW5kIGZpZWxkIGludGVyZmFjZSBhIG1vcmUgZGlzdGluY3RpdmUgYXJ0IGRpcmVjdGlvbiwgd2l0aCBsdXNoIHBpeGVsIHNjZW5lcnksIHR1cnF1b2lzZSBjb2FzdGxpbmVzLCBkZXRhaWxlZCBidWlsZGluZ3MgYW5kIHNvbGRpZXJzLCBhbmQgYSBzdW4tYmxlYWNoZWQgZmllbGQtam91cm5hbCBpbnRlcmZhY2UuIEl0IGFsc28gZml4ZXMgcmVwZWF0ZWQgYXV0b21hdGljIHBhdXNlcyBpbiBlbWJlZGRlZCBtb2JpbGUgYnJvd3NlcnM6IHRlbXBvcmFyeSBmb2N1cyBjaGFuZ2VzIGNsZWFyIGhlbGQgaW5wdXQsIHdoaWxlIGF1dG9tYXRpYyBwYXVzZSBmb2xsb3dzIGFjdHVhbCBwYWdlIHZpc2liaWxpdHkgb3IgbmF2aWdhdGlvbiBhd2F5LiBUaGUgdGhyZWUgbWlzc2lvbnMgYW5kIHRoZWlyIHNpbXVsYXRpb24gcnVsZXMgYXJlIHVuY2hhbmdlZC4KClZlcnNpb24gMC40LjAgcmVmaW5lcyBleGlzdGluZyBwbGF5OiBmb2xsb3dlcnMgcmVzcG9uZCB0byB0dXJucyB3aXRob3V0IGNoYXNpbmcgc3RhbGUgcG9zaXRpb25zLCBjb21wYW5pb25zIHlpZWxkIHRvIHRoZSBjb250cm9sbGVkIHNvbGRpZXIsIGFuZCBlbmVtaWVzIGNhbiBhcHByb2FjaCBwaHlzaWNhbGx5IHJlYWNoYWJsZSB0YXJnZXRzIGJlc2lkZSBjb3Zlci4gRGFtYWdlIGFuZCBjcml0aWNhbCBoZWFsdGggYXJlIGNsZWFyZXIgaW4gdGhlIHNxdWFkIGNhcmRzLCBncmVuYWRlIGxhbmRpbmcgbWFya2VycyBzaG93IHRoZSBhY3R1YWwgYmxhc3QgZm9vdHByaW50LCB0ZXJyYWluIG9yZGVycyByZWNlaXZlIHZpc2libGUgY29uZmlybWF0aW9uLCBhbmQgZnJpZW5kbHkgaWRlbnRpZmljYXRpb24gcmVtYWlucyByZWFkYWJsZSBiZWhpbmQgZm9saWFnZS4gU21hbGxlciBwaG9uZSB2aWV3cG9ydHMgcmV0YWluIGNsZWFyIG1vdmVtZW50IGhpbnRzLCBub2lzZSBzdGF0dXMsIGFuZCBmaXJpbmctc3RhdGUgaWNvbnMuIE5vIG1pc3Npb25zLCB3ZWFwb25zLCBlbmVtaWVzLCBvciBwcm9ncmVzc2lvbiBzeXN0ZW1zIGFyZSBhZGRlZC4KClZlcnNpb24gMC41LjAgZ2l2ZXMgdGhlIGV4aXN0aW5nIHRocmVlIG1pc3Npb25zIGRpc3RpbmN0IG9iamVjdGl2ZXM6IHJlc2N1ZSB0aGUgcmFkaW8gb3BlcmF0b3IsIHNhYm90YWdlIHR3byBzaWduYWwgamFtbWVycywgYW5kIGRlZmVuZCBhIHJlbGF5IGR1cmluZyBpdHMgdHJhbnNtaXNzaW9uLiBNaXNzaW9uIG1hcmtlcnMsIGJyaWVmaW5ncywgY291bnRlcnMsIHByb2dyZXNzLCBhbmQgcmVzdWx0cyBmb2xsb3cgZWFjaCBvYmplY3RpdmUuIFJpZmxlcyBjYW4gYWx3YXlzIGZpbmlzaCBzYWJvdGFnZSwgcmVsYXkgcHJvZ3Jlc3MgcGF1c2VzIG91dHNpZGUgaXRzIHpvbmUsIGFuZCBob2xkb3V0IGV4dHJhY3Rpb24gbm8gbG9uZ2VyIHJlcXVpcmVzIGNsZWFyaW5nIHRoZSB3aG9sZSBtYXAuIExlZ2FjeSBiZXN0IHRpbWVzIGZvciB0aGUgdHdvIHJlZGVzaWduZWQgbWlzc2lvbnMgcmVzZXQgb25jZTsgY29tcGxldGlvbnMsIG1pc3Npb24tb25lIHRpbWVzLCBkaWZmaWN1bHR5LCBhbmQgc291bmQgcHJlZmVyZW5jZXMgcmVtYWluLgoKVmVyc2lvbiAwLjYuMCBwb2xpc2hlcyB0aGUgZXhpc3RpbmcgYXJ0OiB3YXJtIGFmdGVybm9vbiBsaWdodCBhbmQgY29vbCBwcm9qZWN0ZWQgc2hhZG93cywgbW9yZSBkZXRhaWxlZCBjaGFyYWN0ZXJzIHdpdGggZmFjdGlvbi1zcGVjaWZpYyBtb3ZlbWVudCBhbmQgcmVjb2lsLCByZXN0cmFpbmVkIG1hdGVyaWFsLWF3YXJlIGNvbWJhdCBlZmZlY3RzLCBzcGFyc2Ugcm9hZHNpZGUgZXF1aXBtZW50IGFuZCB3ZWF0aGVyZWQgYnVpbGRpbmdzLCBhbmQgY2xlYXJlciBzcXVhZCBwb3J0cmFpdHMsIGhlYWx0aCwgbm9pc2Ugc3RhdHVzLCBhbmQgZmllbGQgZGlzcGF0Y2hlcy4gVmlzdWFsIGVmZmVjdHMgdXNlIHRoZWlyIG93biBkZXRlcm1pbmlzdGljIHJhbmRvbW5lc3MgYW5kIGJvdW5kZWQgY2FjaGVzOyB0aGV5IGRvIG5vdCBjaGFuZ2UgdGhlIHNpbXVsYXRpb24sIG1pc3Npb24gcnVsZXMsIG9yIHNhdmVzLiBQYXVzaW5nIGZyZWV6ZXMgc2ltdWxhdGlvbi1jbG9jayBhbmltYXRpb24sIGFuZCByZWR1Y2VkIG1vdGlvbiByZW1vdmVzIGRlY29yYXRpdmUgbW92ZW1lbnQgYW5kIGludGVyZmFjZSB0cmFuc2l0aW9ucy4gU21hbGwgcGhvbmUgcmVzdWx0cyBrZWVwIGJvdGggYWN0aW9uIGJ1dHRvbnMgdmlzaWJsZS4KCiMjIEhvc3RpbmcgYW5kIGxpY2Vuc2luZwoKUHVibGlzaCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCB0byBhbnkgc3RhdGljIGhvc3QsIGluY2x1ZGluZyBHaXRIdWIgUGFnZXMuIE5vIHNlcnZlciwgQVBJIGtleXMsIG9yIHNlY3JldHMgYXJlIHJlcXVpcmVkLiBLZWVwIGNoZWNrb3V0LXNwZWNpZmljIGAub3BlbmFpL2AgaG9zdGluZyBtZXRhZGF0YSBvdXQgb2YgcHVibGljIGRpc3RyaWJ1dGlvbnMuCgpUaGlzIHJlcG9zaXRvcnkgdXNlcyBHaXRIdWIgUGFnZXMgd2l0aCB0aGUgY29udGVudHMgb2YgYGRpc3QvYCBwdWJsaXNoZWQgdG8gdGhlIHJvb3Qgb2YgdGhlIGBnaC1wYWdlc2AgYnJhbmNoLiBSdW4gdGhlIHJlbGVhc2UgcGFja2FnaW5nIGNvbW1hbmQgYmVmb3JlIHJlcHVibGlzaGluZywgaW5jbHVkZSB0aGUgZ2VuZXJhdGVkIHNvdXJjZSBaSVAsIGFuZCBhZGQgYC5ub2pla3lsbGAgdG8gdGhlIHB1Ymxpc2hlZCBicmFuY2guIFRoZSBgbWFpbmAgYnJhbmNoIGNvbnRhaW5zIHRoZSBlZGl0YWJsZSBwcm9qZWN0LgoKQ29kZSBhbmQgb3JpZ2luYWwgZ2FtZSBhcnR3b3JrIGFyZSBNSVQgbGljZW5zZWQ7IHNlZSBbTElDRU5TRV0oTElDRU5TRSkuIEJ1bmRsZWQgZm9udCBmaWxlcyByZXRhaW4gdGhlaXIgaW5jbHVkZWQgU0lMIE9wZW4gRm9udCBMaWNlbnNlIG5vdGljZS4gU2VlIFtDT05UUklCVVRJTkcubWRdKENPTlRSSUJVVElORy5tZCkgZm9yIGNvbnRyaWJ1dGluZy4KCiMjIFBhY2thZ2UgYSByZWxlYXNlCgpSdW4gYHB5dGhvbjMgc2NyaXB0cy9wYWNrYWdlLXJlbGVhc2UucHlgIHRvIHJlZ2VuZXJhdGUgYFBMQVkuaHRtbGAgYW5kIGBkZWFkLXNpZ25hbC1zb3VyY2UuemlwYCBmcm9tIHRoZSBjdXJyZW50IHNvdXJjZS4gVGhlIFpJUCBleGNsdWRlcyBjaGVja291dCBtZXRhZGF0YSwgY3JlZGVudGlhbHMsIGFuZCBleGlzdGluZyBhcmNoaXZlcy4K" download="Dead-Signal-README.md">PROJECT README ↗</a></div></footer>
+    <footer class="site-footer"><span>SMALL SOLDIERS. BIG TROUBLE.</span><div><span>ORIGINAL ART & CODE · MIT LICENSE</span><a href="data:text/markdown;base64,IyBEZWFkIFNpZ25hbAoKQSBzbWFsbCwgb3JpZ2luYWwsIG1vYmlsZS1maXJzdCBzcXVhZCB0YWN0aWNzIGdhbWUgaW5zcGlyZWQgYnkgdGhlIGZlZWwgb2YgY2xhc3NpYyBhY3Rpb24gZ2FtZXMuIExlYWQgYSBuYW1lZCBzcXVhZCB0aHJvdWdoIHRocmVlIGRpZmZlcmVudCBtaXNzaW9uc+KAlGEgdmlsbGFnZSByZXNjdWUgb3BlcmF0aW9uLCBzYWJvdGFnZSwgYW5kIGEgcmFkaW8gaG9sZG91dOKAlHdoaWxlIGVuZW15IHNvbGRpZXJzIGFuZCB6b21iaWVzIGZpZ2h0IGVhY2ggb3RoZXIuIEd1bmZpcmUgYXR0cmFjdHMgdGhlIHVuZGVhZC4KCltQbGF5IERlYWQgU2lnbmFsIG9ubGluZV0oaHR0cHM6Ly9jaHIxNXMyLmdpdGh1Yi5pby9kZWFkLXNpZ25hbC8pCgpUaGlzIGlzIGEgcGxheWFibGUgYnJvd3NlciBkZW1vLCBub3QgYSBjb21tZXJjaWFsIHJlbWFrZS4gSXQgY29udGFpbnMgbm8gQ2Fubm9uIEZvZGRlciBjb2RlLCBhcnR3b3JrLCBtYXBzLCBtdXNpYywgb3Igb3RoZXIgYXNzZXRzLgoKIyMgUGxheSBsb2NhbGx5CgpGb3IgYW4gaW1tZWRpYXRlIGRlc2t0b3AgcGxheSBzZXNzaW9uLCBvcGVuIGBQTEFZLmh0bWxgIGluIGEgYnJvd3Nlci4gSXQgYnVuZGxlcyB0aGUgZ2FtZSBhbmQgZm9udHMgaW50byBvbmUgZmlsZSBhbmQgd29ya3Mgb2ZmbGluZS4gVGhlIHNvdXJjZSBaSVAgYWxzbyBpbmNsdWRlcyB0aGUgZWRpdGFibGUgcHJvamVjdC4KCkZvciBtb2JpbGUgdGVzdGluZyBvciBzdGF0aWMgaG9zdGluZywgdXNlIHRoZSBmaWxlcyBpbiBgZGlzdC9gLiBZb3UgbmVlZCBQeXRob24gMyBmb3IgdGhpcyBsb2NhbC1zZXJ2ZXIgb3B0aW9uLiBObyBidWlsZCBzdGVwIG9yIGRlcGVuZGVuY3kgaW5zdGFsbGF0aW9uIGlzIHJlcXVpcmVkLgoKYGBgc2gKcHl0aG9uMyBzY3JpcHRzL3BhY2thZ2UtcmVsZWFzZS5weQpweXRob24zIC1tIGh0dHAuc2VydmVyIDgwODAgLS1kaXJlY3RvcnkgZGlzdApgYGAKClRoZSBwYWNrYWdpbmcgY29tbWFuZCBnZW5lcmF0ZXMgdGhlIHNvdXJjZSBkb3dubG9hZCBvZmZlcmVkIGJ5IHRoZSBnYW1lJ3MgZm9vdGVyLgoKT3BlbiA8aHR0cDovL2xvY2FsaG9zdDo4MDgwPi4gVG8gdHJ5IGl0IG9uIGEgcGhvbmUgb24gdGhlIHNhbWUgV2ktRmksIG9wZW4gYGh0dHA6Ly88eW91ci1jb21wdXRlcidzLWxvY2FsLUlQPjo4MDgwYCBhbmQgYWxsb3cgdGhlIGxvY2FsIHNlcnZlciB0aHJvdWdoIHlvdXIgY29tcHV0ZXIncyBmaXJld2FsbCBpZiBuZWNlc3NhcnkuCgojIyBDb250cm9scwoKfCBBY3Rpb24gfCBUb3VjaCB8IERlc2t0b3AgfAp8IC0tLSB8IC0tLSB8IC0tLSB8CnwgTW92ZSB0aGUgc3F1YWQgfCBEcmFnIHRoZSBtb3ZlbWVudCBqb3lzdGljayBvciB0YXAgdGhlIGJhdHRsZWZpZWxkIHwgV0FTRCAvIGFycm93IGtleXMgb3IgbGVmdC1jbGljayB0aGUgYmF0dGxlZmllbGQgfAp8IEFpbSBhbmQgZmlyZSB8IFNxdWFkIGF1dG9tYXRpY2FsbHkgc2hvb3RzIG5lYXJieSB0YXJnZXRzIHwgSG9sZCByaWdodC1jbGljayB0byBhaW0gYW5kIGZpcmUgfAp8IEhvbGQgZmlyZSB8IFRhcCB0aGUgaG9sZC1maXJlIGJ1dHRvbiB8IEggfAp8IFRocm93IGEgZ3JlbmFkZSB8IFRhcCB0aGUgZ3JlbmFkZSBidXR0b24gfCBHIHwKfCBQYXVzZSB8IFRhcCBwYXVzZSB8IEVzYyB8CgpLZWVwIHNvbGRpZXJzIG5lYXIgY292ZXIgYW5kIGNob29zZSB3aGVuIHRvIGZpcmU6IG5vaXNlIGJyaW5ncyB6b21iaWVzLiBTdG9wIG1vdmluZyBmb3IgbW9yZSBhY2N1cmF0ZSBmaXJlLiBFbmVteSBzb2xkaWVycyBhbmQgem9tYmllcyBjYW4gZGFtYWdlIGVhY2ggb3RoZXIuIEZpcnN0IENvbnRhY3Qgc3RhcnRzIGF0IHRoZSB2aWxsYWdlIGVudHJhbmNlLCB0aGVuIHNlbmRzIHlvdSB0byByZXNjdWUgdGhlIGNsaW5pYyBtZWRpYyBhbmQgc2Nob29sIHJhZGlvIG9wZXJhdG9yIGluIGVpdGhlciBvcmRlci4gQ2xlYXIgdGhlIGxvY2FsIGRlZmVuZGVycyBjb3VudGVkIGluIHRoZSBIVUQsIHNlY3VyZSB0aGUgaGFyYm91ciwgYW5kIGVzY29ydCBldmVyeW9uZSB0aHJvdWdoIGFuIGluZmVjdGVkIGVzY2FwZSBlbmNvdW50ZXIuIEV4cG9zZWQgc3RyZWV0cyBvZmZlciBzaG9ydGVyIHJvdXRlczsgY292ZXJlZCBsYW5lcyBvZmZlciBhbm90aGVyIGFwcHJvYWNoLiBOZWFyIGEgZGVmZW5kZWQgc2l0ZSwgdGhlIG9iamVjdGl2ZSBiZWFyaW5nIHBvaW50cyB0b3dhcmQgaXRzIHJlbWFpbmluZyBndWFyZHMuCgpCYWQgRnJlcXVlbmN5IHNlbmRzIHlvdSBhZnRlciB0d28gc2lnbmFsIGphbW1lcnM6IHlvdXIgc3F1YWQgc2hvb3RzIHRoZW0gd2hlbiBuZWFyYnkgZW5lbWllcyBhcmUgZGVhbHQgd2l0aCwgYW5kIGdyZW5hZGVzIHdvcmsgdG9vLiBMYXN0IFRyYW5zbWlzc2lvbiBhc2tzIHlvdSB0byBob2xkIHRoZSByZWxheSBjaXJjbGUgZm9yIDI1IGN1bXVsYXRpdmUgc2Vjb25kcyB3aGlsZSB0aHJlZSBmaW5pdGUgaW5mZWN0ZWQgd2F2ZXMgYXJyaXZlLiBTdGVwIG91dHNpZGUgdG8gZG9kZ2UgYW5kIHRoZSB1cGxpbmsgcGF1c2VzOyByZXR1cm4gdG8gY29udGludWUuIEZpbmlzaGluZyB0aGUgdHJhbnNtaXNzaW9uIG9wZW5zIGV4dHJhY3Rpb24gZXZlbiBpZiBob3N0aWxlcyByZW1haW4uIEJyaW5nIGV2ZXJ5IGxpdmluZyBzcXVhZCBtZW1iZXIgYW5kIHJlc2N1ZWQgc3Vydml2b3IgdG8gdGhlIGV4dHJhY3Rpb24gY2lyY2xlLCB0aGVuIGhvbGQgcG9zaXRpb24gd2hpbGUgdGhlIHRpbWVyIGZpbmlzaGVzLiBUaGUgSFVEIHNob3dzIHdoZW4gZm9sbG93ZXJzIG5lZWQgdG8gcmVncm91cC4gTmFtZWQgc29sZGllcnMgY2FuIGRpZSwgc28gc3Vydml2aW5nIHdpdGggdGhlIHdob2xlIHNxdWFkIHRha2VzIGNhcmUuCgpUaGUgZ2FtZSBwYXVzZXMgd2hlbiB5b3UgbGVhdmUgdGhlIHRhYiBvciBvcGVuIHRoZSBmaWVsZCBtYW51YWwuIFJldHVybmluZyB0byB0aGUgdGFiIHJlcXVpcmVzIGFuIGV4cGxpY2l0IHJlc3VtZS4gVXNlIHNxdWFkIGNhcmRzLCBvciBkZXNrdG9wIGtleXMgMeKAkzMsIHRvIGNoYW5nZSB0aGUgbGVhZGVyLgoKIyMgUHJpdmFjeSBhbmQgc291bmQKCkNhbXBhaWduIHByb2dyZXNzIGlzIHNhdmVkIGluIHRoaXMgYnJvd3NlcidzIGBsb2NhbFN0b3JhZ2VgLiBGaXJzdCBDb250YWN0IGFsc28gc2F2ZXMgY2hlY2twb2ludHMgYWZ0ZXIgc2VjdXJpbmcgdGhlIGVudHJhbmNlLCBlYWNoIHJlc2N1ZSwgYW5kIHNlY3VyaW5nIHRoZSBoYXJib3VyLiBSZXR1cm4gdG8gYmFzZSBvciByZWxvYWQgYW5kIGNob29zZSBDb250aW51ZSBDaGVja3BvaW50OyBhZnRlciBsb3NpbmcsIGNob29zZSBSZXRyeSBDaGVja3BvaW50LiBDb250aW51aW5nIHByZXNlcnZlcyBjYXN1YWx0aWVzLCBzdXBwbGllcywgZGVzdHJveWVkIGNvdmVyLCBhbmQgdGhlIGVzY2FwZSByZXNwb25zZS4gSXQgcmVxdWlyZXMgYW4gZXhwbGljaXQgc3RhcnQgYW5kIHJlc3VtZXMgaW4gdGhlIHNhdmVkIGRpZmZpY3VsdHkuIFN0YXJ0IEZyZXNoIG9yIFJlc3RhcnQgTWlzc2lvbiBjbGVhcnMgdGhhdCBtaXNzaW9uJ3MgY2hlY2twb2ludDsgdmljdG9yeSBjbGVhcnMgaXQgdG9vLiBDaGVja3BvaW50IHZpY3RvcmllcyBjb3VudCBhcyBjb21wbGV0aW9ucywgd2hpbGUgYmVzdCB0aW1lcyByZXF1aXJlIGEgZnJlc2ggcnVuLiBTdG9yYWdlIG11c3QgYmUgYXZhaWxhYmxlIGZvciBzYXZlcyB0byB3b3JrLgoKVGhlIGdhbWUgc2VuZHMgbm8gZ2FtZXBsYXkgZGF0YSB0byBhIHNlcnZlciBhbmQgbmVlZHMgbm8gYWNjb3VudC4gQ2xlYXIgdGhlIHNpdGUncyBicm93c2VyIHN0b3JhZ2UgdG8gcmVtb3ZlIHRoZSBzYXZlZCBwcm9ncmVzcy4gU291bmQgaXMgb3B0aW9uYWwgYW5kIHN5bnRoZXNpemVkIHdpdGggV2ViIEF1ZGlvIGFmdGVyIHlvdSBlbmFibGUgaXQuCgojIyBTb3VyY2UgYW5kIGNoZWNrcwoKVGhlIGdhbWUgdXNlcyBicm93c2VyIEFQSXMgYW5kIGJ1aWxkbGVzcyBIVE1MLCBDU1MsIGFuZCBKYXZhU2NyaXB0OgoKLSBgZGlzdC9lbmdpbmUuanNgOiBkZXRlcm1pbmlzdGljIDYwIEh6IHNpbXVsYXRpb24sIG1pc3Npb25zLCBjb21iYXQsIGFuZCBvYmplY3RpdmVzLiBBIGJvdW5kZWQgZXZlbnQgam91cm5hbCBzdXBwbGllcyBzb3VuZCBhbmQgdmlzdWFsIGZlZWRiYWNrLgotIGBkaXN0L21pc3Npb24tZGF0YS5qc2A6IHRoZSBhdXRob3JlZCBGaXJzdCBDb250YWN0IHZpbGxhZ2UsIGVuY291bnRlciBncm91cHMsIHJvYWRzLCBjb3ZlciBhbmQgcmVzY3VlIHNpdGVzLgotIGBkaXN0L2NoZWNrcG9pbnQuanNgOiBib3VuZGVkLCB2YWxpZGF0ZWQgRmlyc3QgQ29udGFjdCBzbmFwc2hvdHMgYW5kIGV4cGxpY2l0IHBhdXNlZCByZXN0b3JhdGlvbi4KLSBgZGlzdC9uYXZpZ2F0aW9uLmpzYDogY29sbGlzaW9uLWF3YXJlIHJvdXRlcyBzaGFyZWQgYnkgdGhlIGxlYWRlciwgZm9sbG93ZXJzLCBhbmQgc3Vydml2b3JzLgotIGBkaXN0L3JlbmRlcmVyLmpzYDogb3JpZ2luYWwgY2FudmFzIGdyYXBoaWNzLCBjYW1lcmEsIGNvb3JkaW5hdGUgcHJvamVjdGlvbiwgYW5kIGNhY2hlZCB0ZXJyYWluLgotIGBkaXN0L2FjdG9ycy5qc2AsIGBkaXN0L2VmZmVjdHMuanNgLCBgZGlzdC9saWdodGluZy5qc2AsIGFuZCBgZGlzdC9zY2VuZXJ5LmpzYDogYm91bmRlZCwgcmVuZGVyZXItb25seSBjaGFyYWN0ZXIgcG9zZXMsIGNvbWJhdCBmZWVkYmFjaywgY2FjaGVkIHN1bmxpZ2h0IGFuZCBzaGFkb3dzLCBhbmQgb3JpZ2luYWwgZW52aXJvbm1lbnRhbCBkZXRhaWxzLgotIGBkaXN0L2lucHV0LmpzYDoga2V5Ym9hcmQsIG1vdXNlLCBjYXB0dXJlZCB0b3VjaCBqb3lzdGljaywgYW5kIGFjdGlvbiBidXR0b25zLgotIGBkaXN0L2F1ZGlvLmpzYDogZ2VzdHVyZS1hY3RpdmF0ZWQgcHJvY2VkdXJhbCBzb3VuZCBhbmQgYm91bmRlZCBhdWRpbyB2b2ljZXMuCi0gYGRpc3Qvc2Vzc2lvbi5qc2A6IHZhbGlkYXRlZCBicm93c2VyIHNhdmVzIGFuZCBvYmplY3RpdmUgcHJlc2VudGF0aW9uLgotIGBkaXN0L2FwcC5qc2A6IGludGVyZmFjZSBhbmQgc2NlbmUgbGlmZWN5Y2xlLCBjb29yZGluYXRpbmcgdGhlIHN5c3RlbXMgYWJvdmUuCi0gYGRpc3QvaW5kZXguaHRtbGAgYW5kIGBkaXN0L3N0eWxlLmNzc2A6IHBhZ2UgYW5kIHJlc3BvbnNpdmUgbGF5b3V0LgoKV2l0aCBOb2RlLmpzIGluc3RhbGxlZCwgcnVuIHRoZSBzaW11bGF0aW9uIHRlc3RzIHdpdGg6CgpgYGBzaApub2RlIC0tdGVzdCB0ZXN0cy8qLnRlc3QubWpzCmBgYAoKVGhlIGVxdWl2YWxlbnQgY29udmVuaWVuY2UgY29tbWFuZHMgYXJlIGBucG0gdGVzdGAsIGBucG0gcnVuIHBhY2thZ2VgLCBhbmQgYG5wbSBydW4gc2VydmVgOyBub25lIG5lZWRzIGBucG0gaW5zdGFsbGAuCgpUaGUgTm9kZSBjaGVja3MgY292ZXIgZGV0ZXJtaW5pc3RpYyBzaW11bGF0aW9uLCBjb2xsaXNpb25zLCByb3V0aW5nLCB3aG9sZS1zcXVhZCBleHRyYWN0aW9uLCBpbnB1dCBub3JtYWxpemF0aW9uLCBjb3JydXB0IHNhdmVzLCBhbmQgc291bmQgbGlmZWN5Y2xlLiBCcm93c2VyIHJlZ3Jlc3Npb25zIGFsc28gZXhlcmNpc2UgcG9ydHJhaXQsIGxhbmRzY2FwZSwgZGVza3RvcCwgZ2VudWluZSBtdWx0aXRvdWNoLCBwYXVzZS9yZXN0YXJ0LCBzb3VuZCwgYW5kIHBlcnNpc3RlbmNlLiBXaXRoIFB5dGhvbiBQbGF5d3JpZ2h0IGFuZCBDaHJvbWl1bSBhbHJlYWR5IGluc3RhbGxlZCwgc2VydmUgYGRpc3QvYCwgdGhlbiBydW46CgpgYGBzaApweXRob24zIHRlc3RzL2Jyb3dzZXJfcWEucHkgLS11cmwgaHR0cDovLzEyNy4wLjAuMTo4MDgwLwpgYGAKClRoZSBicm93c2VyIHN1aXRlIHVzZXMgY29udHJvbGxlZCBmaXh0dXJlcyBmb3IgaXNvbGF0ZWQgYmVoYXZpb3Vycy4gQ29tcGxldGUgZWFjaCBtaXNzaW9uIHVzaW5nIG9yZGluYXJ5IGNvbnRyb2xzIGFzIGEgc2VwYXJhdGUgZ2FtZXBsYXkgY2hlY2suIEVtdWxhdGlvbiBkb2VzIG5vdCBlc3RhYmxpc2ggcGVyZm9ybWFuY2Ugb3IgU2FmYXJpIGNvbXBhdGliaWxpdHkgb24gYSBwaHlzaWNhbCBwaG9uZS4KClZlcnNpb24gMC4yLjAga2VlcHMgdGhlIHNhbWUgdGhyZWUgbWlzc2lvbnMgYW5kIGltcHJvdmVzIHRoZSBmb3VuZGF0aW9uczogc3RhYmxlIGZvcm1hdGlvbnMsIHBoeXNpY2FsIHJlZ3JvdXBpbmcsIGxvY2FsIGNvbWJhdCBhY3RpdmF0aW9uLCBjbGVhcmVyIGZlZWRiYWNrLCBtb2JpbGUgY29udHJvbHMsIGFuZCByZWxpYWJsZSBzY2VuZSByZXNldHMuIFRoZSBmaXJzdCB0d28gbWlzc2lvbnMgYXJlIGRlbGliZXJhdGVseSBicmllZjsgYmFsYW5jZSwgYXJ0d29yaywgYW5kIHJlYWwtZGV2aWNlIGNvdmVyYWdlIGNhbiBzdGlsbCBpbXByb3ZlIGJlZm9yZSBhZGRpbmcgbW9yZSBjb250ZW50LgoKVmVyc2lvbiAwLjMuMCBnaXZlcyB0aGUgaXNsYW5kIGFuZCBmaWVsZCBpbnRlcmZhY2UgYSBtb3JlIGRpc3RpbmN0aXZlIGFydCBkaXJlY3Rpb24sIHdpdGggbHVzaCBwaXhlbCBzY2VuZXJ5LCB0dXJxdW9pc2UgY29hc3RsaW5lcywgZGV0YWlsZWQgYnVpbGRpbmdzIGFuZCBzb2xkaWVycywgYW5kIGEgc3VuLWJsZWFjaGVkIGZpZWxkLWpvdXJuYWwgaW50ZXJmYWNlLiBJdCBhbHNvIGZpeGVzIHJlcGVhdGVkIGF1dG9tYXRpYyBwYXVzZXMgaW4gZW1iZWRkZWQgbW9iaWxlIGJyb3dzZXJzOiB0ZW1wb3JhcnkgZm9jdXMgY2hhbmdlcyBjbGVhciBoZWxkIGlucHV0LCB3aGlsZSBhdXRvbWF0aWMgcGF1c2UgZm9sbG93cyBhY3R1YWwgcGFnZSB2aXNpYmlsaXR5IG9yIG5hdmlnYXRpb24gYXdheS4gVGhlIHRocmVlIG1pc3Npb25zIGFuZCB0aGVpciBzaW11bGF0aW9uIHJ1bGVzIGFyZSB1bmNoYW5nZWQuCgpWZXJzaW9uIDAuNC4wIHJlZmluZXMgZXhpc3RpbmcgcGxheTogZm9sbG93ZXJzIHJlc3BvbmQgdG8gdHVybnMgd2l0aG91dCBjaGFzaW5nIHN0YWxlIHBvc2l0aW9ucywgY29tcGFuaW9ucyB5aWVsZCB0byB0aGUgY29udHJvbGxlZCBzb2xkaWVyLCBhbmQgZW5lbWllcyBjYW4gYXBwcm9hY2ggcGh5c2ljYWxseSByZWFjaGFibGUgdGFyZ2V0cyBiZXNpZGUgY292ZXIuIERhbWFnZSBhbmQgY3JpdGljYWwgaGVhbHRoIGFyZSBjbGVhcmVyIGluIHRoZSBzcXVhZCBjYXJkcywgZ3JlbmFkZSBsYW5kaW5nIG1hcmtlcnMgc2hvdyB0aGUgYWN0dWFsIGJsYXN0IGZvb3RwcmludCwgdGVycmFpbiBvcmRlcnMgcmVjZWl2ZSB2aXNpYmxlIGNvbmZpcm1hdGlvbiwgYW5kIGZyaWVuZGx5IGlkZW50aWZpY2F0aW9uIHJlbWFpbnMgcmVhZGFibGUgYmVoaW5kIGZvbGlhZ2UuIFNtYWxsZXIgcGhvbmUgdmlld3BvcnRzIHJldGFpbiBjbGVhciBtb3ZlbWVudCBoaW50cywgbm9pc2Ugc3RhdHVzLCBhbmQgZmlyaW5nLXN0YXRlIGljb25zLiBObyBtaXNzaW9ucywgd2VhcG9ucywgZW5lbWllcywgb3IgcHJvZ3Jlc3Npb24gc3lzdGVtcyBhcmUgYWRkZWQuCgpWZXJzaW9uIDAuNS4wIGdpdmVzIHRoZSBleGlzdGluZyB0aHJlZSBtaXNzaW9ucyBkaXN0aW5jdCBvYmplY3RpdmVzOiByZXNjdWUgdGhlIHJhZGlvIG9wZXJhdG9yLCBzYWJvdGFnZSB0d28gc2lnbmFsIGphbW1lcnMsIGFuZCBkZWZlbmQgYSByZWxheSBkdXJpbmcgaXRzIHRyYW5zbWlzc2lvbi4gTWlzc2lvbiBtYXJrZXJzLCBicmllZmluZ3MsIGNvdW50ZXJzLCBwcm9ncmVzcywgYW5kIHJlc3VsdHMgZm9sbG93IGVhY2ggb2JqZWN0aXZlLiBSaWZsZXMgY2FuIGFsd2F5cyBmaW5pc2ggc2Fib3RhZ2UsIHJlbGF5IHByb2dyZXNzIHBhdXNlcyBvdXRzaWRlIGl0cyB6b25lLCBhbmQgaG9sZG91dCBleHRyYWN0aW9uIG5vIGxvbmdlciByZXF1aXJlcyBjbGVhcmluZyB0aGUgd2hvbGUgbWFwLiBMZWdhY3kgYmVzdCB0aW1lcyBmb3IgdGhlIHR3byByZWRlc2lnbmVkIG1pc3Npb25zIHJlc2V0IG9uY2U7IGNvbXBsZXRpb25zLCBtaXNzaW9uLW9uZSB0aW1lcywgZGlmZmljdWx0eSwgYW5kIHNvdW5kIHByZWZlcmVuY2VzIHJlbWFpbi4KClZlcnNpb24gMC42LjAgcG9saXNoZXMgdGhlIGV4aXN0aW5nIGFydDogd2FybSBhZnRlcm5vb24gbGlnaHQgYW5kIGNvb2wgcHJvamVjdGVkIHNoYWRvd3MsIG1vcmUgZGV0YWlsZWQgY2hhcmFjdGVycyB3aXRoIGZhY3Rpb24tc3BlY2lmaWMgbW92ZW1lbnQgYW5kIHJlY29pbCwgcmVzdHJhaW5lZCBtYXRlcmlhbC1hd2FyZSBjb21iYXQgZWZmZWN0cywgc3BhcnNlIHJvYWRzaWRlIGVxdWlwbWVudCBhbmQgd2VhdGhlcmVkIGJ1aWxkaW5ncywgYW5kIGNsZWFyZXIgc3F1YWQgcG9ydHJhaXRzLCBoZWFsdGgsIG5vaXNlIHN0YXR1cywgYW5kIGZpZWxkIGRpc3BhdGNoZXMuIFZpc3VhbCBlZmZlY3RzIHVzZSB0aGVpciBvd24gZGV0ZXJtaW5pc3RpYyByYW5kb21uZXNzIGFuZCBib3VuZGVkIGNhY2hlczsgdGhleSBkbyBub3QgY2hhbmdlIHRoZSBzaW11bGF0aW9uLCBtaXNzaW9uIHJ1bGVzLCBvciBzYXZlcy4gUGF1c2luZyBmcmVlemVzIHNpbXVsYXRpb24tY2xvY2sgYW5pbWF0aW9uLCBhbmQgcmVkdWNlZCBtb3Rpb24gcmVtb3ZlcyBkZWNvcmF0aXZlIG1vdmVtZW50IGFuZCBpbnRlcmZhY2UgdHJhbnNpdGlvbnMuIFNtYWxsIHBob25lIHJlc3VsdHMga2VlcCBib3RoIGFjdGlvbiBidXR0b25zIHZpc2libGUuCgpWZXJzaW9uIDAuNy4wIHJlYnVpbGRzIEZpcnN0IENvbnRhY3QgYXMgYSBmb3VyLXN0YWdlIG9wZXJhdGlvbiBhY3Jvc3MgYW4gYXV0aG9yZWQgMjgwMMOXMjIwMCB2aWxsYWdlOiBzZWN1cmUgdGhlIGVudHJhbmNlLCByZXNjdWUgdHdvIHBlb3BsZSBpbiBlaXRoZXIgb3JkZXIsIHNlY3VyZSB0aGUgaGFyYm91ciwgYW5kIGV2YWN1YXRlIHRocm91Z2ggb25lIGZpbml0ZSBpbmZlY3RlZCByZXNwb25zZS4gTG9jYWwgZ2Fycmlzb25zIGd1YXJkIHRoZWlyIG93biBkaXN0cmljdHMsIHdpdGggY29ubmVjdGluZy1yb2FkIGVuY291bnRlcnMgYW5kIHNldmVyYWwgYXBwcm9hY2hlcyBhcm91bmQgY292ZXIuIE5hdmlnYXRpb24gYW5kIHJlbmRlcmluZyBzdXBwb3J0IG1pc3Npb24tc3BlY2lmaWMgd29ybGQgc2l6ZXMuIE1pbGVzdG9uZSBjaGVja3BvaW50cyBwcmVzZXJ2ZSB0aGUgZnVsbCBydW4gYW5kIG5ldmVyIGF1dG9tYXRpY2FsbHkgc3RhcnQgYWZ0ZXIgYSByZWxvYWQuIE9sZCBGaXJzdCBDb250YWN0IGJlc3QgdGltZXMgcmVzZXQgb25jZSBiZWNhdXNlIHRoZSBtaXNzaW9uIGNoYW5nZWQ7IG90aGVyIG1pc3Npb24gcmVjb3JkcywgY29tcGxldGlvbnMsIGFuZCBwcmVmZXJlbmNlcyByZW1haW4uIEJhZCBGcmVxdWVuY3kgYW5kIExhc3QgVHJhbnNtaXNzaW9uIHJldGFpbiB0aGVpciBleGlzdGluZyBsYXlvdXRzIGFuZCBydWxlcy4gTWlzc2lvbiBkdXJhdGlvbiBkZXBlbmRzIG9uIHJvdXRlIGFuZCB0YWN0aWNzOyB0aGVyZSBpcyBubyBlbmZvcmNlZCBtaW5pbXVtLgoKIyMgSG9zdGluZyBhbmQgbGljZW5zaW5nCgpQdWJsaXNoIHRoZSBjb250ZW50cyBvZiBgZGlzdC9gIHRvIGFueSBzdGF0aWMgaG9zdCwgaW5jbHVkaW5nIEdpdEh1YiBQYWdlcy4gTm8gc2VydmVyLCBBUEkga2V5cywgb3Igc2VjcmV0cyBhcmUgcmVxdWlyZWQuIEtlZXAgY2hlY2tvdXQtc3BlY2lmaWMgYC5vcGVuYWkvYCBob3N0aW5nIG1ldGFkYXRhIG91dCBvZiBwdWJsaWMgZGlzdHJpYnV0aW9ucy4KClRoaXMgcmVwb3NpdG9yeSB1c2VzIEdpdEh1YiBQYWdlcyB3aXRoIHRoZSBjb250ZW50cyBvZiBgZGlzdC9gIHB1Ymxpc2hlZCB0byB0aGUgcm9vdCBvZiB0aGUgYGdoLXBhZ2VzYCBicmFuY2guIFJ1biB0aGUgcmVsZWFzZSBwYWNrYWdpbmcgY29tbWFuZCBiZWZvcmUgcmVwdWJsaXNoaW5nLCBpbmNsdWRlIHRoZSBnZW5lcmF0ZWQgc291cmNlIFpJUCwgYW5kIGFkZCBgLm5vamVreWxsYCB0byB0aGUgcHVibGlzaGVkIGJyYW5jaC4gVGhlIGBtYWluYCBicmFuY2ggY29udGFpbnMgdGhlIGVkaXRhYmxlIHByb2plY3QuCgpDb2RlIGFuZCBvcmlnaW5hbCBnYW1lIGFydHdvcmsgYXJlIE1JVCBsaWNlbnNlZDsgc2VlIFtMSUNFTlNFXShMSUNFTlNFKS4gQnVuZGxlZCBmb250IGZpbGVzIHJldGFpbiB0aGVpciBpbmNsdWRlZCBTSUwgT3BlbiBGb250IExpY2Vuc2Ugbm90aWNlLiBTZWUgW0NPTlRSSUJVVElORy5tZF0oQ09OVFJJQlVUSU5HLm1kKSBmb3IgY29udHJpYnV0aW5nLgoKIyMgUGFja2FnZSBhIHJlbGVhc2UKClJ1biBgcHl0aG9uMyBzY3JpcHRzL3BhY2thZ2UtcmVsZWFzZS5weWAgdG8gcmVnZW5lcmF0ZSBgUExBWS5odG1sYCBhbmQgYGRlYWQtc2lnbmFsLXNvdXJjZS56aXBgIGZyb20gdGhlIGN1cnJlbnQgc291cmNlLiBUaGUgWklQIGV4Y2x1ZGVzIGNoZWNrb3V0IG1ldGFkYXRhLCBjcmVkZW50aWFscywgYW5kIGV4aXN0aW5nIGFyY2hpdmVzLgo=" download="Dead-Signal-README.md">PROJECT README ↗</a></div></footer>
   </main>
-  <dialog id="manual"><div class="manual-top"><span class="eyebrow">DEAD SIGNAL / FIELD MANUAL</span><button class="close-button" id="close-manual" aria-label="Close field manual">×</button></div><h2>READ. THEN RUN.</h2><p class="manual-intro">Get your people out alive. You command the highlighted soldier; the rest of the squad follows.</p><div class="manual-grid"><div><span class="manual-number">01</span><h3>MOVE AS ONE</h3><p>On a phone, drag the movement pad with your left thumb. Tap the field to order a move. On desktop, click or use WASD / arrow keys. Tap a squad portrait to change leader. Your order follows a route around cover; the coastline cannot be crossed.</p></div><div><span class="manual-number">02</span><h3>MAKE SOME NOISE</h3><p>The squad automatically shoots nearby enemies, then signal jammers. Stopping to fire improves accuracy. Gunfire brings zombies. Toggle Hold Fire to travel quietly. Enemy soldiers and zombies fight each other too.</p></div><div><span class="manual-number">03</span><h3>BREAK THE DEADLOCK</h3><p>Tap Grenade to throw toward the closest enemy, then a nearby jammer, or in the direction your leader faces. On desktop, point and press G, or hold right-click to aim and fire. Blasts break huts and barrels; your squad is safe from its own grenades. Cover blocks bullets.</p></div><div><span class="manual-number">04</span><h3>THREE JOBS. ONE SQUAD.</h3><p>First Contact: rescue the radio operator. Bad Frequency: destroy both marked jammers with rifles or grenades. Last Transmission: stay in the relay circle for 25 seconds of uplink time. Step out to dodge; progress waits for your return. In every mission, finish the objective, then bring all living soldiers and any rescued survivor to the green flare. Stay together until extraction finishes.</p></div></div><div class="manual-note"><strong>EVERY NAME COUNTS.</strong><p>Lost soldiers stay lost for that mission. Keep an eye on the squad’s health. You can restart, choose Recruit difficulty, or pause at any time.</p></div><button id="manual-done" class="primary-button">UNDERSTOOD <span>→</span></button></dialog>
+  <dialog id="manual"><div class="manual-top"><span class="eyebrow">DEAD SIGNAL / FIELD MANUAL</span><button class="close-button" id="close-manual" aria-label="Close field manual">×</button></div><h2>READ. THEN RUN.</h2><p class="manual-intro">Get your people out alive. You command the highlighted soldier; the rest of the squad follows.</p><div class="manual-grid"><div><span class="manual-number">01</span><h3>MOVE AS ONE</h3><p>On a phone, drag the movement pad with your left thumb. Tap the field to order a move. On desktop, click or use WASD / arrow keys. Tap a squad portrait to change leader. Your order follows a route around cover; the coastline cannot be crossed. First Contact offers an exposed road and longer approaches through cover.</p></div><div><span class="manual-number">02</span><h3>MAKE SOME NOISE</h3><p>The squad automatically shoots nearby enemies, then signal jammers. Stopping to fire improves accuracy. Gunfire brings zombies. Toggle Hold Fire to travel quietly. Enemy soldiers and zombies fight each other too. At First Contact's marked sites, clear the local defenders counted in the HUD before moving into the checkpoint or rescue area.</p></div><div><span class="manual-number">03</span><h3>BREAK THE DEADLOCK</h3><p>Tap Grenade to throw toward the closest enemy, then a nearby jammer, or in the direction your leader faces. On desktop, point and press G, or hold right-click to aim and fire. Blasts break huts and barrels; your squad is safe from its own grenades. Cover blocks bullets. Rescues replenish your squad's health and grenades.</p></div><div><span class="manual-number">04</span><h3>THREE JOBS. ONE SQUAD.</h3><p>First Contact: secure the village, rescue the medic at the clinic and radio operator at the school in either order, then clear the harbour. Bad Frequency: destroy both marked jammers. Last Transmission: stay in the relay circle for 25 seconds of uplink time; stepping out preserves progress. Finish each mission's objectives, then bring all living soldiers and rescued survivors to the green flare. Stay together until extraction finishes.</p></div></div><div class="manual-note"><strong>CHECKPOINTS. EVERY NAME COUNTS.</strong><p>First Contact saves checkpoints after securing the village, each rescue and securing the harbour. Return to base or reload, then choose Continue Checkpoint; after a loss, choose Retry Checkpoint. Saves stay with the difficulty used. Start Fresh and Restart Mission discard the checkpoint. Lost soldiers stay lost for that run. Checkpoint runs count as completions; best times require a fresh run. Browser storage must be available to keep checkpoints. You can choose Recruit difficulty or pause at any time.</p></div><button id="manual-done" class="primary-button">UNDERSTOOD <span>→</span></button></dialog>
   <script>
 const __modules = Object.create(null);
 __modules["navigation.js"] = (() => {
@@ -654,11 +672,6 @@ __modules["navigation.js"] = (() => {
  */
 
 const CELL = 40;
-const WIDTH = 1600;
-const HEIGHT = 1200;
-const COLS = WIDTH / CELL;
-const ROWS = HEIGHT / CELL;
-const COUNT = COLS * ROWS;
 const BODY_RADIUS = 15;
 const ACTOR_RADIUS = 11;
 const DIRECTIONS = [
@@ -666,17 +679,28 @@ const DIRECTIONS = [
   [-1, -1], [1, -1], [-1, 1], [1, 1],
 ];
 const edgeCaches = new WeakMap();
-const pointAt = index => ({
-  x: (index % COLS) * CELL + CELL / 2,
-  y: Math.floor(index / COLS) * CELL + CELL / 2,
+const geometryCaches = new WeakMap();
+function dimensions(game) {
+  let geometry = geometryCaches.get(game);
+  const {width, height} = game.world;
+  if (!geometry || geometry.width !== width || geometry.height !== height) {
+    const cols = Math.ceil(width / CELL), rows = Math.ceil(height / CELL);
+    geometry = {width, height, cols, rows, count: cols * rows};
+    geometryCaches.set(game, geometry);
+  }
+  return geometry;
+}
+const pointAt = (index, cols) => ({
+  x: (index % cols) * CELL + CELL / 2,
+  y: Math.floor(index / cols) * CELL + CELL / 2,
 });
 
 // The graph only changes when obstacles change. Cache expensive body-clear edge
 // queries across actors; a rebuilt grid or new navigation version invalidates it.
-function edgeCache(game) {
+function edgeCache(game, geometry) {
   let cache = edgeCaches.get(game);
-  if (!cache || cache.grid !== game.grid || cache.version !== game.navVersion) {
-    cache = {grid: game.grid, version: game.navVersion, edges: new Uint8Array(COUNT * 8)};
+  if (!cache || cache.grid !== game.grid || cache.version !== game.navVersion || cache.geometry !== geometry) {
+    cache = {grid: game.grid, version: game.navVersion, geometry, edges: new Uint8Array(geometry.count * 8)};
     edgeCaches.set(game, cache);
   }
   return cache.edges;
@@ -686,6 +710,7 @@ function edgeCache(game) {
 // Nearby visible centres form virtual edges to the precise actor position. Keep
 // one additional ring so a local grid dead end cannot hide the other route out.
 function connectors(game, x, y, radius = BODY_RADIUS) {
+  const {cols: COLS, rows: ROWS} = dimensions(game);
   const cx = Math.max(0, Math.min(COLS - 1, Math.floor(x / CELL)));
   const cy = Math.max(0, Math.min(ROWS - 1, Math.floor(y / CELL)));
   const result = [];
@@ -699,7 +724,7 @@ function connectors(game, x, y, radius = BODY_RADIUS) {
         if (gx < 0 || gy < 0 || gx >= COLS || gy >= ROWS) continue;
         const index = gy * COLS + gx;
         if (game.grid[index]) continue;
-        const point = pointAt(index);
+        const point = pointAt(index, COLS);
         if (!game.walkableSegment(x, y, point.x, point.y, radius)) continue;
         result.push({index, cost: Math.hypot(point.x - x, point.y - y)});
       }
@@ -760,6 +785,8 @@ function smooth(game, sx, sy, points) {
 
 /** Return safe waypoints, or [] when the exact destination is unreachable. */
 function findRoute(game, sx, sy, ex, ey) {
+  const geometry = dimensions(game);
+  const {cols: COLS, rows: ROWS, count: COUNT} = geometry;
   if (![sx, sy, ex, ey].every(Number.isFinite)) return [];
   if (game.blocked(sx, sy, ACTOR_RADIUS) || game.blocked(ex, ey, BODY_RADIUS)) return [];
   const escapingPadding = game.blocked(sx, sy, BODY_RADIUS);
@@ -772,11 +799,11 @@ function findRoute(game, sx, sy, ex, ey) {
   const endCosts = new Float64Array(COUNT).fill(Infinity);
   for (const end of ends) endCosts[end.index] = end.cost;
   const costs = new Float64Array(COUNT).fill(Infinity);
-  const parents = new Int16Array(COUNT).fill(-1);
+  const parents = new Int32Array(COUNT).fill(-1);
   const closed = new Uint8Array(COUNT);
-  const edges = edgeCache(game);
+  const edges = edgeCache(game, geometry);
   const heuristic = index => {
-    const point = pointAt(index);
+    const point = pointAt(index, COLS);
     return Math.hypot(point.x - ex, point.y - ey);
   };
   const heap = [];
@@ -796,7 +823,7 @@ function findRoute(game, sx, sy, ex, ey) {
     if (Number.isFinite(endCosts[current])) { end = current; break; }
     const cx = current % COLS;
     const cy = Math.floor(current / COLS);
-    const point = pointAt(current);
+    const point = pointAt(current, COLS);
     for (let direction = 0; direction < DIRECTIONS.length; direction++) {
       const [dx, dy] = DIRECTIONS[direction];
       const nx = cx + dx;
@@ -807,7 +834,7 @@ function findRoute(game, sx, sy, ex, ey) {
       if (dx && dy && (game.grid[cy * COLS + nx] || game.grid[ny * COLS + cx])) continue;
       const edge = current * 8 + direction;
       if (!edges[edge]) {
-        const neighbor = pointAt(next);
+        const neighbor = pointAt(next, COLS);
         edges[edge] = game.walkableSegment(point.x, point.y, neighbor.x, neighbor.y) ? 2 : 1;
       }
       if (edges[edge] !== 2) continue;
@@ -821,7 +848,7 @@ function findRoute(game, sx, sy, ex, ey) {
   if (end < 0) return [];
 
   const points = [];
-  for (let current = end; current >= 0; current = parents[current]) points.push(pointAt(current));
+  for (let current = end; current >= 0; current = parents[current]) points.push(pointAt(current, COLS));
   points.reverse();
   points.push({x: ex, y: ey});
   if (escapingPadding) {
@@ -839,6 +866,259 @@ function findRoute(game, sx, sy, ex, ey) {
 
 return { findRoute };
 })();
+__modules["mission-data.js"] = (() => {
+/**
+ * First Contact: an authored coastal village rather than a random arena.
+ * All coordinates are world pixels. Mission records are immutable; each world
+ * receives fresh, destructible cover and fresh decoration objects.
+ * Original content, MIT licensed; see the project LICENSE.
+ */
+function freezeData(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.values(value).forEach(freezeData);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+const FIRST_CONTACT = freezeData({
+  width: 2800,
+  height: 2200,
+  start: {x: 220, y: 1950},
+  extraction: {x: 2550, y: 200, r: 86},
+  entry: {
+    id: 'entry', name: 'Village checkpoint',
+    zone: {x: 760, y: 1700, r: 150}, radius: 330,
+    enemies: [
+      {type: 'soldier', x: 690, y: 1630},
+      {type: 'soldier', x: 870, y: 1600},
+      {type: 'soldier', x: 930, y: 1750},
+      {type: 'soldier', x: 700, y: 1810},
+      {type: 'soldier', x: 990, y: 1715},
+      {type: 'soldier', x: 830, y: 1450},
+    ],
+  },
+  rescues: [
+    {
+      id: 'clinic', name: 'Clinic courtyard',
+      point: {x: 2200, y: 1700}, radius: 360,
+      enemies: [
+        {type: 'soldier', x: 2110, y: 1610},
+        {type: 'soldier', x: 2390, y: 1750},
+        {type: 'soldier', x: 2130, y: 1800},
+        {type: 'soldier', x: 2400, y: 1590},
+        {type: 'soldier', x: 2090, y: 1450},
+        {type: 'soldier', x: 2250, y: 1790},
+      ],
+    },
+    {
+      id: 'school', name: 'Old school square',
+      point: {x: 700, y: 450}, radius: 350,
+      enemies: [
+        {type: 'soldier', x: 830, y: 380},
+        {type: 'soldier', x: 540, y: 480},
+        {type: 'soldier', x: 650, y: 570},
+        {type: 'soldier', x: 850, y: 500},
+        {type: 'soldier', x: 700, y: 330},
+        {type: 'soldier', x: 450, y: 570},
+      ],
+    },
+  ],
+  exit: {
+    id: 'harbour', name: 'Harbour approach',
+    zone: {x: 2380, y: 620, r: 160}, radius: 360,
+    enemies: [
+      {type: 'soldier', x: 2300, y: 520},
+      {type: 'soldier', x: 2520, y: 730},
+      {type: 'soldier', x: 2280, y: 700},
+      {type: 'soldier', x: 2470, y: 630},
+      {type: 'soldier', x: 2120, y: 640},
+      {type: 'soldier', x: 2650, y: 680},
+    ],
+  },
+  // Small encounters occupy the actual connecting streets. They do not all
+  // rush the landing zone while a player is still learning the controls.
+  ambient: [
+    {type: 'zombie', x: 410, y: 1850},
+    {type: 'zombie', x: 460, y: 1940},
+    {type: 'zombie', x: 1120, y: 1700},
+    {type: 'soldier', x: 1450, y: 1630},
+    {type: 'zombie', x: 1640, y: 1810},
+    {type: 'zombie', x: 1900, y: 1730},
+    {type: 'zombie', x: 820, y: 1370},
+    {type: 'zombie', x: 1000, y: 1140},
+    {type: 'soldier', x: 1100, y: 950},
+    {type: 'zombie', x: 850, y: 860},
+    {type: 'soldier', x: 1640, y: 1260},
+    {type: 'zombie', x: 1840, y: 1080},
+    {type: 'zombie', x: 2050, y: 1010},
+    {type: 'zombie', x: 1610, y: 740},
+  ],
+  response: {
+    delay: 4, count: 6,
+    // Inland entry points provide several safe choices when the squad takes
+    // either rescue first. The engine still checks current actor separation.
+    points: [
+      {x: 420, y: 1050}, {x: 1320, y: 480},
+      {x: 1830, y: 2010}, {x: 2600, y: 1190},
+      {x: 1800, y: 440}, {x: 470, y: 1550},
+      {x: 2550, y: 260}, {x: 2250, y: 250}, {x: 2600, y: 400},
+    ],
+  },
+});
+
+// Rectangles are positioned at the sides of streets, not on their centres.
+// Most paired buildings leave 90–140 pixels for a three-person formation.
+const HUTS = freezeData([
+  // Five checkpoint houses make the opening an encounter, not an empty walk.
+  [560, 1480, 120, 88, 'entry'], [770, 1470, 120, 90, 'entry'],
+  [980, 1550, 126, 88, 'entry'], [970, 1810, 126, 92, 'entry'],
+  [560, 1840, 122, 88, 'entry'],
+  // Crossroads village: short direct street, longer western tree-lined lane.
+  [1080, 1060, 126, 92, 'village'], [1280, 1010, 126, 90, 'village'],
+  [1460, 1060, 128, 90, 'village'], [1100, 1390, 126, 90, 'village'],
+  [1300, 1360, 126, 92, 'village'],
+  // Clinic courtyard is broad enough for a firefight and regrouping.
+  [2000, 1480, 128, 92, 'clinic'], [2240, 1480, 134, 90, 'clinic'],
+  [2460, 1510, 120, 88, 'clinic'], [1980, 1860, 130, 90, 'clinic'],
+  [2270, 1880, 130, 92, 'clinic'],
+  // School district has two open lanes into the central playground.
+  [460, 230, 130, 90, 'school'], [670, 210, 138, 92, 'school'],
+  [930, 280, 126, 90, 'school'], [470, 630, 128, 90, 'school'],
+  [820, 620, 128, 90, 'school'], [1010, 540, 126, 90, 'school'],
+  // Warehouses frame the final street without sealing the shoreline escape.
+  [2190, 360, 134, 94, 'harbour'], [2450, 400, 132, 92, 'harbour'],
+  [2520, 530, 132, 94, 'harbour'], [2170, 810, 130, 94, 'harbour'],
+  [2460, 830, 132, 94, 'harbour'],
+]);
+
+const TREES = freezeData([
+  [110, 1590], [170, 1690], [340, 1710], [335, 2070], [520, 2070],
+  [370, 1390], [450, 1450], [515, 1360], [590, 1280], [620, 1390],
+  [940, 1400], [1020, 1290], [995, 1200], [730, 1130], [710, 1020],
+  [560, 930], [670, 870], [740, 900], [350, 810], [350, 650],
+  [330, 365], [1140, 250], [1200, 380], [1220, 660], [1170, 770],
+  [1470, 450], [1540, 535], [1610, 470], [1750, 590], [1820, 725],
+  [1800, 1380], [1810, 1510], [1970, 1330], [2120, 1280], [2270, 1130],
+  [2440, 1040], [2620, 1430], [2550, 1810], [2150, 2050], [2410, 2070],
+  [1490, 2020], [1300, 2030], [1090, 2110], [920, 2020],
+]);
+
+const ROCKS = freezeData([
+  [390, 1620], [700, 1920], [1150, 1550], [1540, 1590],
+  [1720, 1860], [1830, 1590], [2100, 1840], [2380, 1805],
+  [600, 1160], [950, 930], [1170, 840], [830, 750],
+  [540, 390], [910, 380], [1790, 940], [2270, 770],
+]);
+
+const BARRELS = freezeData([
+  [900, 1540], [940, 1820], [680, 1840], [1235, 1380],
+  [1430, 1090], [1950, 1830], [2470, 1470], [2130, 1530],
+  [812, 235], [608, 659], [964, 653], [2328, 399],
+  [2590, 779], [2310, 823],
+]);
+
+const ROADS = freezeData([
+  // The open main road is quickest, but affords little protection between
+  // the checkpoint, crossroads and harbour defenders.
+  {width: 92, points: [[130, 2160], [220, 1950], [470, 1840], [760, 1700],
+    [1100, 1700], [1320, 1540], [1480, 1530], [1600, 1320], [1730, 1110],
+    [1990, 910], [2180, 730], [2380, 620], [2380, 480],
+    [2410, 330], [2550, 200]]},
+  // The school lane stays beside groves and house corners. It is narrower
+  // than the main street while retaining room for the whole formation.
+  {width: 66, points: [[760, 1700], [710, 1610], [710, 1430], [850, 1260],
+    [900, 1030], [820, 820], [700, 750], [700, 450]]},
+  {width: 76, points: [[1100, 1700], [1480, 1760], [1810, 1750], [2200, 1700]]},
+  // A northern cross street connects the two rescue districts indirectly;
+  // it gives an alternate approach to the exposed harbour road.
+  {width: 64, points: [[700, 450], [890, 460], [1130, 470], [1370, 660],
+    [1660, 870], [1990, 910]]},
+  {width: 66, points: [[2200, 1700], [2420, 1700], [2420, 1420], [2380, 1280],
+    [2380, 1030], [2380, 810], [2380, 620]]},
+  // Small open streets make each district read as a settlement.
+  {width: 60, points: [[460, 1730], [760, 1700], [930, 1750], [1120, 1760]]},
+  {width: 60, points: [[700, 760], [700, 450], [700, 350]]},
+  {width: 60, points: [[540, 480], [700, 450], [850, 500]]},
+  {width: 68, points: [[2110, 1760], [2200, 1700], [2390, 1750]]},
+  {width: 64, points: [[2280, 700], [2380, 620], [2470, 630]]},
+]);
+
+const CLEARINGS = freezeData([
+  [240, 1950, 240, 200], [760, 1700, 310, 245],
+  [1380, 1230, 350, 250], [2200, 1700, 350, 290],
+  [700, 450, 335, 270], [2380, 620, 300, 285],
+  [2550, 225, 130, 130],
+]);
+
+const SCENERY = freezeData([
+  {type: 'sign', x: 490, y: 1910, variant: 0},
+  {type: 'sign', x: 815, y: 1780, variant: 1},
+  {type: 'sign', x: 1120, y: 1785, variant: 2},
+  {type: 'canvas', x: 583, y: 1605, variant: 1},
+  {type: 'handcart', x: 970, y: 1935, variant: 0},
+  {type: 'toolroll', x: 1125, y: 1498, variant: 0},
+  {type: 'fieldbag', x: 2040, y: 1598, variant: 1},
+  {type: 'basin', x: 2300, y: 1601, variant: 0},
+  {type: 'canvas', x: 2435, y: 1905, variant: 2},
+  {type: 'handcart', x: 982, y: 694, variant: 2},
+  {type: 'fieldbag', x: 553, y: 598, variant: 0},
+  {type: 'canvas', x: 988, y: 388, variant: 0},
+  {type: 'sign', x: 2250, y: 760, variant: 2},
+  {type: 'wire', x: 2502, y: 790, variant: 1},
+  {type: 'toolroll', x: 2265, y: 951, variant: 1},
+  {type: 'canvas', x: 2519, y: 293, variant: 2},
+]);
+
+function createFirstContactWorld(random = () => 0.5) {
+  const obstacles = [];
+  const put = (type, x, y, w, h, district) => obstacles.push({
+    type, x, y, w, h, district,
+    hp: type === 'barrel' ? 24 : type === 'hut' ? 160 : Infinity,
+    alive: true,
+  });
+  HUTS.forEach(([x, y, w, h, district]) => put('hut', x, y, w, h, district));
+  TREES.forEach(([x, y]) => put('tree', x, y, 25, 27));
+  ROCKS.forEach(([x, y]) => put('rock', x, y, 50, 36));
+  BARRELS.forEach(([x, y]) => put('barrel', x, y, 23, 27));
+  const decorations = [];
+  for (let i = 0; i < 740; i++) {
+    decorations.push({
+      x: 35 + random() * (FIRST_CONTACT.width - 70),
+      y: 35 + random() * (FIRST_CONTACT.height - 70),
+      type: i % 23 === 0 ? 'flower' : i % 9 === 0 ? 'dirt' : 'grass',
+      variant: Math.floor(random() * 4),
+    });
+  }
+  for (const [x, y] of [[810, 1760], [1500, 1430], [1860, 1010],
+    [2235, 1800], [850, 575], [2370, 770]]) {
+    decorations.push({x, y, type: 'crater'});
+  }
+  // Preserve the simulation's ordered coastline: first six points describe
+  // the northern shore; index 5→6 is the northeast corner; the remainder east.
+  const coastline = [
+    [-10, 115], [250, 65], [820, 100], [1460, 65], [2190, 95], [2600, 70],
+    [2750, 330], [2700, 670], [2740, 1070], [2700, 1430],
+    [2750, 1760], [2730, 2010], [2760, 2210],
+  ].map(([x, y]) => ({x, y}));
+  return {
+    width: FIRST_CONTACT.width, height: FIRST_CONTACT.height,
+    spawn: {...FIRST_CONTACT.start},
+    obstacles, decorations, coastline,
+    roads: ROADS.map(road => ({width: road.width, points: road.points.map(point => [...point])})),
+    clearings: CLEARINGS.map(clearing => [...clearing]),
+    scenery: SCENERY.map(prop => ({...prop})),
+    landmarks: [
+      {id: 'entry', type: 'checkpoint', name: 'Village checkpoint', x: 760, y: 1700, r: 150},
+      {id: 'clinic', type: 'clinic', name: 'Clinic courtyard', x: 2200, y: 1700, r: 130},
+      {id: 'school', type: 'school', name: 'Old school square', x: 700, y: 450, r: 130},
+      {id: 'harbour', type: 'harbour', name: 'Harbour approach', x: 2380, y: 620, r: 160},
+    ],
+  };
+}
+
+return { FIRST_CONTACT, createFirstContactWorld };
+})();
 __modules["engine.js"] = (() => {
 /**
  * DEAD SIGNAL — original squad tactics simulation.
@@ -846,14 +1126,15 @@ __modules["engine.js"] = (() => {
  * MIT licensed; see the project LICENSE.
  */
 const { findRoute } = __modules["navigation.js"];
+const { FIRST_CONTACT, createFirstContactWorld } = __modules["mission-data.js"];
 
 const MISSIONS = Object.freeze([
   {
     id: 0,
     title: 'FIRST CONTACT',
     subtitle: 'The village has gone quiet.',
-    briefing: 'Find the stranded radio operator, then get your squad to the evacuation flare. Your guns draw the dead. Keep moving and use the fighting to your advantage.',
-    objective: 'Rescue 1 survivor and reach extraction',
+    briefing: 'Secure the village entrance, then rescue the survivors at the clinic and school in either order. Clear each local guard detail before collecting them. Secure the harbour approach and escort everyone to the evacuation flare. Expect the dead to answer the evacuation signal. Checkpoints save each completed objective.',
+    objective: 'Secure the village, rescue 2 survivors and escape through the harbour',
   },
   {
     id: 1,
@@ -874,9 +1155,8 @@ const MISSIONS = Object.freeze([
 const WIDTH = 1600;
 const HEIGHT = 1200;
 const CELL = 40;
-const COLS = WIDTH / CELL;
-const ROWS = HEIGHT / CELL;
 const TAU = Math.PI * 2;
+const FIRST_CONTACT_REVISION = 1;
 // Gameplay tuning lives together; all rates are per simulation second.
 const CONFIG = Object.freeze({
   step: 1 / 60, maxCatchup: 0.15, actorRadius: 11,
@@ -890,13 +1170,16 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 function makeRandom(seed) {
   let value = Number(seed) >>> 0;
-  return () => {
-    value += 0x6d2b79f5;
+  const random = () => {
+    value = (value + 0x6d2b79f5) >>> 0;
     let t = value;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  random.getState = () => value >>> 0;
+  random.setState = state => { value = Number(state) >>> 0; };
+  return random;
 }
 
 function pointRect(x, y, r, o) {
@@ -1010,23 +1293,26 @@ class Game {
     const index = clamp(Math.floor(Number(mission) || 0), 0, 2);
     this.state = {
       status: 'ready', mission: index, time: 0, noise: 0, kills: 0,
-      grenades: this.easy ? 5 : 4, rescueCount: 0, rescueTarget: index === 0 ? 1 : 0,
-      objective: index === 0 ? {type: 'rescue'} : index === 1
+      grenades: this.easy ? 5 : 4, rescueCount: 0, rescueTarget: index === 0 ? 2 : 0,
+      checkpointSequence: 0,
+      objective: index === 0 ? this.createOperationObjective() : index === 1
         ? {type: 'sabotage', targets: []}
         : {type: 'holdout', zone: {x: 1020, y: 520, r: 110}, duration: 25,
           held: 0, started: false, inside: false, elapsed: 0},
       message: MISSIONS[index].objective,
-      extraction: {x: 1380, y: 220, r: 86, active: false, progress: 0},
-      world: makeWorld(this.random),
+      extraction: {...(index === 0 ? FIRST_CONTACT.extraction : {x: 1380, y: 220, r: 86}), active: false, progress: 0},
+      world: index === 0 ? createFirstContactWorld(this.random) : makeWorld(this.random),
       soldiers: [], leaderId: 1, enemies: [], civilians: [], bullets: [],
       particles: [], corpses: [], target: null, thrownGrenades: [],
       holdFire: false, wavesRemaining: index === 0 ? 1 : index === 1 ? 2 : 3,
       totalKills: 0,
       events: [],
     };
+    const start = index === 0 ? FIRST_CONTACT.start : {x: 220, y: 970};
+    this.lastShot = {...start};
     ['FOX', 'ROOK', 'JUNE'].forEach((name, i) => {
       this.state.soldiers.push({
-        id: this.nextId++, name, x: 220 - i * 28, y: 970 + i * 25,
+        id: this.nextId++, name, x: start.x - i * 28, y: start.y + i * 25,
         hp: 100, maxHp: 100, alive: true, angle: -Math.PI / 4,
         shootFlash: 0, cooldown: 0.1 + i * 0.13, invulnerable: 0,
         path: null, pathTimer: 0, stuck: 0,
@@ -1034,24 +1320,16 @@ class Game {
         speed: 0, walkPhase: i * 2, hitFlash: 0, targetId: null,
       });
     });
-    const patrols = index === 0
-      ? [[680, 685], [810, 570], [1005, 510], [1205, 665]]
-      : index === 1
-        ? [[505, 675], [765, 545], [900, 420], [1085, 550], [1240, 485], [1180, 840]]
-        : [[510, 677], [640, 515], [885, 532], [985, 310], [1290, 462], [1190, 800], [970, 908], [1380, 650]];
-    const infected = index === 0
-      ? [[430, 905], [479, 947], [770, 810], [920, 815], [1130, 530], [1250, 790], [1310, 350]]
-      : index === 1
-        ? [[420, 910], [472, 840], [656, 900], [735, 795], [906, 793], [971, 605], [1135, 583], [1180, 937], [1320, 800], [1360, 460], [1030, 242]]
-        : [[420, 913], [470, 856], [675, 860], [738, 685], [829, 867], [957, 745], [1095, 913], [1230, 860], [1300, 762], [1380, 541], [1200, 268], [1100, 480], [940, 142], [815, 371]];
-    for (const [x, y] of patrols) this.spawnEnemy('soldier', x, y);
-    for (const [x, y] of infected) this.spawnEnemy('zombie', x, y);
-    if (index === 0) {
-      for (const [x, y] of [[1030, 590]]) this.state.civilians.push({
-        id: this.nextId++, x, y, rescued: false, alive: true,
-        moveAngle: -Math.PI / 4, moving: false, vx: 0, vy: 0,
-        speed: 0, walkPhase: 0, hitFlash: 0, pathTimer: 0,
-      });
+    const patrols = index === 1
+      ? [[505, 675], [765, 545], [900, 420], [1085, 550], [1240, 485], [1180, 840]]
+      : [[510, 677], [640, 515], [885, 532], [985, 310], [1290, 462], [1190, 800], [970, 908], [1380, 650]];
+    const infected = index === 1
+      ? [[420, 910], [472, 840], [656, 900], [735, 795], [906, 793], [971, 605], [1135, 583], [1180, 937], [1320, 800], [1360, 460], [1030, 242]]
+      : [[420, 913], [470, 856], [675, 860], [738, 685], [829, 867], [957, 745], [1095, 913], [1230, 860], [1300, 762], [1380, 541], [1200, 268], [1100, 480], [940, 142], [815, 371]];
+    if (index === 0) this.populateOperation();
+    else {
+      for (const [x, y] of patrols) this.spawnEnemy('soldier', x, y);
+      for (const [x, y] of infected) this.spawnEnemy('zombie', x, y);
     }
     if (index === 1) {
       for (const [x, y] of [[829, 327], [1300, 570]]) this.state.objective.targets.push({
@@ -1061,6 +1339,120 @@ class Game {
     }
     this.rebuildNavigation();
     this.state.totalKills = this.state.enemies.length;
+    if (index === 0) this.refreshOperationObjective();
+  }
+
+  createOperationObjective() {
+    const entry = FIRST_CONTACT.entry;
+    const exit = FIRST_CONTACT.exit;
+    return {
+      type: 'operation', phase: 0, completed: 0, stageCount: 4,
+      stages: [
+        {id: 'entry', label: 'SECURE THE ENTRANCE', detail: 'Clear the entrance guards and move into the village.',
+          x: entry.zone.x, y: entry.zone.y, r: entry.zone.r, group: entry.id, complete: false},
+        {id: 'rescues', label: 'RESCUE THE SURVIVORS', detail: 'Clear the clinic and school guards. Collect both survivors in either order.', complete: false},
+        {id: 'harbour', label: 'SECURE THE HARBOUR', detail: 'Escort your survivors through the village. Clear the harbour approach.',
+          x: exit.zone.x, y: exit.zone.y, r: exit.zone.r, group: exit.id, complete: false},
+        {id: 'evacuation', label: 'EVACUATE THE SQUAD', detail: 'Bring your squad and both survivors to the flare. Infected are responding to the signal.', complete: false},
+      ],
+      rescueSites: FIRST_CONTACT.rescues.map(site => ({id: site.id, label: site.name,
+        x: site.point.x, y: site.point.y, r: 67, group: site.id})),
+      rescuedIds: [], label: '', detail: '', currentPoints: [],
+      response: {pending: false, dueAt: null, spawned: false, count: 0,
+        delay: FIRST_CONTACT.response.delay || 4},
+    };
+  }
+
+  populateOperation() {
+    const locations = [FIRST_CONTACT.entry, ...FIRST_CONTACT.rescues, FIRST_CONTACT.exit];
+    for (const location of locations) {
+      const home = location.zone || location.point;
+      for (const spec of location.enemies) {
+        const enemy = this.spawnEnemy(spec.type, spec.x, spec.y);
+        enemy.operationGroup = location.id;
+        enemy.operationHome = {x: home.x, y: home.y, r: location.radius || 320};
+      }
+    }
+    for (const spec of FIRST_CONTACT.ambient) this.spawnEnemy(spec.type, spec.x, spec.y);
+    for (const [i, site] of FIRST_CONTACT.rescues.entries()) {
+      this.civilians.push({id: this.nextId++, x: site.point.x, y: site.point.y,
+        rescued: false, alive: true, siteId: site.id, label: site.name, operationGroup: site.id,
+        moveAngle: -Math.PI / 4, moving: false, vx: 0, vy: 0,
+        speed: 0, walkPhase: i * 2, hitFlash: 0, pathTimer: 0});
+    }
+  }
+
+  operationGuardsRemaining(group) {
+    return this.enemies.filter(enemy => enemy.alive && enemy.operationGroup === group).length;
+  }
+
+  refreshOperationObjective() {
+    const objective = this.state.objective;
+    if (objective.type !== 'operation') return;
+    const stage = objective.stages[objective.phase];
+    objective.label = stage.label;
+    objective.detail = stage.detail;
+    objective.completed = objective.phase;
+    if (objective.phase === 1) {
+      objective.currentPoints = objective.rescueSites.filter(site => !objective.rescuedIds.includes(site.id))
+        .map(site => {
+          const remaining = this.operationGuardsRemaining(site.group);
+          return {...site, kind: 'rescue', remaining, ready: remaining === 0};
+        });
+    } else if (objective.phase === 3) {
+      objective.currentPoints = [{id: 'evacuation', label: 'EVACUATION', ...this.extraction,
+        kind: 'extraction', remaining: 0, ready: true}];
+    } else {
+      const remaining = this.operationGuardsRemaining(stage.group);
+      objective.currentPoints = [{id: stage.id, label: stage.label, x: stage.x, y: stage.y,
+        r: stage.r, group: stage.group, kind: 'secure', remaining, ready: remaining === 0}];
+    }
+  }
+
+  operationCheckpoint(stage, point) {
+    this.state.checkpointSequence++;
+    this.emit('checkpoint', point, {sequence: this.state.checkpointSequence, stage,
+      phase: this.state.objective.phase});
+  }
+
+  advanceOperationPhase(point) {
+    const objective = this.state.objective;
+    objective.stages[objective.phase].complete = true;
+    objective.phase++;
+    this.refreshOperationObjective();
+    this.emit('operation-stage', point, {phase: objective.phase, label: objective.label,
+      stage: objective.stages[objective.phase].id, team: 'objective'});
+  }
+
+  updateOperation() {
+    const objective = this.state.objective;
+    if (objective.type !== 'operation') return;
+    const leader = this.leader;
+    if (!leader) return;
+    // Entering the final approach trips the evacuation alarm. The four-second
+    // warning runs while the squad fights for the harbour, so its finite
+    // response can intercept the retreat rather than appearing after escape.
+    const harbour = objective.stages[2];
+    if (objective.phase === 2 && !objective.response.pending && !objective.response.spawned
+      && dist(leader, harbour) <= 450) {
+      objective.response.pending = true;
+      objective.response.dueAt = this.state.time + objective.response.delay;
+      this.emit('operation-response', harbour, {delay: objective.response.delay,
+        count: this.operationResponseCount(), team: 'zombie'});
+      this.say('HARBOUR ALARM · infected incoming in 4 seconds', 4);
+    }
+    if (objective.phase === 0 || objective.phase === 2) {
+      const stage = objective.stages[objective.phase];
+      if (this.operationGuardsRemaining(stage.group) === 0 && dist(leader, stage) <= stage.r) {
+        const stageId = stage.id;
+        this.advanceOperationPhase(stage);
+        if (objective.phase === 3) {
+          this.say('HARBOUR SECURE · escort everyone to the flare', 4);
+        } else this.say('VILLAGE OPEN · rescue the clinic and school survivors', 4);
+        this.operationCheckpoint(stageId, stage);
+      }
+    }
+    this.refreshOperationObjective();
   }
 
   // Renderers may use the state object or these convenient aliases.
@@ -1107,7 +1499,7 @@ class Game {
   moveTo(x, y) {
     const leader = this.leader;
     if (!leader || !Number.isFinite(x) || !Number.isFinite(y)) return false;
-    const destination = this.nearestOpen(clamp(x, 22, WIDTH - 22), clamp(y, 22, HEIGHT - 22));
+    const destination = this.nearestOpen(clamp(x, 22, this.world.width - 22), clamp(y, 22, this.world.height - 22));
     this.state.target = destination;
     leader.path = this.findPath(leader.x, leader.y, destination.x, destination.y);
     if (!leader.path.length) { this.state.target = null; return false; }
@@ -1129,8 +1521,8 @@ class Game {
     }
     const distance = Math.hypot(x - leader.x, y - leader.y);
     const scale = distance > CONFIG.grenadeRange ? CONFIG.grenadeRange / distance : 1;
-    const tx = clamp(leader.x + (x - leader.x) * scale, 15, WIDTH - 15);
-    const ty = clamp(leader.y + (y - leader.y) * scale, 15, HEIGHT - 15);
+    const tx = clamp(leader.x + (x - leader.x) * scale, 15, this.world.width - 15);
+    const ty = clamp(leader.y + (y - leader.y) * scale, 15, this.world.height - 15);
     this.state.grenades--;
     this.state.thrownGrenades.push({
       x: leader.x, y: leader.y, sx: leader.x, sy: leader.y,
@@ -1172,7 +1564,7 @@ class Game {
   }
 
   blocked(x, y, radius = 12) {
-    if (x < radius + 4 || y < radius + 4 || x > WIDTH - radius - 4 || y > HEIGHT - radius - 4) return true;
+    if (x < radius + 4 || y < radius + 4 || x > this.world.width - radius - 4 || y > this.world.height - radius - 4) return true;
     const coast = this.world.coastline;
     if (coast) {
       // Each shoreline segment borders sea above (top) or right (east).
@@ -1200,12 +1592,13 @@ class Game {
     if (!this.blocked(x, y, 15)) return {x, y};
     for (let radius = 20; radius < 200; radius += 20) {
       for (let i = 0; i < 16; i++) {
-        const nx = clamp(x + Math.cos(i * TAU / 16) * radius, 22, WIDTH - 22);
-        const ny = clamp(y + Math.sin(i * TAU / 16) * radius, 22, HEIGHT - 22);
+        const nx = clamp(x + Math.cos(i * TAU / 16) * radius, 22, this.world.width - 22);
+        const ny = clamp(y + Math.sin(i * TAU / 16) * radius, 22, this.world.height - 22);
         if (!this.blocked(nx, ny, grid ? 16 : 12)) return {x: nx, y: ny};
       }
     }
-    return {x: 220, y: 970};
+    const start = this.world.spawn || {x: 220, y: 970};
+    return {x: clamp(start.x, 22, this.world.width - 22), y: clamp(start.y, 22, this.world.height - 22)};
   }
 
   hasLOS(a, b) {
@@ -1213,6 +1606,8 @@ class Game {
   }
 
   rebuildNavigation() {
+    const COLS = Math.ceil(this.world.width / CELL);
+    const ROWS = Math.ceil(this.world.height / CELL);
     this.grid = new Uint8Array(COLS * ROWS);
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
@@ -1238,8 +1633,8 @@ class Game {
   moveActor(actor, vx, vy, dt, radius = CONFIG.actorRadius) {
     const oldX = actor.x;
     const oldY = actor.y;
-    const nx = clamp(actor.x + vx * dt, 18, WIDTH - 18);
-    const ny = clamp(actor.y + vy * dt, 18, HEIGHT - 18);
+    const nx = clamp(actor.x + vx * dt, 18, this.world.width - 18);
+    const ny = clamp(actor.y + vy * dt, 18, this.world.height - 18);
     if (!this.blocked(nx, ny, radius)) {
       actor.x = nx;
       actor.y = ny;
@@ -1425,7 +1820,8 @@ class Game {
     }
     state.noise = Math.max(0, state.noise - dt * 7);
     this.messageTimer -= dt;
-    if (this.messageTimer <= 0) state.message = state.extraction.active ? 'EXTRACTION OPEN · follow the flare' : MISSIONS[state.mission].objective;
+    if (this.messageTimer <= 0) state.message = state.extraction.active ? 'EXTRACTION OPEN · follow the flare'
+      : state.objective.type === 'operation' ? state.objective.detail : MISSIONS[state.mission].objective;
     const leader = this.leader;
     if (!leader) { state.status = 'lost'; state.message = 'SQUAD LOST · try a quieter approach'; return; }
 
@@ -1551,13 +1947,23 @@ class Game {
       // Off-screen factions remain in place until the squad reaches their area.
       enemy.active ||= friendly.some(s => dist(s, enemy) < CONFIG.activationRadius);
       if (!enemy.active) continue;
+      const home = enemy.operationHome;
+      // Objective guards own their local approach. They may fight at its edge,
+      // but cannot migrate across the village and leave a distant objective
+      // waiting for a guard who is chasing an unrelated noise elsewhere.
+      if (home && dist(enemy, home) > home.r + 30) {
+        enemy.targetId = null;
+        this.navigate(enemy, home.x, home.y, enemy.type === 'zombie' ? 42 : 48, dt);
+        continue;
+      }
       const opponents = enemy.type === 'zombie'
         ? [...friendly, ...living.filter(e => e.type === 'soldier' && e.active)]
         : [...friendly, ...living.filter(e => e.type === 'zombie' && e.active)];
       const previousTarget = enemy.targetId;
       const hearing = Math.max(0, 1 - dist(enemy, this.lastShot) / 650);
       const sense = enemy.type === 'zombie' ? 185 + this.state.noise * 2.4 * hearing : 275;
-      const target = this.acquireTarget(enemy, opponents, sense,
+      const localOpponents = home ? opponents.filter(candidate => dist(candidate, home) <= home.r + 90) : opponents;
+      const target = this.acquireTarget(enemy, localOpponents, sense,
         candidate => dist(enemy, candidate) * (enemy.type === 'soldier' && candidate.name ? 0.8 : 1),
         enemy.type === 'soldier');
       if (target && enemy.type === 'soldier') {
@@ -1569,27 +1975,33 @@ class Game {
         const aim = Math.atan2(target.y - enemy.y, target.x - enemy.x);
         enemy.angle = aim;
         if (enemy.type === 'soldier') {
-          if (distance > 195) this.navigate(enemy, target.x, target.y, 61, dt);
+          if (distance > 195 && (!home || dist(enemy, home) < home.r)) this.navigate(enemy, target.x, target.y, 61, dt);
           else if (distance < 82) this.moveActor(enemy, -Math.cos(aim) * 34, -Math.sin(aim) * 34, dt);
           enemy.angle = aim;
           if (distance < CONFIG.enemyRange && enemy.cooldown <= 0 && enemy.reaction <= 0 && this.hasLOS(enemy, target)) {
             this.fire(enemy, target, 'enemy');
           }
         } else if (distance > 25) {
-          this.navigate(enemy, target.x, target.y, this.hard ? 69 : this.easy ? 43 : 52, dt);
+          if (!home || dist(enemy, home) < home.r || dist(target, home) < home.r)
+            this.navigate(enemy, target.x, target.y, this.hard ? 69 : this.easy ? 43 : 52, dt);
         } else if (enemy.attackCooldown <= 0) {
           this.damage(target, target.name ? (this.hard ? 13 : this.easy ? 5 : 8) : 15, 'zombie');
           enemy.attackCooldown = 0.95;
         }
       } else if (enemy.waveSpawn || (enemy.type === 'zombie' && this.state.noise > 15 && dist(enemy, this.lastShot) < 650)) {
-        const destination = enemy.waveSpawn ? leader : this.lastShot;
+        let destination = enemy.waveSpawn ? leader : this.lastShot;
+        if (home && dist(destination, home) > home.r - 25) {
+          const angle = Math.atan2(destination.y - home.y, destination.x - home.x);
+          destination = {x: home.x + Math.cos(angle) * (home.r - 25), y: home.y + Math.sin(angle) * (home.r - 25)};
+        }
         this.navigate(enemy, destination.x, destination.y, enemy.type === 'zombie' ? 42 : 48, dt);
       } else {
         // Unaware patrols retain a short local route; quiet squads can slip past.
         if (Math.hypot(enemy.x - enemy.wanderX, enemy.y - enemy.wanderY) < 20) {
-          const point = this.nearestOpen(
-            clamp(enemy.x + (this.random() - 0.5) * 180, 60, WIDTH - 60),
-            clamp(enemy.y + (this.random() - 0.5) * 180, 60, HEIGHT - 60));
+          let point = this.nearestOpen(
+            clamp(enemy.x + (this.random() - 0.5) * 180, 60, this.world.width - 60),
+            clamp(enemy.y + (this.random() - 0.5) * 180, 60, this.world.height - 60));
+          if (home && dist(point, home) > home.r - 30) point = this.nearestOpen(home.x, home.y);
           enemy.wanderX = point.x; enemy.wanderY = point.y; enemy.pathTimer = 0;
         }
         this.navigate(enemy, enemy.wanderX, enemy.wanderY, enemy.type === 'zombie' ? 14 : 23, dt);
@@ -1638,7 +2050,7 @@ class Game {
         bullet.x = nx;
         bullet.y = ny;
         bullet.life -= dt;
-        if (nx < 0 || ny < 0 || nx > WIDTH || ny > HEIGHT) bullet.life = 0;
+        if (nx < 0 || ny < 0 || nx > this.world.width || ny > this.world.height) bullet.life = 0;
       }
     }
     this.state.bullets = this.state.bullets.filter(b => b.life > 0);
@@ -1659,6 +2071,7 @@ class Game {
 
   updateObjective(dt) {
     const objective = this.state.objective;
+    if (objective.type === 'operation') { this.updateOperation(); return; }
     if (objective.type !== 'holdout' || this.state.extraction.active) return;
     const leader = this.leader;
     objective.inside = Boolean(leader && dist(leader, objective.zone) <= objective.zone.r);
@@ -1679,7 +2092,7 @@ class Game {
     const squad = this.soldiers.filter(soldier => soldier.alive);
     const safe = point => !this.blocked(point.x, point.y, 16)
       && squad.every(soldier => dist(soldier, point) >= 330);
-    const preferred = this.nearestOpen(clamp(x, 65, WIDTH - 65), clamp(y, 65, HEIGHT - 65));
+    const preferred = this.nearestOpen(clamp(x, 65, this.world.width - 65), clamp(y, 65, this.world.height - 65));
     if (safe(preferred)) return preferred;
     // Clamping near the coast or cover can pull a spawn towards a soldier.
     // Search valid approaches, checking the final point against the whole squad.
@@ -1687,15 +2100,15 @@ class Game {
     const angle = Math.atan2(y - leader.y, x - leader.x);
     for (let i = 1; i <= 36; i++) {
       const direction = angle + i * TAU / 36;
-      const point = this.nearestOpen(clamp(leader.x + Math.cos(direction) * 400, 65, WIDTH - 65),
-        clamp(leader.y + Math.sin(direction) * 400, 65, HEIGHT - 65));
+      const point = this.nearestOpen(clamp(leader.x + Math.cos(direction) * 400, 65, this.world.width - 65),
+        clamp(leader.y + Math.sin(direction) * 400, 65, this.world.height - 65));
       if (safe(point)) return point;
     }
     // Three spread-out soldiers can cover every nearby approach. A finite grid
     // fallback guarantees that this never becomes an unsafe instant ambush.
     let best = null, closest = Infinity;
-    for (let gy = 60; gy < HEIGHT - 60; gy += 40) {
-      for (let gx = 60; gx < WIDTH - 60; gx += 40) {
+    for (let gy = 60; gy < this.world.height - 60; gy += 40) {
+      for (let gx = 60; gx < this.world.width - 60; gx += 40) {
         const point = {x: gx, y: gy};
         if (safe(point) && dist(point, preferred) < closest) {
           best = point; closest = dist(point, preferred);
@@ -1705,7 +2118,47 @@ class Game {
     return best;
   }
 
+  updateOperationResponse() {
+    const response = this.state.objective.response;
+    if (!response.pending || response.spawned || this.state.time + 1e-9 < response.dueAt) return;
+    const leader = this.leader;
+    if (!leader) return;
+    const approach = Math.atan2(this.extraction.y - leader.y, this.extraction.x - leader.x);
+    const futureRoute = {x: leader.x + Math.cos(approach) * 400,
+      y: leader.y + Math.sin(approach) * 400};
+    const center = this.safeWavePoint(futureRoute.x, futureRoute.y);
+    if (!center) return;
+    const count = this.operationResponseCount();
+    const points = [];
+    for (let i = 0; i < count; i++) {
+      const point = this.safeWavePoint(center.x + (this.random() - 0.5) * 120,
+        center.y + (this.random() - 0.5) * 120);
+      if (point) points.push(point);
+    }
+    if (!points.length) return;
+    for (const point of points) {
+      const enemy = this.spawnEnemy('zombie', point.x, point.y);
+      enemy.active = true;
+      enemy.waveSpawn = true;
+      enemy.operationResponse = true;
+    }
+    response.pending = false;
+    response.spawned = true;
+    response.count = points.length;
+    this.waveCount++;
+    this.state.wavesRemaining = 0;
+    this.state.totalKills += points.length;
+    this.emit('wave', center, {count: points.length, remaining: 0, operation: true});
+    this.say('THE DEAD ANSWERED · escort everyone to the flare', 3);
+  }
+
+  operationResponseCount() {
+    const count = FIRST_CONTACT.response.count || 6;
+    return count + (this.hard ? 2 : this.easy ? -2 : 0);
+  }
+
   updateWaves(dt) {
+    if (this.state.objective.type === 'operation') { this.updateOperationResponse(); return; }
     if (this.state.wavesRemaining <= 0 || this.state.extraction.active) return;
     const objective = this.state.objective;
     const holdout = objective.type === 'holdout';
@@ -1723,7 +2176,7 @@ class Game {
     const radius = holdout ? 400 : 470;
     const location = {x: leader.x + Math.cos(angle) * radius, y: leader.y + Math.sin(angle) * radius};
     const center = holdout ? this.safeWavePoint(location.x, location.y)
-      : this.nearestOpen(clamp(location.x, 65, WIDTH - 65), clamp(location.y, 65, HEIGHT - 65));
+      : this.nearestOpen(clamp(location.x, 65, this.world.width - 65), clamp(location.y, 65, this.world.height - 65));
     if (!center) {
       // An impossible spawn is postponed rather than appearing on a soldier.
       this.waveCount--; this.state.wavesRemaining++; return;
@@ -1749,7 +2202,9 @@ class Game {
     const leader = this.leader;
     if (!leader) return;
     for (const civilian of this.civilians) {
-      if (!civilian.rescued && this.soldiers.some(s => s.alive && dist(s, civilian) < 67)) {
+      const operation = this.state.objective.type === 'operation' ? this.state.objective : null;
+      const available = !operation || (operation.phase === 1 && this.operationGuardsRemaining(civilian.operationGroup) === 0);
+      if (!civilian.rescued && available && this.soldiers.some(s => s.alive && dist(s, civilian) < 67)) {
         civilian.rescued = true;
         this.state.rescueCount++;
         this.emit('rescue', civilian, {actorId: civilian.id, count: this.state.rescueCount});
@@ -1757,9 +2212,18 @@ class Game {
         // A survivor brings a small field supply to help a damaged squad recover.
         for (const soldier of this.soldiers) if (soldier.alive) soldier.hp = Math.min(soldier.maxHp, soldier.hp + 25);
         this.state.grenades = Math.min(6, this.state.grenades + 1);
+        if (operation) {
+          operation.rescuedIds.push(civilian.siteId);
+          if (this.state.rescueCount === this.state.rescueTarget) this.advanceOperationPhase(civilian);
+          else this.refreshOperationObjective();
+          this.operationCheckpoint(civilian.siteId, civilian);
+        }
       }
       if (civilian.rescued && dist(civilian, leader) > 85) {
-        const point = this.nearestOpen(leader.x - 40, leader.y + 45);
+        // Each survivor has its own following slot. Sharing one destination
+        // forces two bodies to keep shoving each other out of the escort line.
+        const index = this.civilians.indexOf(civilian);
+        const point = this.nearestOpen(leader.x - 40 - index * 24, leader.y + 45 + index * 24);
         this.navigate(civilian, point.x, point.y, 175, dt);
       }
     }
@@ -1781,15 +2245,17 @@ class Game {
     const leader = this.leader;
     if (!leader) { state.status = 'lost'; state.message = 'SQUAD LOST · try a quieter approach'; return; }
     const objective = state.objective;
-    const complete = objective.type === 'rescue' ? state.rescueCount >= state.rescueTarget
+    const complete = objective.type === 'operation' ? objective.phase === 3
+      : objective.type === 'rescue' ? state.rescueCount >= state.rescueTarget
       : objective.type === 'sabotage' ? objective.targets.every(target => !target.alive)
         : objective.held + 1e-9 >= objective.duration;
     if (complete && !state.extraction.active) {
       state.extraction.active = true;
       this.emit('objective', state.extraction, {mission: state.mission});
       this.say('OBJECTIVE COMPLETE · get to the flare', 4);
-      // The marked objective is enough. No map cleanup or evacuation waves.
-      state.wavesRemaining = 0;
+      // The marked objective is enough; never require a whole-map cleanup.
+      // The operation's already announced response survives extraction opening.
+      if (objective.type !== 'operation') state.wavesRemaining = 0;
     }
     const leaderAtFlare = dist(leader, state.extraction) < state.extraction.r;
     const squadTogether = this.soldiers.every(s => !s.alive || dist(s, state.extraction) < state.extraction.r + 28)
@@ -1800,6 +2266,10 @@ class Game {
       state.extraction.progress = Math.min(1, state.extraction.progress + dt / CONFIG.extractionSeconds);
       if (state.extraction.progress >= 1) {
         state.status = 'won';
+        if (objective.type === 'operation') {
+          objective.stages[3].complete = true;
+          objective.completed = 4;
+        }
         state.message = 'SQUAD EXTRACTED · signal received';
         this.emit('extracted', state.extraction, {survivors: this.soldiers.filter(s => s.alive).length});
         this.puff(state.extraction.x, state.extraction.y, '#d5f68c', 32, 'spark');
@@ -1808,7 +2278,7 @@ class Game {
   }
 }
 
-return { MISSIONS, CONFIG, Game };
+return { MISSIONS, FIRST_CONTACT_REVISION, CONFIG, Game };
 })();
 __modules["actors.js"] = (() => {
 /** Original pixel characters. Animation is a view of the simulation clock only. */
@@ -2508,13 +2978,16 @@ function buildScenery(state) {
   const world = state?.world;
   if (!world) return [];
   const mission = Math.max(0, Math.min(2, Math.floor(Number(state.mission) || 0)));
-  const protectedPoints = [{x: 220, y: 970, r: 70}];
+  const protectedPoints = [{...(world.spawn||{x:220,y:970}),r:70}];
   if (state.extraction) protectedPoints.push({...state.extraction, r: state.extraction.r + 20});
   for (const person of state.civilians || []) protectedPoints.push({x: person.x, y: person.y, r: 64});
   if (state.objective?.zone) protectedPoints.push({...state.objective.zone, r: state.objective.zone.r + 34});
   for (const device of state.objective?.targets || []) protectedPoints.push({x: device.x, y: device.y, r: 62});
+  for (const stage of state.objective?.stages || []) protectedPoints.push({x:stage.x,y:stage.y,r:65});
   const props = [];
-  for (const [type, x, y, variant, radius] of [...COMMON, ...MISSION_PROPS[mission]]) {
+  const candidates=world.scenery||[...COMMON,...MISSION_PROPS[mission]];
+  for (const candidate of candidates) {
+    const [type,x,y,variant=0,radius=14]=Array.isArray(candidate)?candidate:[candidate.type,candidate.x,candidate.y,candidate.variant,candidate.radius];
     if (x < 30 || y < 40 || x > world.width - 50 || y > world.height - 35) continue;
     if (protectedPoints.some(point => Math.hypot(x - point.x, y - point.y) < point.r)) continue;
     // Keep the sprite footprint clear of actual cover. Existing roof weathering
@@ -2822,7 +3295,7 @@ class Renderer {
       c.closePath();c.fill();
     };
     // Broad, authored clearings are interrupted by groves rather than random camouflage.
-    for(const [x,y,rx,ry] of [[275,790,235,175],[520,495,250,200],[880,655,260,190],[1230,325,230,190],[1050,970,235,120]]){
+    for(const [x,y,rx,ry] of world.clearings||[[275,790,235,175],[520,495,250,200],[880,655,260,190],[1230,325,230,190],[1050,970,235,120]]){
       blob(x,y,rx,ry,'#668961');blob(x-25,y-18,rx*.61,ry*.67,'#6f9267');
     }
     for(const tree of world.obstacles||[])if(tree.type==='tree'){
@@ -2857,28 +3330,30 @@ class Renderer {
     const main=[[130,h-35],[218,970],[420,880],[510,698],[715,633],[810,470],[1030,389],[1200,260],[1380,220],[1450,240]];
     const branch=[[422,880],[625,952],[850,850],[1120,830],[1230,620],[1190,420]];
     const upland=[[515,697],[327,540],[240,320],[450,215],[680,240]];
+    const roads=world.roads||[{points:main,width:66},{points:branch,width:48},{points:upland,width:36}];
     const path=(points,width,color)=>{
       c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.beginPath();
       points.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();
     };
-    for(const [points,width]of [[main,66],[branch,48],[upland,36]]){
+    for(const {points,width}of roads){
       path(points,width+15,'#48734f');path(points,width+6,'#a79968');path(points,width,'#cdb481');path(points,width-14,'#dcc595');
     }
     const trailDistance=(x,y)=>{
       let best=Infinity;
-      for(const points of [main,branch,upland])for(let i=1;i<points.length;i++){
+      for(const {points}of roads)for(let i=1;i<points.length;i++){
         const a=points[i-1],b=points[i],dx=b[0]-a[0],dy=b[1]-a[1],t=clamp(((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy),0,1);
         best=Math.min(best,Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t));
       }
       return best;
     };
     // Sand grains, windblown grass and small stones stay low contrast beneath the actors.
-    for(let i=0;i<2800;i++){
+    const grains=Math.min(10000,Math.ceil(w*h/1920000*2800));
+    for(let i=0;i<grains;i++){
       const x=Math.floor(r()*w),y=Math.floor(r()*h),onRoad=trailDistance(x,y)<23;
       c.fillStyle=onRoad?(i%3?'#c4aa77':'#ead3a2'):['#618961','#7c9d70','#4d7753','#769367'][i%4];
       c.fillRect(x,y,onRoad?2+r()*3:1+r()*2,onRoad?1:2);
     }
-    for(const points of [main,branch])for(let i=1;i<points.length;i++){
+    for(const {points,width} of roads.filter(road=>road.width>=45))for(let i=1;i<points.length;i++){
       const a=points[i-1],b=points[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/d,dy=(b[1]-a[1])/d;
       for(let t=6;t<d;t+=12){
         c.fillStyle='#b59c6a';c.fillRect(Math.round(a[0]+dx*t-dy*12),Math.round(a[1]+dy*t+dx*12),3,2);
@@ -2897,12 +3372,12 @@ class Renderer {
     for(let i=0;i<decorations.length;i++){
       const d=decorations[i];if(d.type!=='grass'||i%3===0){if(d.type==='grass'&&trailDistance(d.x,d.y)<30)continue;this.drawDecoration(c,d,state);}
     }
-    for(const d of [
+    for(const d of world.setDressing||(world.roads?[]:[
       {x:583,y:868,type:'wreck'}, {x:502,y:834,type:'crate'}, {x:522,y:840,type:'crate'},
       {x:573,y:853,type:'sandbags'}, {x:667,y:771,type:'bones'}, {x:688,y:499,type:'crate'},
       {x:720,y:541,type:'fence'}, {x:1210,y:451,type:'fence'}, {x:1111,y:803,type:'sandbags'},
       {x:1339,y:276,type:'crate'}, {x:1358,y:282,type:'crate'}, {x:989,y:892,type:'bones'}
-    ])this.drawDecoration(c,d,state);
+    ]))this.drawDecoration(c,d,state);
     paintSceneryGround(c,state,this.scenery);
     paintSunlight(c,state);
     c.restore();
@@ -3032,7 +3507,7 @@ class Renderer {
     if(ex&&this.visible(ex.x,ex.y,ex.r,ex.r))this.drawExtraction(c,ex,time,reducedMotion);
     this.drawObjectiveGround(c,state,reducedMotion);
     for(const person of state.civilians||[]){
-      if(!person.rescued&&this.visible(person.x,person.y)){
+      if(state.objective?.type!=='operation'&&!person.rescued&&this.visible(person.x,person.y)){
         c.strokeStyle='#b6e4d2';c.lineWidth=1.5;c.setLineDash([3,5]);c.beginPath();c.arc(person.x,person.y,23,0,TAU);c.stroke();c.setLineDash([]);
       }
     }
@@ -3099,7 +3574,9 @@ class Renderer {
   worldPixels(cssPixels){return cssPixels*this.width/this.cssWidth/this.camera.zoom;}
   drawObjectiveGround(c,state,reducedMotion){
     const objective=state.objective;if(!objective)return;
-    if(objective.type==='sabotage'){
+    if(objective.type==='operation'){
+      this.drawOperationGround(c,objective);
+    }else if(objective.type==='sabotage'){
       for(const device of objective.targets||[]){
         if(!this.visible(device.x,device.y))continue;
         c.save();c.translate(device.x,device.y);
@@ -3139,6 +3616,29 @@ class Renderer {
         c.strokeStyle=rgba(color,.5);c.lineWidth=this.worldPixels(.8);
         const dial=reducedMotion?0:((state.time||0)*.12)%1;
         c.beginPath();c.arc(0,0,30,-Math.PI/2+TAU*dial,Math.PI/2+TAU*dial);c.stroke();
+      }
+      c.restore();
+    }
+  }
+  drawOperationGround(c,objective){
+    if(objective.phase>=3)return;
+    for(const point of objective.currentPoints||[]){
+      const radius=Math.min(point.r||45,65);
+      if(!this.visible(point.x-radius,point.y-radius,radius*2,radius*2))continue;
+      const rescue=point.kind==='rescue',ready=point.ready,color=ready?'#c4e4bd':rescue?'#c1ded0':'#edc080';
+      c.save();c.translate(point.x,point.y);
+      c.setLineDash([this.worldPixels(4),this.worldPixels(5)]);
+      c.beginPath();c.arc(0,0,radius,0,TAU);
+      c.strokeStyle='rgba(24,49,36,.5)';c.lineWidth=this.worldPixels(3);c.stroke();
+      c.strokeStyle=rgba(color,.7);c.lineWidth=this.worldPixels(1.1);c.stroke();c.setLineDash([]);
+      if(!rescue){
+        const size=this.worldPixels(7),tick=this.worldPixels(4);
+        c.beginPath();
+        for(const [x,y,dx,dy]of [[-size,-size,1,1],[size,-size,-1,1],[-size,size,1,-1],[size,size,-1,-1]]){
+          c.moveTo(x+dx*tick,y);c.lineTo(x,y);c.lineTo(x,y+dy*tick);
+        }
+        c.strokeStyle=color;c.lineWidth=this.worldPixels(1.2);c.stroke();
+        c.fillStyle=color;const dot=this.worldPixels(1.5);c.fillRect(-dot,-dot,dot*2,dot*2);
       }
       c.restore();
     }
@@ -3449,7 +3949,22 @@ class Renderer {
     if(!leader)return;
     let target=null,nearest=Infinity,color='#c2e8d7';
     const objective=state.objective;
-    if(objective?.type==='sabotage'){
+    if(objective?.type==='operation'&&objective.phase<3){
+      for(const point of objective.currentPoints||[]){
+        const d=Math.hypot(point.x-leader.x,point.y-leader.y);
+        if(d<nearest){target=point;nearest=d;color=point.ready?'#c4e4bd':point.kind==='rescue'?'#c1ded0':'#edc080';}
+      }
+      // Once at a defended site, guide the flank toward its remaining guards.
+      // The ground marker still identifies the checkpoint or waiting survivor.
+      if(target?.remaining>0&&nearest<Math.max(420,(target.r||0)+120)){
+        const group=target.group;let guard=null,distance=Infinity;
+        for(const enemy of state.enemies||[])if(enemy.alive&&enemy.operationGroup===group){
+          const d=Math.hypot(enemy.x-leader.x,enemy.y-leader.y);
+          if(d<distance){guard=enemy;distance=d;}
+        }
+        if(guard){target=guard;color='#edc080';}
+      }
+    }else if(objective?.type==='sabotage'){
       for(const device of objective.targets||[])if(device.alive){
         const d=Math.hypot(device.x-leader.x,device.y-leader.y);if(d<nearest){target=device;nearest=d;color='#edc080';}
       }
@@ -3506,7 +4021,13 @@ class Renderer {
     if(state.extraction){const ex=state.extraction;c.strokeStyle=ex.active?'#dbecad':'#aba878';c.strokeRect(x+ex.x/ww*mw-2,y+ex.y/wh*mh-2,4,4);}
     for(const p of state.civilians||[])if(!p.rescued&&p.alive!==false){c.fillStyle='#caecda';c.fillRect(Math.round(x+p.x/ww*mw)-1,Math.round(y+p.y/wh*mh)-1,2,2);}
     const objective=state.objective;
-    if(objective?.type==='sabotage'){
+    if(objective?.type==='operation'&&objective.phase<3){
+      for(const point of objective.currentPoints||[]){
+        const px=Math.round(x+point.x/ww*mw),py=Math.round(y+point.y/wh*mh);
+        c.strokeStyle=point.ready?'#c4e4bd':point.kind==='rescue'?'#c1ded0':'#edc080';c.lineWidth=.8;
+        c.strokeRect(px-2,py-2,4,4);c.fillStyle=c.strokeStyle;c.fillRect(px,py,1,1);
+      }
+    }else if(objective?.type==='sabotage'){
       for(const device of objective.targets||[]){
         const px=Math.round(x+device.x/ww*mw),py=Math.round(y+device.y/wh*mh);
         if(device.alive){c.fillStyle='#edc080';c.beginPath();c.moveTo(px,py-2);c.lineTo(px+2,py);c.lineTo(px,py+2);c.lineTo(px-2,py);c.closePath();c.fill();}
@@ -4223,7 +4744,7 @@ return { AudioEngine };
 __modules["session.js"] = (() => {
 /** Browser progress and objective text. No DOM or simulation side effects. */
 const SAVE_KEY = 'dead-signal-v1';
-const MISSION_REVISION = 1;
+const MISSION_REVISION = 2;
 
 function normalizeProgress(value) {
   const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false, missionRevision: MISSION_REVISION };
@@ -4232,10 +4753,11 @@ function normalizeProgress(value) {
     result.completed = [...new Set(value.completed.filter(id => Number.isInteger(id) && id >= 0 && id < 3))].sort();
   }
   if (value.best && typeof value.best === 'object' && !Array.isArray(value.best)) {
-    // The new sabotage and relay runs cannot be compared to their old rescue
-    // and clear-the-map times. Keep campaign completion, preferences and M1.
-    const unchangedTimes = value.missionRevision === MISSION_REVISION;
-    for (let id = 0; id < (unchangedTimes ? 3 : 1); id++) {
+    // First Contact is now a longer operation. Revision 1's other two missions
+    // are unchanged; older or unknown revisions have no comparable times.
+    const comparable = value.missionRevision === MISSION_REVISION ? [0, 1, 2]
+      : value.missionRevision === 1 ? [1, 2] : [];
+    for (const id of comparable) {
       const time = value.best[id];
       if (typeof time === 'number' && Number.isFinite(time) && time > 0) result.best[id] = time;
     }
@@ -4267,16 +4789,36 @@ function saveProgress(storage, value) {
 }
 
 function objectiveFor(state) {
+  const objective = state.objective || {type: 'rescue'};
+  const stage = objective.type === 'operation' ? { stage: objective.phase + 1, stages: objective.stageCount || 4 } : {};
   if (state.extraction.active) {
     if (state.extraction.regrouping) {
-      return { label: 'REGROUP', text: state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
+      return { ...stage, label: 'REGROUP', text: state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
     }
     if (state.extraction.progress > 0) {
-      return { label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
+      return { ...stage, label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
     }
-    return { label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
+    return { ...stage, label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
   }
-  const objective = state.objective || {type: 'rescue'};
+  if (objective.type === 'operation') {
+    const point = objective.currentPoints?.[0];
+    if (objective.phase === 3) {
+      return { ...stage, label: 'EVACUATE EVERYONE', text: 'Escort your squad and both survivors to the flare.', counter: 'REACH THE FLARE', progress: 0 };
+    }
+    if (objective.phase === 1) {
+      const sites = objective.currentPoints || [];
+      const siteName = site => site.id === 'clinic' ? 'Clinic' : 'School';
+      const detail = !sites.length ? 'Survivors rescued. Regroup for the harbour.' : sites.every(site => !site.remaining)
+        ? sites.length > 1 ? 'Both sites clear. Reach either marked survivor.' : `${siteName(sites[0] || {})} clear. Reach the marked survivor.`
+        : sites.map(site => site.remaining ? `${siteName(site)}: ${site.remaining} hostile${site.remaining === 1 ? '' : 's'}` : `${siteName(site)} clear`).join(' · ') + '.';
+      return { ...stage, label: 'RESCUE BOTH SURVIVORS', text: detail,
+        counter: `${state.rescueCount} / ${state.rescueTarget} SAFE`, progress: null };
+    }
+    const remaining = Math.max(0, point?.remaining || 0);
+    return { ...stage, label: objective.phase === 0 ? 'SECURE THE VILLAGE' : 'SECURE THE HARBOUR',
+      text: remaining ? 'Clear marked defenders. Approach through cover.' : 'Reach the cleared checkpoint with your leader.',
+      counter: remaining ? `${remaining} HOSTILE${remaining === 1 ? '' : 'S'}` : 'REACH CHECKPOINT', progress: null };
+  }
   if (objective.type === 'rescue') {
     return { label: 'RESCUE', text: 'Reach the marked survivor. Your squad follows.', counter: `${state.rescueCount} / ${state.rescueTarget} SAFE`, progress: null };
   }
@@ -4297,12 +4839,437 @@ function objectiveFor(state) {
 
 return { SAVE_KEY, MISSION_REVISION, normalizeProgress, loadProgress, saveProgress, objectiveFor };
 })();
+__modules["checkpoint.js"] = (() => {
+/**
+ * Milestone saves for First Contact. These are simulation snapshots, separate
+ * from player preferences and records. Static map art is regenerated from its
+ * seed; destructible cover, casualties and the evacuation response survive.
+ * Original content, MIT licensed; see the project LICENSE.
+ */
+const { Game, CONFIG, FIRST_CONTACT_REVISION } = __modules["engine.js"];
+
+const CHECKPOINT_KEY = 'dead-signal-first-contact-checkpoint';
+const FORMAT = 1;
+const MAX_BYTES = 512 * 1024;
+const MAX_TIME = 12 * 60 * 60;
+const DIFFICULTIES = new Set(['easy', 'normal', 'hard']);
+const META_KEYS = ['nextId', 'nextEventId', 'accumulator', 'holdFire', 'lastShot',
+  'waveTimer', 'waveCount', 'navVersion', 'messageTimer'];
+const STATE_KEYS = ['status', 'mission', 'time', 'noise', 'kills', 'grenades',
+  'rescueCount', 'rescueTarget', 'checkpointSequence', 'objective', 'message',
+  'extraction', 'soldiers', 'leaderId', 'enemies', 'civilians', 'bullets',
+  'particles', 'corpses', 'target', 'thrownGrenades', 'holdFire', 'wavesRemaining',
+  'totalKills', 'events', 'playerKills'];
+const ACTOR_KEYS = new Set(['id', 'name', 'type', 'x', 'y', 'hp', 'maxHp', 'alive',
+  'angle', 'shootFlash', 'cooldown', 'invulnerable', 'pathTimer', 'stuck',
+  'moveAngle', 'moving', 'vx', 'vy', 'speed', 'walkPhase', 'hitFlash', 'targetId',
+  'aimTimer', 'attackCooldown', 'wanderX', 'wanderY', 'active', 'reaction',
+  'sightLost', 'waveSpawn', 'operationGroup', 'operationHome', 'operationResponse',
+  'rescued', 'siteId', 'label', 'navVersion']);
+const ACTOR_BOOLEANS = new Set(['alive', 'moving', 'active', 'waveSpawn',
+  'operationResponse', 'rescued']);
+const ACTOR_STRINGS = new Set(['name', 'type', 'operationGroup', 'siteId', 'label']);
+const ACTOR_NUMBERS = new Set([...ACTOR_KEYS].filter(key => !ACTOR_BOOLEANS.has(key)
+  && !ACTOR_STRINGS.has(key) && !['operationHome', 'targetId'].includes(key)));
+
+const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
+const integer = (value, low, high) => Number.isInteger(value) && finite(value, low, high);
+const bool = value => typeof value === 'boolean';
+const text = (value, limit = 240) => typeof value === 'string' && value.length <= limit;
+const array = (value, limit) => Array.isArray(value) && value.length <= limit;
+const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
+const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const point = (value, world) => keys(value, ['x', 'y'])
+  && finite(value.x, 0, world.width) && finite(value.y, 0, world.height);
+
+function encodedSize(value) {
+  return new TextEncoder().encode(value).byteLength;
+}
+
+// Direct callers are checked too. Bound traversal before cloning an unknown
+// object, and never retain its references or a storage provider's objects.
+function boundedClone(value) {
+  let nodes = 0;
+  const seen = new Set();
+  const visit = (item, depth) => {
+    if (++nodes > 40000 || depth > 12) throw new Error('Checkpoint is too large');
+    if (typeof item === 'string') {
+      if (item.length > 8192) throw new Error('Checkpoint text is too large');
+    } else if (item && typeof item === 'object') {
+      if (seen.has(item)) throw new Error('Checkpoint must not contain cycles');
+      seen.add(item);
+      const children = Object.keys(item);
+      if (children.length > 1024) throw new Error('Checkpoint collection is too large');
+      for (const key of children) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') throw new Error('Invalid checkpoint key');
+        visit(item[key], depth + 1);
+      }
+      seen.delete(item);
+    } else if (typeof item === 'number' && !Number.isFinite(item)) {
+      throw new Error('Checkpoint numbers must be finite');
+    } else if (!['undefined', 'boolean', 'number', 'string'].includes(typeof item) && item !== null) {
+      throw new Error('Invalid checkpoint value');
+    }
+  };
+  visit(value, 0);
+  const json = JSON.stringify(value);
+  if (typeof json !== 'string' || json.length > MAX_BYTES || encodedSize(json) > MAX_BYTES) return null;
+  return JSON.parse(json);
+}
+
+// A revision is explicit, and this additional fingerprint also catches an
+// authored map/roster change if someone forgets to increment that revision.
+function definition(game) {
+  const world = game.world;
+  const authored = {
+    revision: FIRST_CONTACT_REVISION, config: CONFIG,
+    world: {width: world.width, height: world.height, coastline: world.coastline,
+      roads: world.roads, clearings: world.clearings, landmarks: world.landmarks,
+      obstacles: world.obstacles.map(({type, x, y, w, h, district}) => ({type, x, y, w, h, district}))},
+    stages: game.state.objective.stages, sites: game.state.objective.rescueSites,
+    response: {delay: game.state.objective.response.delay, count: game.operationResponseCount()},
+    extraction: game.extraction,
+    soldiers: game.soldiers.map(({id, name, x, y, maxHp}) => ({id, name, x, y, maxHp})),
+    enemies: game.enemies.map(({id, type, x, y, maxHp, operationGroup, operationHome}) =>
+      ({id, type, x, y, maxHp, operationGroup, operationHome})),
+    civilians: game.civilians.map(({id, x, y, siteId, label, operationGroup}) =>
+      ({id, x, y, siteId, label, operationGroup})),
+  };
+  let hash = 2166136261;
+  for (const character of JSON.stringify(authored)) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
+  return hash.toString(16).padStart(8, '0');
+}
+
+function copyActor(actor) {
+  const result = {};
+  for (const key of ACTOR_KEYS) if (Object.hasOwn(actor, key)) result[key] = actor[key];
+  return result;
+}
+
+function snapshotGame(game, fresh) {
+  const state = {};
+  for (const key of STATE_KEYS) if (Object.hasOwn(game.state, key)) state[key] = game.state[key];
+  state.soldiers = game.soldiers.map(copyActor);
+  state.enemies = game.enemies.map(copyActor);
+  state.civilians = game.civilians.map(copyActor);
+  // Orders are deliberately released: continuing requires a new player gesture.
+  state.target = null;
+  const meta = {};
+  for (const key of META_KEYS) meta[key] = game[key];
+  return boundedClone({version: FORMAT, missionRevision: FIRST_CONTACT_REVISION,
+    mission: 0, difficulty: game.difficulty, seed: game.seed,
+    randomState: game.random.getState(), definition: definition(fresh), meta, state,
+    world: {
+      obstacles: game.world.obstacles.map(obstacle => ({alive: obstacle.alive,
+        hp: Number.isFinite(obstacle.hp) ? obstacle.hp : null})),
+      decorations: game.world.decorations.slice(fresh.world.decorations.length),
+    }});
+}
+
+function validActor(actor, world) {
+  if (!record(actor) || Object.keys(actor).some(key => !ACTOR_KEYS.has(key))) return false;
+  if (!integer(actor.id, 1, 10000000) || !finite(actor.x, 0, world.width)
+    || !finite(actor.y, 0, world.height) || !bool(actor.alive)) return false;
+  for (const key of ['moveAngle', 'vx', 'vy', 'speed', 'walkPhase', 'hitFlash', 'pathTimer']) {
+    if (!Number.isFinite(actor[key])) return false;
+  }
+  if (!bool(actor.moving)) return false;
+  if (actor.name !== undefined || actor.type !== undefined) {
+    for (const key of ['hp', 'maxHp', 'angle', 'shootFlash', 'cooldown', 'invulnerable']) {
+      if (!Number.isFinite(actor[key])) return false;
+    }
+    if (!Object.hasOwn(actor, 'targetId')) return false;
+  }
+  for (const [key, value] of Object.entries(actor)) {
+    if (ACTOR_BOOLEANS.has(key) && !bool(value)) return false;
+    if (ACTOR_STRINGS.has(key) && !text(value, 80)) return false;
+    if (ACTOR_NUMBERS.has(key) && !finite(value, -1000000, 1000000)) return false;
+  }
+  if (actor.targetId !== undefined && actor.targetId !== null && !integer(actor.targetId, 1, 10000000)) return false;
+  if (actor.operationHome !== undefined && (!keys(actor.operationHome, ['x', 'y', 'r'])
+    || !point({x: actor.operationHome.x, y: actor.operationHome.y}, world)
+    || !finite(actor.operationHome.r, 1, Math.max(world.width, world.height)))) return false;
+  if (actor.hp !== undefined && (!finite(actor.maxHp, 1, 1000)
+    || !finite(actor.hp, 0, actor.maxHp) || actor.alive !== (actor.hp > 0))) return false;
+  for (const key of ['shootFlash', 'invulnerable', 'aimTimer', 'hitFlash', 'reaction', 'sightLost']) {
+    if (actor[key] !== undefined && !finite(actor[key], 0, 10)) return false;
+  }
+  for (const key of ['cooldown', 'attackCooldown']) {
+    if (actor[key] !== undefined && !finite(actor[key], 0, 10)) return false;
+  }
+  if (actor.speed !== undefined && !finite(actor.speed, 0, 1000)) return false;
+  if (actor.pathTimer !== undefined && !finite(actor.pathTimer, -1, 10)) return false;
+  if (actor.stuck !== undefined && !finite(actor.stuck, 0, MAX_TIME)) return false;
+  if (actor.navVersion !== undefined && !integer(actor.navVersion, 1, 10000)) return false;
+  return true;
+}
+
+function validObjective(objective, state, fresh) {
+  const original = fresh.state.objective;
+  if (!keys(objective, ['type', 'phase', 'completed', 'stageCount', 'stages', 'rescueSites',
+    'rescuedIds', 'label', 'detail', 'currentPoints', 'response']) || objective.type !== 'operation'
+    || !integer(objective.phase, 1, 3) || objective.completed !== objective.phase
+    || objective.stageCount !== original.stageCount || !array(objective.stages, 4)
+    || objective.stages.length !== 4 || !same(objective.rescueSites, original.rescueSites)
+    || !array(objective.rescuedIds, 2) || new Set(objective.rescuedIds).size !== objective.rescuedIds.length
+    || !array(objective.currentPoints, 2) || !text(objective.label) || !text(objective.detail)) return false;
+  for (let i = 0; i < 4; i++) {
+    if (!same(objective.stages[i], {...original.stages[i], complete: i < objective.phase})) return false;
+  }
+  if (objective.label !== original.stages[objective.phase].label
+    || objective.detail !== original.stages[objective.phase].detail) return false;
+  const rescuedSites = state.civilians.filter(civilian => civilian.rescued).map(civilian => civilian.siteId);
+  if (rescuedSites.length !== state.rescueCount || objective.rescuedIds.length !== rescuedSites.length
+    || !objective.rescuedIds.every(id => rescuedSites.includes(id))) return false;
+  if ((objective.phase === 1 && rescuedSites.length >= 2) || (objective.phase >= 2 && rescuedSites.length !== 2)) return false;
+  if (state.checkpointSequence !== 1 + rescuedSites.length + (objective.phase === 3 ? 1 : 0)) return false;
+  const guards = group => state.enemies.filter(enemy => enemy.alive && enemy.operationGroup === group).length;
+  if (guards(original.stages[0].group) !== 0) return false;
+  if (objective.phase === 3 && guards(original.stages[2].group) !== 0) return false;
+  for (const civilian of state.civilians) if (civilian.rescued && guards(civilian.operationGroup) !== 0) return false;
+  const response = objective.response;
+  const maxResponse = fresh.operationResponseCount();
+  if (!keys(response, ['pending', 'dueAt', 'spawned', 'count', 'delay'])
+    || !bool(response.pending) || !bool(response.spawned) || response.delay !== original.response.delay
+    || !integer(response.count, 0, maxResponse)) return false;
+  const extra = state.enemies.filter(enemy => enemy.operationResponse === true);
+  if (objective.phase < 2) {
+    if (response.pending || response.spawned || response.dueAt !== null || response.count !== 0 || extra.length) return false;
+  } else if (!response.pending && !response.spawned) {
+    if (objective.phase === 3 || response.dueAt !== null || response.count !== 0 || extra.length) return false;
+  } else {
+    if (!finite(response.dueAt, 0, state.time + response.delay + 1e-8)
+      || response.pending === response.spawned || response.count !== extra.length) return false;
+    if (response.pending && (response.count !== 0 || response.dueAt > state.time + response.delay + 1e-8)) return false;
+    if (response.spawned && (response.count < 1 || response.dueAt > state.time + 1e-8)) return false;
+  }
+  if (state.wavesRemaining !== (response.spawned ? 0 : 1)) return false;
+  return true;
+}
+
+function validCombat(state, fresh, ids) {
+  const world = fresh.world;
+  for (const bullet of state.bullets) {
+    if (!keys(bullet, ['x', 'y', 'vx', 'vy', 'team', 'shooterId', 'damage', 'life'])
+      || !point({x: bullet.x, y: bullet.y}, world) || !finite(bullet.vx, -701, 701)
+      || !finite(bullet.vy, -701, 701) || Math.abs(Math.hypot(bullet.vx, bullet.vy) - 700) > 0.001
+      || !finite(bullet.life, Number.EPSILON, 1) || !ids.has(bullet.shooterId)
+      || !['player', 'enemy'].includes(bullet.team)) return false;
+    const shooter = [...state.soldiers, ...state.enemies].find(actor => actor.id === bullet.shooterId);
+    if (!shooter || (bullet.team === 'player' ? !shooter.name : shooter.type !== 'soldier')
+      || bullet.damage !== (bullet.team === 'player' ? 13 : fresh.hard ? 12 : fresh.easy ? 4 : 8)) return false;
+  }
+  for (const grenade of state.thrownGrenades) {
+    if (!keys(grenade, ['x', 'y', 'sx', 'sy', 'tx', 'ty', 'time', 'duration', 'life', 'height'])
+      || !point({x: grenade.x, y: grenade.y}, world)
+      || !point({x: grenade.sx, y: grenade.sy}, world) || !point({x: grenade.tx, y: grenade.ty}, world)
+      || grenade.duration !== CONFIG.grenadeFlight || !finite(grenade.time, 0, grenade.duration)
+      || !finite(grenade.life, Number.EPSILON, grenade.duration)
+      || Math.abs(grenade.time + grenade.life - grenade.duration) > 1e-7
+      || (grenade.height !== undefined && !finite(grenade.height, 0, 73))) return false;
+    const fraction = grenade.time / grenade.duration;
+    if (Math.abs(grenade.x - (grenade.sx + (grenade.tx - grenade.sx) * fraction)) > 1e-7
+      || Math.abs(grenade.y - (grenade.sy + (grenade.ty - grenade.sy) * fraction)) > 1e-7) return false;
+  }
+  for (const particle of state.particles) {
+    if (!keys(particle, ['x', 'y', 'vx', 'vy', 'life', 'maxLife', 'type', 'color', 'radius'])
+      || !finite(particle.x, -500, world.width + 500) || !finite(particle.y, -500, world.height + 500)
+      || !finite(particle.life, Number.EPSILON, 10) || !finite(particle.maxLife, particle.life, 10)
+      || !text(particle.type, 24) || !/^#[0-9a-f]{6}$/i.test(particle.color)) return false;
+    for (const key of ['vx', 'vy', 'radius']) if (particle[key] !== undefined && !finite(particle[key], -1000, 1000)) return false;
+  }
+  let previousEvent = 0;
+  for (const event of state.events) {
+    if (!record(event) || Object.keys(event).length > 18 || !integer(event.id, previousEvent + 1, 10000000)
+      || !text(event.type, 32) || !finite(event.time, 0, state.time + 1e-7)
+      || !finite(event.x, 0, world.width) || !finite(event.y, 0, world.height)) return false;
+    for (const [key, value] of Object.entries(event)) {
+      if (!text(key, 32) || !(text(value, 240) || bool(value) || finite(value, -1000000, 10000000)
+        || value === null)) return false;
+    }
+    previousEvent = event.id;
+  }
+  const dead = [...state.soldiers, ...state.enemies].filter(actor => !actor.alive);
+  if (state.corpses.length !== dead.length) return false;
+  const unused = [...dead];
+  for (const corpse of state.corpses) {
+    if (!keys(corpse, ['x', 'y', 'type', 'angle', 'name', 'time'])
+      || !point({x: corpse.x, y: corpse.y}, world) || !finite(corpse.angle, -1000000, 1000000)
+      || !finite(corpse.time, 0, state.time + 1e-7) || !['squad', 'soldier', 'zombie'].includes(corpse.type)) return false;
+    const match = unused.findIndex(actor => actor.x === corpse.x && actor.y === corpse.y
+      && (actor.type || 'squad') === corpse.type && actor.name === corpse.name);
+    if (match < 0) return false;
+    unused.splice(match, 1);
+  }
+  return true;
+}
+
+function hydrate(snapshot, suppliedFresh) {
+  if (!keys(snapshot, ['version', 'missionRevision', 'mission', 'difficulty', 'seed', 'randomState',
+    'definition', 'meta', 'state', 'world']) || snapshot.version !== FORMAT
+    || snapshot.missionRevision !== FIRST_CONTACT_REVISION || snapshot.mission !== 0
+    || !DIFFICULTIES.has(snapshot.difficulty) || !integer(snapshot.seed, 0, 0xffffffff)
+    || !integer(snapshot.randomState, 0, 0xffffffff)) return null;
+  const game = suppliedFresh || new Game({mission: 0, difficulty: snapshot.difficulty, seed: snapshot.seed});
+  if (snapshot.definition !== definition(game)) return null;
+  const state = snapshot.state, meta = snapshot.meta, world = snapshot.world;
+  if (!keys(state, STATE_KEYS) || !keys(meta, META_KEYS) || !keys(world, ['obstacles', 'decorations'])
+    || !['playing', 'paused'].includes(state.status) || state.mission !== 0 || state.target !== null
+    || !finite(state.time, 0, MAX_TIME) || !finite(state.noise, 0, 100)
+    || !integer(state.kills, 0, 128) || !integer(state.grenades, 0, 6)
+    || !integer(state.rescueCount, 0, 2) || state.rescueTarget !== game.state.rescueTarget
+    || !integer(state.checkpointSequence, 1, 4) || !text(state.message)
+    || !integer(state.totalKills, 1, 128) || !bool(state.holdFire)
+    || (state.playerKills !== undefined && !integer(state.playerKills, 0, state.kills))) return null;
+  if (!array(state.soldiers, 3) || state.soldiers.length !== 3 || !array(state.enemies, 128)
+    || !array(state.civilians, 2) || state.civilians.length !== 2 || !array(state.bullets, 128)
+    || !array(state.thrownGrenades, 16) || !array(state.particles, 350)
+    || !array(state.corpses, 131) || !array(state.events, CONFIG.eventLimit)
+    || !array(world.obstacles, 256) || world.obstacles.length !== game.world.obstacles.length
+    || !array(world.decorations, game.world.obstacles.length)) return null;
+  if (!integer(meta.nextId, 1, 10000000) || !integer(meta.nextEventId, 1, 10000000)
+    || !finite(meta.accumulator, 0, CONFIG.maxCatchup) || meta.holdFire !== state.holdFire
+    || !point(meta.lastShot, game.world) || !finite(meta.waveTimer, 0, MAX_TIME)
+    || !integer(meta.waveCount, 0, 1) || !integer(meta.navVersion, 1, 10000)
+    || !finite(meta.messageTimer, -MAX_TIME, 60)) return null;
+  for (let i = 0; i < world.obstacles.length; i++) {
+    const saved = world.obstacles[i], original = game.world.obstacles[i];
+    if (!keys(saved, ['alive', 'hp']) || !bool(saved.alive)) return null;
+    if (Number.isFinite(original.hp)) {
+      if (!finite(saved.hp, -1000, original.hp) || saved.alive !== (saved.hp > 0)) return null;
+      original.hp = saved.hp; original.alive = saved.alive;
+    } else if (saved.hp !== null || saved.alive !== true) return null;
+  }
+  const craterCover = new Set();
+  for (const decoration of world.decorations) {
+    if (!keys(decoration, ['x', 'y', 'type']) || decoration.type !== 'crater'
+      || !point({x: decoration.x, y: decoration.y}, game.world)) return null;
+    const obstacle = game.world.obstacles.find(cover => !cover.alive && cover.x + cover.w / 2 === decoration.x
+      && cover.y + cover.h / 2 === decoration.y);
+    if (!obstacle || craterCover.has(obstacle)) return null;
+    craterCover.add(obstacle);
+    game.world.decorations.push({...decoration});
+  }
+  const actors = [...state.soldiers, ...state.enemies, ...state.civilians];
+  if (actors.some(actor => !validActor(actor, game.world))) return null;
+  const ids = new Set(actors.map(actor => actor.id));
+  if (ids.size !== actors.length || meta.nextId !== Math.max(...ids) + 1
+    || actors.some(actor => actor.targetId !== undefined && actor.targetId !== null && !ids.has(actor.targetId))) return null;
+  for (let i = 0; i < 3; i++) {
+    const saved = state.soldiers[i], original = game.soldiers[i];
+    if (saved.id !== original.id || saved.name !== original.name || saved.maxHp !== original.maxHp
+      || saved.type !== undefined || saved.rescued !== undefined || saved.operationGroup !== undefined) return null;
+  }
+  const initial = game.enemies;
+  if (state.enemies.length < initial.length || state.totalKills !== state.enemies.length
+    || state.kills !== state.enemies.filter(enemy => !enemy.alive).length) return null;
+  for (let i = 0; i < state.enemies.length; i++) {
+    const saved = state.enemies[i], original = initial[i];
+    if (!['soldier', 'zombie'].includes(saved.type) || saved.name !== undefined
+      || saved.maxHp !== (saved.type === 'soldier' ? game.hard ? 78 : game.easy ? 48 : 60 : game.hard ? 48 : game.easy ? 30 : 36)
+      || !bool(saved.active) || !finite(saved.wanderX, -200, game.world.width + 200)
+      || !finite(saved.wanderY, -200, game.world.height + 200)
+      || !finite(saved.attackCooldown, 0, 10) || !finite(saved.reaction, 0, 10)
+      || !finite(saved.sightLost, 0, 10)) return null;
+    if (original) {
+      if (saved.id !== original.id || saved.type !== original.type || saved.operationGroup !== original.operationGroup
+        || !same(saved.operationHome, original.operationHome) || saved.operationResponse !== undefined) return null;
+    } else if (saved.type !== 'zombie' || saved.operationResponse !== true || saved.waveSpawn !== true
+      || !saved.active || saved.operationGroup !== undefined || saved.operationHome !== undefined) return null;
+  }
+  for (let i = 0; i < 2; i++) {
+    const saved = state.civilians[i], original = game.civilians[i];
+    if (saved.id !== original.id || saved.siteId !== original.siteId || saved.label !== original.label
+      || saved.operationGroup !== original.operationGroup || !saved.alive || !bool(saved.rescued)
+      || saved.hp !== undefined || saved.type !== undefined || saved.name !== undefined) return null;
+    if (!saved.rescued && (saved.x !== original.x || saved.y !== original.y)) return null;
+  }
+  if (!state.soldiers.some(soldier => soldier.id === state.leaderId && soldier.alive)
+    || !validObjective(state.objective, state, game) || !validCombat(state, game, ids)) return null;
+  if (meta.waveCount !== (state.objective.response.spawned ? 1 : 0)
+    || state.events.some(event => event.id >= meta.nextEventId)) return null;
+  const extraction = state.extraction, originalExtraction = game.extraction;
+  if (!keys(extraction, ['x', 'y', 'r', 'active', 'progress', 'regrouping'])
+    || extraction.x !== originalExtraction.x || extraction.y !== originalExtraction.y
+    || extraction.r !== originalExtraction.r || extraction.active !== (state.objective.phase === 3)
+    || !finite(extraction.progress, 0, 1 - Number.EPSILON)
+    || (extraction.regrouping !== undefined && !bool(extraction.regrouping))
+    || (!extraction.active && extraction.progress !== 0)) return null;
+  if (actors.some(actor => actor.alive && game.blocked(actor.x, actor.y, CONFIG.actorRadius))) return null;
+  const savedPoints = state.objective.currentPoints;
+  game.state = {...state, world: game.world};
+  game.refreshOperationObjective();
+  // The evacuation point contains a copy of extraction's presentation state;
+  // that copy can trail checkObjective by one physics tick. Its location and
+  // readiness must match; the live extraction record is validated above.
+  const stablePoints = points => points.map(({active, progress, regrouping, ...location}) => location);
+  if (!same(stablePoints(savedPoints), stablePoints(game.state.objective.currentPoints))) return null;
+  if (savedPoints.some(location => (location.active !== undefined && !bool(location.active))
+    || (location.progress !== undefined && !finite(location.progress, 0, 1))
+    || (location.regrouping !== undefined && !bool(location.regrouping)))) return null;
+  for (const key of META_KEYS) game[key] = meta[key];
+  // Rebuild from restored cover before accepting any new movement orders.
+  game.rebuildNavigation();
+  game.navVersion = meta.navVersion;
+  game.random.setState(snapshot.randomState);
+  game.state.status = 'paused';
+  game.accumulator = 0;
+  game.state.target = null;
+  game.state.events = [];
+  for (const actor of actors) {
+    actor.path = null; actor.pathGoal = null; actor.pathTimer = 0;
+    actor.moving = false; actor.vx = 0; actor.vy = 0; actor.speed = 0;
+  }
+  return game;
+}
+
+function loadCheckpoint(storage, {mission, difficulty} = {}) {
+  try {
+    if ((mission !== undefined && mission !== 0) || (difficulty !== undefined && !DIFFICULTIES.has(difficulty))) return null;
+    const targetStorage = storage ?? globalThis.localStorage;
+    const json = targetStorage.getItem(CHECKPOINT_KEY);
+    if (typeof json !== 'string' || json.length > MAX_BYTES || encodedSize(json) > MAX_BYTES) return null;
+    const snapshot = boundedClone(JSON.parse(json));
+    if (!snapshot || (difficulty !== undefined && snapshot.difficulty !== difficulty)) return null;
+    return hydrate(boundedClone(snapshot)) ? snapshot : null;
+  } catch { return null; }
+}
+
+function saveCheckpoint(storage, game) {
+  try {
+    if (!record(game) || game.mission !== 0 || typeof game.random?.getState !== 'function' || !DIFFICULTIES.has(game.difficulty)
+      || !integer(game.seed, 0, 0xffffffff)) return false;
+    const fresh = new Game({mission: 0, difficulty: game.difficulty, seed: game.seed});
+    const snapshot = snapshotGame(game, fresh);
+    if (!snapshot || !hydrate(boundedClone(snapshot), fresh)) return false;
+    const targetStorage = storage ?? globalThis.localStorage;
+    targetStorage.setItem(CHECKPOINT_KEY, JSON.stringify(snapshot));
+    return true;
+  } catch { return false; }
+}
+
+function clearCheckpoint(storage) {
+  try { const targetStorage = storage ?? globalThis.localStorage; targetStorage.removeItem(CHECKPOINT_KEY); return true; }
+  catch { return false; }
+}
+
+function restoreCheckpoint(snapshot) {
+  try {
+    const copy = boundedClone(snapshot);
+    return copy ? hydrate(copy) : null;
+  } catch { return null; }
+}
+
+return { CHECKPOINT_KEY, loadCheckpoint, saveCheckpoint, clearCheckpoint, restoreCheckpoint };
+})();
 __modules["app.js"] = (() => {
 const { Game, MISSIONS } = __modules["engine.js"];
 const { Renderer } = __modules["renderer.js"];
 const { InputController, bindAction } = __modules["input.js"];
 const { AudioEngine } = __modules["audio.js"];
 const { loadProgress, saveProgress, objectiveFor } = __modules["session.js"];
+const { loadCheckpoint, saveCheckpoint, clearCheckpoint, restoreCheckpoint } = __modules["checkpoint.js"];
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -4330,6 +5297,9 @@ let sessionId = 0;
 let hintUntil = 0;
 let cards = [];
 let cardCleanups = [];
+let lastCheckpointSequence = 0;
+let checkpointUsed = false;
+let checkpointStorageWarning = false;
 const metrics = { updates: 0, frames: 0, updateMs: 0, renderMs: 0, updateSamples: [], renderSamples: [] };
 
 const input = new InputController({
@@ -4458,10 +5428,11 @@ function showMissions() {
     const button = document.createElement('button');
     button.className = `mission-card${index === mission ? ' active' : ''}`;
     button.setAttribute('aria-pressed', String(index === mission));
-    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['RECON & RESCUE', 'SABOTAGE & ESCAPE', 'DEFEND & TRANSMIT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
+    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['VILLAGE RESCUE OPERATION', 'SABOTAGE & ESCAPE', 'DEFEND & TRANSMIT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
     button.querySelector('h3').textContent = definition.title;
     button.querySelector('p').textContent = definition.subtitle;
     button.addEventListener('click', () => {
+      clearScene();
       mission = index;
       game = new Game({ mission, difficulty: progress.difficulty });
       renderer.reset();
@@ -4474,7 +5445,17 @@ function showMissions() {
 
 function showBriefing() {
   text('briefing-title', `MISSION ${String(mission + 1).padStart(2, '0')} / ${MISSIONS[mission].title}`);
-  text('briefing-copy', MISSIONS[mission].objective);
+  text('briefing-copy', mission === 0
+    ? 'Secure the village. Rescue the clinic medic and school radio operator in either order, clear the harbour, then escort everyone to the flare. Choose the exposed road or a longer route through cover. The HUD counts defenders at each objective.'
+    : MISSIONS[mission].objective);
+  const checkpoint = loadCheckpoint(undefined, { mission, difficulty: progress.difficulty });
+  $('start-btn').innerHTML = checkpoint ? 'CONTINUE CHECKPOINT <span>→</span>' : 'DEPLOY SQUAD <span>↗</span>';
+  $('fresh-btn').hidden = !checkpoint;
+  $('checkpoint-note').hidden = !checkpoint;
+  if (checkpoint) {
+    const state = checkpoint.state;
+    text('checkpoint-note', `Saved at ${formatTime(state.time)} · Stage ${state.objective.phase + 1}/4 · ${state.rescueCount}/${state.rescueTarget} survivors. Continue in ${progress.difficulty === 'easy' ? 'Recruit' : progress.difficulty === 'hard' ? 'Veteran' : 'Standard'}.`);
+  }
 }
 
 function createSquadCards() {
@@ -4513,6 +5494,9 @@ function clearScene() {
   hintUntil = 0; radioUntil = 0;
   lastMessage = ''; lastSquadEvent = 0; lastHud = -Infinity; previousFrame = null;
   metrics.updateSamples.length = 0; metrics.renderSamples.length = 0;
+  for (const cleanup of cardCleanups) cleanup();
+  cards = []; cardCleanups = [];
+  $('squad-list').replaceChildren();
   $('manual').close();
   document.querySelector('.game-toast')?.remove();
   $('touch-hint').hidden = true;
@@ -4524,9 +5508,17 @@ function clearScene() {
   delete $('result-overlay').dataset.outcome;
 }
 
-function startMission() {
+function startMission({ continueCheckpoint = false } = {}) {
+  const checkpoint = continueCheckpoint ? loadCheckpoint(undefined, { mission, difficulty: progress.difficulty }) : null;
+  const restored = checkpoint ? restoreCheckpoint(checkpoint) : null;
+  if (!restored && mission === 0) clearCheckpoint();
   clearScene();
-  game = new Game({ mission, difficulty: progress.difficulty }).start();
+  game = restored || new Game({ mission, difficulty: progress.difficulty }).start();
+  if (restored) game.pause(false);
+  checkpointUsed = !!restored;
+  game.state.checkpointRestoreUsed = checkpointUsed;
+  lastCheckpointSequence = game.state.checkpointSequence || 0;
+  checkpointStorageWarning = false;
   mode = 'game'; lastStatus = 'playing';
   document.body.classList.add('playing');
   $('intro').hidden = true; $('combat-panel').hidden = false;
@@ -4538,7 +5530,7 @@ function startMission() {
   text('live-title', MISSIONS[mission].title);
   text('field-location', `MISSION ${String(mission + 1).padStart(2, '0')}`);
   createSquadCards();
-  radio('Squad deployed. Move together. The dead are listening.', 4);
+  radio(restored ? 'Checkpoint restored. Your squad is ready; follow the current objective.' : 'Squad deployed. Move together. The dead are listening.', 4);
   hintUntil = matchMedia('(pointer: coarse)').matches ? 8 : 0;
   $('touch-hint').hidden = hintUntil === 0;
   const deploymentId = sessionId;
@@ -4594,7 +5586,7 @@ function throwGrenade() {
   if (thrown) {
     audio.cue('grenade');
     if (!reducedMotion.matches && navigator.vibrate) navigator.vibrate(18);
-  } else if (!game.state.grenades) radio(mission === 0 ? 'No grenades left. Rescue the survivor for supplies.' : 'No grenades left. Your rifles still work.');
+  } else if (!game.state.grenades) radio(mission === 0 ? 'No grenades left. Rescue a survivor for supplies.' : 'No grenades left. Your rifles still work.');
   if (input.pointerType !== 'touch') focusField();
   updateHud();
 }
@@ -4651,6 +5643,11 @@ function updateHud() {
   const objective = objectiveFor(state);
   text('objective-text', objective.text);
   text('mission-goal', objective.label); text('mission-detail', objective.text); text('mission-counter', objective.counter);
+  $('mission-stage').hidden = !objective.stage;
+  if (objective.stage) {
+    text('mission-stage', `${objective.stage}/${objective.stages}`);
+    $('mission-stage').setAttribute('aria-label', `Stage ${objective.stage} of ${objective.stages}`);
+  }
   const strip = $('mission-strip');
   const phase = `${mission}:${objective.label}`;
   if (strip.dataset.phase !== phase) {
@@ -4683,7 +5680,7 @@ function showResult(won) {
   text('result-label', won ? (mission === 2 ? 'OPERATION COMPLETE' : 'MISSION COMPLETE') : 'SQUAD LOST');
   $('result-title').innerHTML = won ? (mission === 2 ? 'SIGNAL<br>RESTORED.' : 'MADE IT<br>OUT ALIVE.') : 'RADIO<br>SILENCE.';
   text('result-copy', won ? [
-    'The radio operator and your squad are home. Regroup for the next operation.',
+    'The medic, radio operator and your surviving squad are home. The village route is secure. Regroup for the next operation.',
     'Both jammers are down. Your squad slipped out before the dead closed in.',
     'Transmission received. Your squad is home, and help knows where to find the island.',
   ][mission] : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
@@ -4694,11 +5691,16 @@ function showResult(won) {
   if (lost.length) {
     const element = document.createElement('p'); element.className = 'memorial'; element.textContent = 'IN MEMORY: ' + lost.join(' · '); $('memorial').append(element);
   }
-  $('next-btn').innerHTML = won ? (mission === 2 ? 'PLAY AGAIN <span>↗</span>' : 'NEXT MISSION <span>→</span>') : 'TRY AGAIN <span>↗</span>';
+  const retryCheckpoint = !won && !!loadCheckpoint(undefined, { mission, difficulty: progress.difficulty });
+  $('next-btn').innerHTML = won ? (mission === 2 ? 'PLAY AGAIN <span>↗</span>' : 'NEXT MISSION <span>→</span>')
+    : retryCheckpoint ? 'RETRY CHECKPOINT <span>↗</span>' : 'TRY AGAIN <span>↗</span>';
+  if (retryCheckpoint) text('result-copy', 'Return to your last secured checkpoint with the squad, supplies and progress saved there. Use cover on the next approach.');
   if (won) {
+    if (mission === 0) clearCheckpoint();
     if (!progress.completed.includes(mission)) progress.completed.push(mission);
-    progress.best[mission] = Math.min(progress.best[mission] ?? Infinity, state.time);
+    if (!checkpointUsed) progress.best[mission] = Math.min(progress.best[mission] ?? Infinity, state.time);
     persist();
+    if (checkpointUsed) text('result-copy', 'The medic, radio operator and your surviving squad are home. Mission complete from a checkpoint; best times are recorded for fresh runs.');
   }
   audio.cue(won ? 'win' : 'lose');
 }
@@ -4716,15 +5718,17 @@ function closeManual() {
 }
 
 bindAction($('sound-btn'), toggleSound);
-bindAction($('start-btn'), startMission);
+bindAction($('start-btn'), () => startMission({ continueCheckpoint: true }));
+bindAction($('fresh-btn'), () => startMission());
 bindAction($('pause-btn'), () => pauseGame(game.state.status !== 'paused'));
 bindAction($('resume-btn'), () => pauseGame(false));
-bindAction($('restart-btn'), startMission);
+bindAction($('restart-btn'), () => startMission());
 bindAction($('hold-btn'), toggleHold);
 bindAction($('grenade-btn'), throwGrenade);
 bindAction($('next-btn'), () => {
-  if (game.state.status === 'won') mission = mission === 2 ? 0 : mission + 1;
-  startMission();
+  const won = game.state.status === 'won';
+  if (won) mission = mission === 2 ? 0 : mission + 1;
+  startMission({ continueCheckpoint: !won });
 });
 for (const id of ['return-btn', 'exit-btn', 'result-base-btn']) bindAction($(id), backToBase);
 for (const id of ['manual-btn', 'pause-manual-btn']) bindAction($(id), openManual);
@@ -4738,7 +5742,7 @@ $('manual').addEventListener('click', event => {
 $('difficulty').value = progress.difficulty;
 $('difficulty').addEventListener('change', () => {
   progress.difficulty = $('difficulty').value; persist();
-  if (mode === 'base') { game = new Game({ mission, difficulty: progress.difficulty }); renderer.reset(); }
+  if (mode === 'base') { clearScene(); game = new Game({ mission, difficulty: progress.difficulty }); renderer.reset(); showBriefing(); }
 });
 
 function pauseWhenAway() {
@@ -4768,6 +5772,17 @@ function frame(now) {
   const updateStart = performance.now();
   if (mode === 'game') {
     game.update(delta, input.sample());
+    const sequence = game.state.checkpointSequence || 0;
+    if (sequence > lastCheckpointSequence && game.state.status === 'playing') {
+      lastCheckpointSequence = sequence;
+      if (saveCheckpoint(undefined, game)) {
+        lastMessage = game.state.message;
+        radio(`Checkpoint saved. ${game.state.message || 'Your squad can return here after a loss.'}`, 4);
+      } else if (!checkpointStorageWarning) {
+        checkpointStorageWarning = true;
+        toast('This browser could not save the checkpoint. Keep this tab open to continue playing.');
+      }
+    }
     audio.consume(game.state);
     metrics.updates++;
     if (now - lastHud >= 80 || ['won', 'lost'].includes(game.state.status) && lastStatus !== game.state.status) {

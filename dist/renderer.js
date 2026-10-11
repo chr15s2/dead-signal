@@ -1,9 +1,9 @@
 /** Original, procedural pixel artwork for Dead Signal. No external assets. */
-import { CONFIG } from './engine.js?v=0.6.0';
-import { ActorPainter } from './actors.js?v=0.6.0';
-import { GroundLighting, paintSunlight } from './lighting.js?v=0.6.0';
-import { CombatEffects } from './effects.js?v=0.6.0';
-import { buildScenery, paintSceneryGround, SceneryPainter, paintBuildingWeathering } from './scenery.js?v=0.6.0';
+import { CONFIG } from './engine.js?v=0.7.0';
+import { ActorPainter } from './actors.js?v=0.7.0';
+import { GroundLighting, paintSunlight } from './lighting.js?v=0.7.0';
+import { CombatEffects } from './effects.js?v=0.7.0';
+import { buildScenery, paintSceneryGround, SceneryPainter, paintBuildingWeathering } from './scenery.js?v=0.7.0';
 
 const TAU = Math.PI * 2;
 const MAX_EFFECTS = 64;
@@ -83,7 +83,7 @@ export class Renderer {
       c.closePath();c.fill();
     };
     // Broad, authored clearings are interrupted by groves rather than random camouflage.
-    for(const [x,y,rx,ry] of [[275,790,235,175],[520,495,250,200],[880,655,260,190],[1230,325,230,190],[1050,970,235,120]]){
+    for(const [x,y,rx,ry] of world.clearings||[[275,790,235,175],[520,495,250,200],[880,655,260,190],[1230,325,230,190],[1050,970,235,120]]){
       blob(x,y,rx,ry,'#668961');blob(x-25,y-18,rx*.61,ry*.67,'#6f9267');
     }
     for(const tree of world.obstacles||[])if(tree.type==='tree'){
@@ -118,28 +118,30 @@ export class Renderer {
     const main=[[130,h-35],[218,970],[420,880],[510,698],[715,633],[810,470],[1030,389],[1200,260],[1380,220],[1450,240]];
     const branch=[[422,880],[625,952],[850,850],[1120,830],[1230,620],[1190,420]];
     const upland=[[515,697],[327,540],[240,320],[450,215],[680,240]];
+    const roads=world.roads||[{points:main,width:66},{points:branch,width:48},{points:upland,width:36}];
     const path=(points,width,color)=>{
       c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.beginPath();
       points.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();
     };
-    for(const [points,width]of [[main,66],[branch,48],[upland,36]]){
+    for(const {points,width}of roads){
       path(points,width+15,'#48734f');path(points,width+6,'#a79968');path(points,width,'#cdb481');path(points,width-14,'#dcc595');
     }
     const trailDistance=(x,y)=>{
       let best=Infinity;
-      for(const points of [main,branch,upland])for(let i=1;i<points.length;i++){
+      for(const {points}of roads)for(let i=1;i<points.length;i++){
         const a=points[i-1],b=points[i],dx=b[0]-a[0],dy=b[1]-a[1],t=clamp(((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy),0,1);
         best=Math.min(best,Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t));
       }
       return best;
     };
     // Sand grains, windblown grass and small stones stay low contrast beneath the actors.
-    for(let i=0;i<2800;i++){
+    const grains=Math.min(10000,Math.ceil(w*h/1920000*2800));
+    for(let i=0;i<grains;i++){
       const x=Math.floor(r()*w),y=Math.floor(r()*h),onRoad=trailDistance(x,y)<23;
       c.fillStyle=onRoad?(i%3?'#c4aa77':'#ead3a2'):['#618961','#7c9d70','#4d7753','#769367'][i%4];
       c.fillRect(x,y,onRoad?2+r()*3:1+r()*2,onRoad?1:2);
     }
-    for(const points of [main,branch])for(let i=1;i<points.length;i++){
+    for(const {points,width} of roads.filter(road=>road.width>=45))for(let i=1;i<points.length;i++){
       const a=points[i-1],b=points[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]),dx=(b[0]-a[0])/d,dy=(b[1]-a[1])/d;
       for(let t=6;t<d;t+=12){
         c.fillStyle='#b59c6a';c.fillRect(Math.round(a[0]+dx*t-dy*12),Math.round(a[1]+dy*t+dx*12),3,2);
@@ -158,12 +160,12 @@ export class Renderer {
     for(let i=0;i<decorations.length;i++){
       const d=decorations[i];if(d.type!=='grass'||i%3===0){if(d.type==='grass'&&trailDistance(d.x,d.y)<30)continue;this.drawDecoration(c,d,state);}
     }
-    for(const d of [
+    for(const d of world.setDressing||(world.roads?[]:[
       {x:583,y:868,type:'wreck'}, {x:502,y:834,type:'crate'}, {x:522,y:840,type:'crate'},
       {x:573,y:853,type:'sandbags'}, {x:667,y:771,type:'bones'}, {x:688,y:499,type:'crate'},
       {x:720,y:541,type:'fence'}, {x:1210,y:451,type:'fence'}, {x:1111,y:803,type:'sandbags'},
       {x:1339,y:276,type:'crate'}, {x:1358,y:282,type:'crate'}, {x:989,y:892,type:'bones'}
-    ])this.drawDecoration(c,d,state);
+    ]))this.drawDecoration(c,d,state);
     paintSceneryGround(c,state,this.scenery);
     paintSunlight(c,state);
     c.restore();
@@ -293,7 +295,7 @@ export class Renderer {
     if(ex&&this.visible(ex.x,ex.y,ex.r,ex.r))this.drawExtraction(c,ex,time,reducedMotion);
     this.drawObjectiveGround(c,state,reducedMotion);
     for(const person of state.civilians||[]){
-      if(!person.rescued&&this.visible(person.x,person.y)){
+      if(state.objective?.type!=='operation'&&!person.rescued&&this.visible(person.x,person.y)){
         c.strokeStyle='#b6e4d2';c.lineWidth=1.5;c.setLineDash([3,5]);c.beginPath();c.arc(person.x,person.y,23,0,TAU);c.stroke();c.setLineDash([]);
       }
     }
@@ -360,7 +362,9 @@ export class Renderer {
   worldPixels(cssPixels){return cssPixels*this.width/this.cssWidth/this.camera.zoom;}
   drawObjectiveGround(c,state,reducedMotion){
     const objective=state.objective;if(!objective)return;
-    if(objective.type==='sabotage'){
+    if(objective.type==='operation'){
+      this.drawOperationGround(c,objective);
+    }else if(objective.type==='sabotage'){
       for(const device of objective.targets||[]){
         if(!this.visible(device.x,device.y))continue;
         c.save();c.translate(device.x,device.y);
@@ -400,6 +404,29 @@ export class Renderer {
         c.strokeStyle=rgba(color,.5);c.lineWidth=this.worldPixels(.8);
         const dial=reducedMotion?0:((state.time||0)*.12)%1;
         c.beginPath();c.arc(0,0,30,-Math.PI/2+TAU*dial,Math.PI/2+TAU*dial);c.stroke();
+      }
+      c.restore();
+    }
+  }
+  drawOperationGround(c,objective){
+    if(objective.phase>=3)return;
+    for(const point of objective.currentPoints||[]){
+      const radius=Math.min(point.r||45,65);
+      if(!this.visible(point.x-radius,point.y-radius,radius*2,radius*2))continue;
+      const rescue=point.kind==='rescue',ready=point.ready,color=ready?'#c4e4bd':rescue?'#c1ded0':'#edc080';
+      c.save();c.translate(point.x,point.y);
+      c.setLineDash([this.worldPixels(4),this.worldPixels(5)]);
+      c.beginPath();c.arc(0,0,radius,0,TAU);
+      c.strokeStyle='rgba(24,49,36,.5)';c.lineWidth=this.worldPixels(3);c.stroke();
+      c.strokeStyle=rgba(color,.7);c.lineWidth=this.worldPixels(1.1);c.stroke();c.setLineDash([]);
+      if(!rescue){
+        const size=this.worldPixels(7),tick=this.worldPixels(4);
+        c.beginPath();
+        for(const [x,y,dx,dy]of [[-size,-size,1,1],[size,-size,-1,1],[-size,size,1,-1],[size,size,-1,-1]]){
+          c.moveTo(x+dx*tick,y);c.lineTo(x,y);c.lineTo(x,y+dy*tick);
+        }
+        c.strokeStyle=color;c.lineWidth=this.worldPixels(1.2);c.stroke();
+        c.fillStyle=color;const dot=this.worldPixels(1.5);c.fillRect(-dot,-dot,dot*2,dot*2);
       }
       c.restore();
     }
@@ -710,7 +737,22 @@ export class Renderer {
     if(!leader)return;
     let target=null,nearest=Infinity,color='#c2e8d7';
     const objective=state.objective;
-    if(objective?.type==='sabotage'){
+    if(objective?.type==='operation'&&objective.phase<3){
+      for(const point of objective.currentPoints||[]){
+        const d=Math.hypot(point.x-leader.x,point.y-leader.y);
+        if(d<nearest){target=point;nearest=d;color=point.ready?'#c4e4bd':point.kind==='rescue'?'#c1ded0':'#edc080';}
+      }
+      // Once at a defended site, guide the flank toward its remaining guards.
+      // The ground marker still identifies the checkpoint or waiting survivor.
+      if(target?.remaining>0&&nearest<Math.max(420,(target.r||0)+120)){
+        const group=target.group;let guard=null,distance=Infinity;
+        for(const enemy of state.enemies||[])if(enemy.alive&&enemy.operationGroup===group){
+          const d=Math.hypot(enemy.x-leader.x,enemy.y-leader.y);
+          if(d<distance){guard=enemy;distance=d;}
+        }
+        if(guard){target=guard;color='#edc080';}
+      }
+    }else if(objective?.type==='sabotage'){
       for(const device of objective.targets||[])if(device.alive){
         const d=Math.hypot(device.x-leader.x,device.y-leader.y);if(d<nearest){target=device;nearest=d;color='#edc080';}
       }
@@ -767,7 +809,13 @@ export class Renderer {
     if(state.extraction){const ex=state.extraction;c.strokeStyle=ex.active?'#dbecad':'#aba878';c.strokeRect(x+ex.x/ww*mw-2,y+ex.y/wh*mh-2,4,4);}
     for(const p of state.civilians||[])if(!p.rescued&&p.alive!==false){c.fillStyle='#caecda';c.fillRect(Math.round(x+p.x/ww*mw)-1,Math.round(y+p.y/wh*mh)-1,2,2);}
     const objective=state.objective;
-    if(objective?.type==='sabotage'){
+    if(objective?.type==='operation'&&objective.phase<3){
+      for(const point of objective.currentPoints||[]){
+        const px=Math.round(x+point.x/ww*mw),py=Math.round(y+point.y/wh*mh);
+        c.strokeStyle=point.ready?'#c4e4bd':point.kind==='rescue'?'#c1ded0':'#edc080';c.lineWidth=.8;
+        c.strokeRect(px-2,py-2,4,4);c.fillStyle=c.strokeStyle;c.fillRect(px,py,1,1);
+      }
+    }else if(objective?.type==='sabotage'){
       for(const device of objective.targets||[]){
         const px=Math.round(x+device.x/ww*mw),py=Math.round(y+device.y/wh*mh);
         if(device.alive){c.fillStyle='#edc080';c.beginPath();c.moveTo(px,py-2);c.lineTo(px+2,py);c.lineTo(px,py+2);c.lineTo(px-2,py);c.closePath();c.fill();}

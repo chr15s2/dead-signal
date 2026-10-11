@@ -9,7 +9,7 @@ function advance(game, seconds, input = {}) {
 }
 
 function quietGame(options = {}) {
-  const game = new Game(options).start();
+  const game = new Game({mission: 1, ...options}).start();
   game.state.enemies = [];
   game.setHoldFire(true);
   return game;
@@ -56,8 +56,11 @@ test('hold fire suppresses squad shots and lets noise decay; weapons free shoots
   assert.ok(game.state.noise > 8);
 });
 
-test('survivor rescue occurs once, supplies squad, and unlocks extraction', () => {
+test('isolated survivor rescue occurs once, supplies squad, and unlocks extraction', () => {
   const game = quietGame();
+  // A one-survivor fixture isolates rescue supplies from the operation gates.
+  game.state.objective = {type: 'rescue'}; game.state.rescueTarget = 1;
+  game.state.civilians = [{id: 100, type: 'civilian', x: 1030, y: 590, alive: true, rescued: false, hp: 1, maxHp: 1, path: null, pathTimer: 0}];
   const civilian = game.civilians[0];
   game.leader.x = civilian.x - 20;
   game.leader.y = civilian.y;
@@ -90,7 +93,7 @@ test('mission two requires both jammers destroyed before extraction', () => {
 
 test('an extraction requires staying in the zone, loses progress outside, and wins', () => {
   const game = quietGame();
-  game.state.rescueCount = game.state.rescueTarget;
+  for (const target of game.state.objective.targets) game.damage(target, 1000, 'player');
   advance(game, .1);
   game.leader.x = game.extraction.x;
   game.leader.y = game.extraction.y;

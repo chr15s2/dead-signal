@@ -1,7 +1,8 @@
 """Mobile, lifecycle, persistence and rendering regression checks.
 
-This suite uses deliberate state fixtures only for isolated controls/results;
-it does not establish difficulty balance or substitute for unassisted play.
+This suite uses deliberate fixtures for controls, objective presentation,
+results and checkpoint lifecycle. It does not establish difficulty balance or
+substitute for unassisted play.
 Uses installed Playwright and Chromium; no downloads.
 
 Run a server for dist/, then:
@@ -53,8 +54,9 @@ def quiet_control_fixture(page):
     # Isolate input without altering actor health or formation behavior.
     page.evaluate('''() => {
       const g=deadSignal.game;g.state.enemies=[];g.state.wavesRemaining=0;
+      const spawn=g.world.spawn||{x:220,y:970};
       for(const [i,s] of g.soldiers.entries()){
-        s.x=220-i*28;s.y=970+i*25;s.path=null;s.pathTimer=0;
+        s.x=spawn.x-i*28;s.y=spawn.y+i*25;s.path=null;s.pathTimer=0;
       }
       g.moveTo(g.leader.x,g.leader.y);
     }''')
@@ -70,6 +72,20 @@ def regroup_at_flare(page):
         c.x=g.extraction.x-35-i*26;c.y=g.extraction.y+55;c.path=null;c.pathTimer=0;
       }
       g.moveTo(g.extraction.x,g.extraction.y);
+    }''')
+
+
+def complete_operation_fixture(page):
+    page.evaluate('''() => {
+      const g=deadSignal.game,o=g.state.objective;
+      const clear=group=>{for(const e of g.enemies.filter(e=>e.operationGroup===group))g.damage(e,1000,'player');};
+      const place=p=>{g.leader.x=p.x;g.leader.y=p.y;g.leader.path=null;g.leader.pathTimer=0;};
+      clear(o.stages[0].group);place(o.stages[0]);g.updateOperation();
+      for(const site of o.rescueSites){clear(site.group);place(site);g.updateRescue(0);}
+      clear(o.stages[2].group);place(o.stages[2]);g.updateOperation();g.checkObjective(1/60);
+      for(const e of g.enemies.filter(e=>e.alive))g.damage(e,1000,'player');
+      g.setHoldFire(true);
+      if(o.phase!==3||g.state.checkpointSequence!==4||g.state.rescueCount!==2)throw new Error('Operation fixture skipped a gate');
     }''')
 
 
@@ -111,7 +127,7 @@ def assert_noise_feedback(page, label, width, height):
 
 def assert_order_feedback(page, label, touch):
     before = page.evaluate('deadSignal.state.events.at(-1)?.id??0')
-    point = page.evaluate('deadSignal.renderer.worldToScreen(400,900)')
+    point = page.evaluate('''() => {const g=deadSignal.game,l=g.leader,p=g.nearestOpen(l.x+180,l.y-70);return deadSignal.renderer.worldToScreen(p.x,p.y);}''')
     if touch:
         page.touchscreen.tap(point['x'], point['y'])
     else:
@@ -160,6 +176,54 @@ def assert_objective_readability(page, label, width, height):
           all(item['text'] and item['visible'] and item['fits'] and item['inside'] for item in presentation.values()), presentation)
 
 
+def assert_operation_presentation(page, label, width, height):
+    # Deliberate presentation fixtures use each actual gate. These checks cover
+    # instructions and stage indicators, not mission duration or difficulty.
+    check(f'{label} First Contact starts with the village checkpoint',
+          page.evaluate('deadSignal.state.objective.type==="operation" && deadSignal.state.objective.phase===0')
+          and page.locator('#mission-goal').inner_text() == 'SECURE THE VILLAGE'
+          and page.locator('#mission-stage').inner_text() == '1/4')
+    assert_objective_readability(page, f'{label} village approach', width, height)
+    page.evaluate('''() => {
+      const g=deadSignal.game,p=g.state.objective.stages[0];
+      for(const e of g.enemies.filter(e=>e.operationGroup===p.group))g.damage(e,1000,'player');
+      g.leader.x=p.x;g.leader.y=p.y;g.leader.path=null;g.leader.pathTimer=0;g.moveTo(p.x,p.y);g.updateOperation();
+    }''')
+    page.wait_for_function('document.getElementById("mission-stage").textContent==="2/4"')
+    check(f'{label} rescue stage names both guarded sites',
+          page.locator('#mission-goal').inner_text() == 'RESCUE BOTH SURVIVORS'
+          and 'Clinic' in page.locator('#mission-detail').inner_text()
+          and 'School' in page.locator('#mission-detail').inner_text()
+          and '0 / 2' in page.locator('#mission-counter').inner_text())
+    assert_objective_readability(page, f'{label} rescue sites', width, height)
+    for site_index in [0, 1]:
+        page.evaluate('''i => {
+          const g=deadSignal.game,p=g.state.objective.rescueSites[i];
+          for(const e of g.enemies.filter(e=>e.operationGroup===p.group))g.damage(e,1000,'player');
+          g.leader.x=p.x;g.leader.y=p.y;g.leader.path=null;g.leader.pathTimer=0;g.moveTo(p.x,p.y);g.updateRescue(0);
+        }''', site_index)
+        if site_index == 0:
+            page.wait_for_function('document.getElementById("mission-counter").textContent.includes("1 / 2")')
+            check(f'{label} first rescue keeps stage two and removes its marker',
+                  page.evaluate('deadSignal.state.objective.phase===1 && deadSignal.state.checkpointSequence===2 && deadSignal.state.objective.currentPoints.length===1')
+                  and page.locator('#mission-stage').inner_text() == '2/4')
+    page.wait_for_function('document.getElementById("mission-stage").textContent==="3/4"')
+    check(f'{label} second rescue leads to harbour clearance',
+          page.locator('#mission-goal').inner_text() == 'SECURE THE HARBOUR'
+          and page.evaluate('!deadSignal.state.extraction.active && deadSignal.state.rescueCount===2'))
+    assert_objective_readability(page, f'{label} harbour approach', width, height)
+    page.evaluate('''() => {
+      const g=deadSignal.game,p=g.state.objective.stages[2];
+      for(const e of g.enemies.filter(e=>e.operationGroup===p.group))g.damage(e,1000,'player');
+      g.leader.x=p.x;g.leader.y=p.y;g.leader.path=null;g.leader.pathTimer=0;g.moveTo(p.x,p.y);g.updateOperation();g.checkObjective(1/60);
+    }''')
+    page.wait_for_function('document.getElementById("mission-stage").textContent==="4/4"')
+    check(f'{label} harbour clearance opens escorted evacuation',
+          page.evaluate('deadSignal.state.extraction.active && deadSignal.state.checkpointSequence===4 && deadSignal.state.objective.response.pending')
+          and page.locator('#mission-goal').inner_text() == 'EXTRACTION OPEN')
+    assert_objective_readability(page, f'{label} evacuation', width, height)
+
+
 def objective_bearings(page):
     # Observe the objective selected for one canvas draw without depending on
     # random terrain pixels or changing the camera's ongoing behavior.
@@ -198,7 +262,17 @@ with sync_playwright() as p:
         page.locator('#start-btn').click()
         page.wait_for_function('deadSignal.state.status === "playing"')
         page.wait_for_timeout(200)
-        page.evaluate('window.qaSpawnCamera={...deadSignal.renderer.camera}')
+        # Compare restart with an independently initialized renderer using the
+        # current play viewport. The live camera may still be easing from a
+        # layout transition and is not a precise fresh reference at 200ms.
+        page.evaluate('''() => {
+          const renderer=deadSignal.renderer,canvas=document.createElement('canvas');
+          canvas.getBoundingClientRect=()=>renderer.canvas.getBoundingClientRect();
+          const before=JSON.stringify(deadSignal.state),fresh=new renderer.constructor(canvas);
+          fresh.render(deadSignal.state,{reducedMotion:true});
+          if(JSON.stringify(deadSignal.state)!==before)throw new Error('Fresh camera reference mutated simulation');
+          window.qaSpawnCamera={...fresh.camera};
+        }''')
         check(f'{label} deployment preserves opt-in sound', page.evaluate('deadSignal.audio.debug.contextState === "uninitialized"'))
         check(f'{label} objective HUD visible during play', page.locator('#mission-goal').is_visible() and page.locator('#mission-counter').is_visible())
         page.screenshot(path=str(artifacts / f'{label}-playing.png'), full_page=True)
@@ -245,10 +319,11 @@ with sync_playwright() as p:
             check(f'{label} joystick deadzone prevents drift', abs(state(page)['x'] - x) < 1 and page.evaluate('deadSignal.input.sample().moveX === 0'))
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
             point = touch_point(page, '#joystick', x=.83)
+            steering_start = state(page)['x']
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point]})
             page.wait_for_timeout(500)
             moved = state(page)['x']
-            check(f'{label} actual touch joystick moves leader', moved > 270, {'leaderX': moved})
+            check(f'{label} actual touch joystick moves leader', moved > steering_start + 50, {'leaderX': moved, 'startX': steering_start})
             second = touch_point(page, '#grenade-btn', pointer_id=2)
             before = state(page)['grenades']
             cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [point, second]})
@@ -442,6 +517,7 @@ with sync_playwright() as p:
         }'''))
         page.set_viewport_size({'width': width, 'height': height})
         page.wait_for_timeout(100)
+        assert_operation_presentation(page, label, width, height)
         page.locator('#pause-btn').click()
         page.locator('#exit-btn').click()
         check(f'{label} return to base restores selection', state(page)['status'] == 'ready' and page.locator('#start-btn').is_visible())
@@ -560,11 +636,9 @@ with sync_playwright() as p:
         page.screenshot(path=str(artifacts / f'{label}-won.png'), full_page=True)
         page.locator('#next-btn').click()
         check(f'{label} final mission replay returns to mission one', state(page)['mission'] == 0 and state(page)['status'] == 'playing')
-        page.evaluate('''() => {
-          const g=deadSignal.game;g.state.enemies=[];g.state.wavesRemaining=0;
-          for(const civilian of g.civilians)civilian.rescued=true;
-          g.state.rescueCount=g.state.rescueTarget;
-        }''')
+        # Results fixture: satisfy every new gate through its real method using
+        # explicit local guard damage and placement. This is not a balance run.
+        complete_operation_fixture(page)
         regroup_at_flare(page)
         page.wait_for_function('deadSignal.state.status === "won"', timeout=6000)
         page.wait_for_function('!document.getElementById("result-overlay").hidden')
@@ -600,6 +674,15 @@ with sync_playwright() as p:
         check(f'{storage_fixture} storage still renders three missions', page.locator('.mission-card').count() == 3)
         page.locator('#start-btn').click()
         check(f'{storage_fixture} storage still deploys normally', state(page)['status'] == 'playing')
+        if storage_fixture == 'denied':
+            page.evaluate('''() => {
+              const g=deadSignal.game,p=g.state.objective.stages[0];
+              for(const e of g.enemies.filter(e=>e.operationGroup===p.group))g.damage(e,1000,'player');
+              g.leader.x=p.x;g.leader.y=p.y;g.leader.path=null;g.updateOperation();
+            }''')
+            page.wait_for_function('document.getElementById("mission-stage").textContent==="2/4"')
+            check('denied storage does not interrupt an unsaved checkpoint milestone',
+                  state(page)['status'] == 'playing' and page.evaluate('deadSignal.state.checkpointSequence===1'))
         check(f'{storage_fixture} storage causes no JavaScript errors', not errors, errors)
         context.close()
     for width, height in [(390, 540), (360, 500)]:
@@ -672,6 +755,105 @@ with sync_playwright() as p:
             page.screenshot(path=str(artifacts / f'{label}-holdout-return.png'), full_page=True)
         check(f'{label} no JavaScript errors', not errors, errors)
         context.close()
+    # Checkpoint UI uses a valid full operation state. Damage and placement are
+    # deliberate lifecycle fixtures; no actor list or checkpoint payload edits.
+    context = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+    page = context.new_page()
+    errors = []
+    page.on('pageerror', lambda e: errors.append(str(e)))
+    page.goto(args.url)
+    page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+    page.locator('#start-btn').click()
+    checkpoint_initial_enemies = page.evaluate('deadSignal.state.enemies.length')
+    page.evaluate('''() => {
+      const g=deadSignal.game,p=g.state.objective.stages[0];
+      g.damage(g.soldiers[1],1000,'enemy');g.damage(g.soldiers[2],27,'enemy');
+      for(const e of g.enemies.filter(e=>e.operationGroup===p.group))g.damage(e,1000,'player');
+      for(const [i,a] of g.soldiers.entries())if(a.alive){a.x=p.x-i*26;a.y=p.y;a.path=null;a.pathTimer=0;}
+      g.moveTo(p.x,p.y);g.updateOperation();
+    }''')
+    page.wait_for_function('localStorage.getItem("dead-signal-first-contact-checkpoint")!==null')
+    page.locator('#pause-btn').click()
+    saved_checkpoint = page.evaluate('JSON.parse(localStorage.getItem("dead-signal-first-contact-checkpoint"))')
+    check('checkpoint saves the village milestone with full actors and casualties',
+          saved_checkpoint['state']['checkpointSequence'] == 1
+          and saved_checkpoint['state']['objective']['phase'] == 1
+          and len(saved_checkpoint['state']['enemies']) == checkpoint_initial_enemies
+          and not saved_checkpoint['state']['soldiers'][1]['alive'])
+    page.locator('#exit-btn').click()
+    page.reload()
+    page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+    check('checkpoint survives reload and offers Continue and Start Fresh',
+          'CONTINUE CHECKPOINT' in page.locator('#start-btn').inner_text()
+          and page.locator('#fresh-btn').is_visible()
+          and 'Stage 2/4' in page.locator('#checkpoint-note').inner_text())
+    page.locator('#difficulty').select_option('easy')
+    check('checkpoint is unavailable at a different difficulty',
+          'DEPLOY SQUAD' in page.locator('#start-btn').inner_text() and not page.locator('#fresh-btn').is_visible())
+    page.locator('#difficulty').select_option('normal')
+    page.locator('#start-btn').click()
+    page.wait_for_function('deadSignal.state.status==="playing" && deadSignal.state.checkpointRestoreUsed===true')
+    restored = page.evaluate('({phase:deadSignal.state.objective.phase,sequence:deadSignal.state.checkpointSequence,soldiers:deadSignal.state.soldiers.map(s=>({id:s.id,alive:s.alive,hp:s.hp})),enemies:deadSignal.state.enemies.length,events:deadSignal.state.events})')
+    check('explicit continue restores stage, health and permanent casualties',
+          restored['phase'] == 1 and restored['sequence'] == 1 and restored['enemies'] == checkpoint_initial_enemies
+          and restored['soldiers'] == [{key: actor[key] for key in ['id', 'alive', 'hp']} for actor in saved_checkpoint['state']['soldiers']])
+    check('continuing checkpoint clears prior orders and journal feedback',
+          not restored['events'] and page.evaluate('deadSignal.state.target===null && deadSignal.input.sample().moveX===0'))
+    page.evaluate('for(const a of deadSignal.game.soldiers.filter(a=>a.alive))deadSignal.game.damage(a,1000,"enemy")')
+    page.wait_for_function('deadSignal.state.status==="lost" && !document.getElementById("result-overlay").hidden')
+    check('loss offers a checkpoint retry without overwriting the saved squad',
+          'RETRY CHECKPOINT' in page.locator('#next-btn').inner_text()
+          and page.evaluate('JSON.parse(localStorage.getItem("dead-signal-first-contact-checkpoint")).state.soldiers.filter(s=>s.alive).length===2'))
+    page.locator('#next-btn').click()
+    check('checkpoint retry restores surviving soldiers and prior objective',
+          page.evaluate('deadSignal.state.status==="playing" && deadSignal.state.objective.phase===1 && deadSignal.state.soldiers.filter(s=>s.alive).length===2 && deadSignal.state.checkpointRestoreUsed'))
+    complete_operation_fixture(page); regroup_at_flare(page)
+    page.wait_for_function('deadSignal.state.status==="won" && !document.getElementById("result-overlay").hidden')
+    checkpoint_progress = page.evaluate('JSON.parse(localStorage.getItem("dead-signal-v1"))')
+    check('checkpoint completion records the mission without creating a fresh-run best time',
+          0 in checkpoint_progress['completed'] and '0' not in checkpoint_progress['best']
+          and 'checkpoint' in page.locator('#result-copy').inner_text().lower())
+    page.locator('#next-btn').click()
+    page.locator('#pause-btn').click(); page.locator('#exit-btn').click()
+    page.locator('.mission-card').nth(0).click(); page.locator('#start-btn').click()
+    # Save a valid fresh milestone before exercising Restart Mission.
+    page.evaluate('''() => {
+      const g=deadSignal.game,p=g.state.objective.stages[0];
+      for(const e of g.enemies.filter(e=>e.operationGroup===p.group))g.damage(e,1000,'player');
+      for(const [i,a] of g.soldiers.entries()){a.x=p.x-i*26;a.y=p.y;a.path=null;a.pathTimer=0;}
+      g.moveTo(p.x,p.y);g.updateOperation();
+    }''')
+    page.wait_for_function('localStorage.getItem("dead-signal-first-contact-checkpoint")!==null')
+    page.locator('#pause-btn').click(); page.locator('#restart-btn').click()
+    check('Restart Mission discards checkpoint and returns to a fresh operation',
+          page.evaluate('deadSignal.state.objective.phase===0 && deadSignal.state.checkpointSequence===0 && deadSignal.state.soldiers.every(s=>s.alive&&s.hp===100) && !deadSignal.state.checkpointRestoreUsed && localStorage.getItem("dead-signal-first-contact-checkpoint")===null'))
+    # A second valid milestone exercises the separate Start Fresh base action.
+    page.evaluate('''() => {
+      const g=deadSignal.game,p=g.state.objective.stages[0];
+      for(const e of g.enemies.filter(e=>e.operationGroup===p.group))g.damage(e,1000,'player');
+      for(const [i,a] of g.soldiers.entries()){a.x=p.x-i*26;a.y=p.y;a.path=null;a.pathTimer=0;}
+      g.moveTo(p.x,p.y);g.updateOperation();
+    }''')
+    page.wait_for_function('localStorage.getItem("dead-signal-first-contact-checkpoint")!==null')
+    page.locator('#pause-btn').click(); page.locator('#exit-btn').click()
+    page.locator('#fresh-btn').click()
+    check('Start Fresh deploys stage one and removes the old checkpoint',
+          page.evaluate('deadSignal.state.status==="playing" && deadSignal.state.objective.phase===0 && !deadSignal.state.checkpointRestoreUsed && localStorage.getItem("dead-signal-first-contact-checkpoint")===null'))
+    complete_operation_fixture(page); regroup_at_flare(page)
+    page.wait_for_function('deadSignal.state.status==="won" && !document.getElementById("result-overlay").hidden')
+    check('a fresh operation completion records a comparable best time',
+          page.evaluate('JSON.parse(localStorage.getItem("dead-signal-v1")).best[0]>0')
+          and 'checkpoint' not in page.locator('#result-copy').inner_text().lower())
+    page.locator('#next-btn').click(); page.locator('#pause-btn').click(); page.locator('#exit-btn').click()
+    page.locator('.mission-card').nth(0).click()
+    page.evaluate('localStorage.setItem("dead-signal-first-contact-checkpoint","{broken")')
+    page.reload(); page.wait_for_function('window.deadSignal && window.deadSignal.renderer')
+    check('a corrupt checkpoint falls back to fresh deployment without a false Continue offer',
+          'DEPLOY SQUAD' in page.locator('#start-btn').inner_text()
+          and not page.locator('#fresh-btn').is_visible() and not page.locator('#checkpoint-note').is_visible())
+    check('checkpoint lifecycle has no JavaScript errors', not errors, errors)
+    context.close()
+
     # A short viewport represents a phone with substantial in-app browser chrome.
     # Keep this focused on usable play space and every pause-card action.
     context = browser.new_context(viewport={'width': 390, 'height': 650}, is_mobile=True, has_touch=True)

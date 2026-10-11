@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {findRoute} from '../dist/navigation.js';
 
-function world(obstacles) {
+function world(obstacles, width = 1600, height = 1200) {
   const game = {
     obstacles,
+    world: {width, height},
     navVersion: 0,
     blocked(x, y, radius = 15) {
-      if (x < radius + 4 || y < radius + 4 || x > 1600 - radius - 4 || y > 1200 - radius - 4) return true;
+      if (x < radius + 4 || y < radius + 4 || x > width - radius - 4 || y > height - radius - 4) return true;
       return this.obstacles.some(obstacle => {
         const dx = x - Math.max(obstacle.x, Math.min(obstacle.x + obstacle.w, x));
         const dy = y - Math.max(obstacle.y, Math.min(obstacle.y + obstacle.h, y));
@@ -22,9 +23,10 @@ function world(obstacles) {
       return true;
     },
     rebuild() {
-      this.grid = new Uint8Array(40 * 30);
-      for (let y = 0; y < 30; y++) {
-        for (let x = 0; x < 40; x++) this.grid[y * 40 + x] = this.blocked(x * 40 + 20, y * 40 + 20, 17) ? 1 : 0;
+      const cols = Math.ceil(width / 40), rows = Math.ceil(height / 40);
+      this.grid = new Uint8Array(cols * rows);
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) this.grid[y * cols + x] = this.blocked(x * 40 + 20, y * 40 + 20, 17) ? 1 : 0;
       }
       this.navVersion++;
     },
@@ -129,4 +131,14 @@ test('navigation rebuilds invalidate body-clear edge caches after cover changes'
   game.obstacles = [];
   game.rebuild();
   assert.deepEqual(findRoute(game, 500, 600, 1000, 600), [{x: 1000, y: 600}]);
+});
+
+
+test('body-clear routes cover an operation map beyond the original world limits', () => {
+  const game = world([{x: 1900, y: 1100, w: 120, h: 650}], 2800, 2200);
+  const start = {x: 1700, y: 1400}, end = {x: 2460, y: 1810};
+  assert.equal(game.grid.length, 70 * 55);
+  assertSafe(game, start, end, findRoute(game, start.x, start.y, end.x, end.y));
+  assert.deepEqual(findRoute(game, end.x, end.y, 2750, 2100), [{x: 2750, y: 2100}]);
+  assert.deepEqual(findRoute(game, end.x, end.y, 2800, 2100), []);
 });

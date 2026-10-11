@@ -7,7 +7,7 @@ const advance = (game, seconds, input = {}) => {
   for (let frame = 0; frame < seconds * 60; frame++) game.update(1 / 60, input);
 };
 function quietGame() {
-  const game = new Game().start();
+  const game = new Game({mission: 1}).start();
   game.state.enemies = [];
   game.setHoldFire(true);
   return game;
@@ -98,7 +98,7 @@ test('enemy contact keeps its physical effect on the controlled leader', () => {
 
 test('regrouping companions do not shove a waiting leader out of extraction', () => {
   const game = quietGame();
-  game.state.rescueCount = game.state.rescueTarget;
+  for (const target of game.state.objective.targets) game.damage(target, 1000, 'player');
   const leader = game.leader;
   leader.x = game.extraction.x + 80; leader.y = game.extraction.y;
   leader.moveAngle = 0;
