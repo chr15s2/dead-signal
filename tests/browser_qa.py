@@ -658,7 +658,7 @@ with sync_playwright() as p:
             page.wait_for_function('deadSignal.state.status === "playing" && deadSignal.state.objective.type === "holdout"')
             page.wait_for_function('!document.getElementById("mission-progress").hidden')
             check(f'{label} mission three explains the radio holdout with distinct progress',
-                  'RELAY' in page.locator('#mission-goal').inner_text().upper()
+                  'REPEATER' in page.locator('#mission-goal').inner_text().upper()
                   and 'Extraction' not in page.locator('#mission-progress').get_attribute('aria-label'))
             assert_objective_readability(page, f'{label} holdout approach', width, height)
             relay = page.evaluate('({x:deadSignal.state.objective.zone.x,y:deadSignal.state.objective.zone.y,id:null})')
@@ -705,13 +705,44 @@ with sync_playwright() as p:
             page.wait_for_timeout(250)
             check(f'{label} leaving the radio zone preserves progress and tells the player to return',
                   page.evaluate('deadSignal.state.objective.held') == left_hold
-                  and 'RETURN' in (page.locator('#mission-goal').inner_text() + page.locator('#mission-detail').inner_text()).upper())
+                  and page.locator('#mission-goal').inner_text() == 'REACH REPEATER'
+                  and page.locator('#mission-detail').evaluate('el=>/Return|Reach the active circle/i.test(el.textContent)'))
+            page.evaluate('''() => {
+              const g=deadSignal.game,o=g.state.objective;
+              window.qaRelayTerrain=deadSignal.renderer.cache;
+              g.leader.x=o.zone.x;g.leader.y=o.zone.y;g.leader.path=null;
+              g.updateObjective(o.sites[0].duration-o.sites[0].held);
+              g.moveTo(g.leader.x,g.leader.y);
+            }''')
+            page.wait_for_function('deadSignal.state.objective.siteIndex===1 && document.getElementById("mission-stage").textContent==="2/2"')
+            next_relay = page.evaluate('({x:deadSignal.state.objective.zone.x,y:deadSignal.state.objective.zone.y,id:null})')
+            check(f'{label} repeater handoff changes the named objective and bearing to the ridge mast',
+                  page.locator('#mission-goal').inner_text() == 'REACH RIDGE MAST'
+                  and objective_bearings(page) == [next_relay]
+                  and page.evaluate('deadSignal.state.objective.sites[0].held===12 && deadSignal.state.objective.sites[1].held===0 && deadSignal.state.objective.held===12 && !deadSignal.state.extraction.active'))
+            check(f'{label} relay handoff preserves static terrain and resets active-site progress accessibly',
+                  page.evaluate('deadSignal.renderer.cache===window.qaRelayTerrain')
+                  and page.locator('#mission-progress').evaluate('(el)=>!el.hidden && el.value===0 && /Ridge mast/.test(el.getAttribute("aria-label"))'))
+            assert_objective_readability(page, f'{label} ridge transfer', width, height)
+            page.screenshot(path=str(artifacts / f'{label}-ridge-transfer.png'), full_page=True)
+            page.evaluate('''() => {
+              const g=deadSignal.game,o=g.state.objective;
+              for(const [i,s] of g.soldiers.entries()){s.x=o.zone.x-i*24;s.y=o.zone.y;s.path=null;s.pathTimer=0;}
+              g.moveTo(g.leader.x,g.leader.y);
+            }''')
+            page.wait_for_function('deadSignal.state.objective.inside && deadSignal.state.objective.sites[1].held>.25')
+            check(f'{label} final mast shows independent progress while retaining the completed first link',
+                  page.locator('#mission-goal').inner_text() == 'HOLD RIDGE MAST'
+                  and page.evaluate('deadSignal.state.objective.sites[0].held===12 && deadSignal.state.objective.held>12')
+                  and page.locator('#mission-progress').evaluate('(el)=>el.value>0 && el.value<.2'))
+            assert_objective_readability(page, f'{label} final mast', width, height)
+            page.screenshot(path=str(artifacts / f'{label}-ridge-active.png'), full_page=True)
             page.locator('#pause-btn').click()
             page.locator('#restart-btn').click()
             page.wait_for_function('deadSignal.state.objective.held === 0 && !deadSignal.state.objective.started')
             page.wait_for_timeout(120)
             check(f'{label} holdout restart clears timer waves and displayed progress',
-                  page.evaluate('deadSignal.state.objective.held===0 && !deadSignal.state.objective.inside && !deadSignal.state.extraction.active && deadSignal.state.objective.elapsed===0')
+                  page.evaluate('deadSignal.state.objective.held===0 && deadSignal.state.objective.siteIndex===0 && deadSignal.state.objective.sites.every(site=>site.held===0) && !deadSignal.state.objective.siteStarted && !deadSignal.state.objective.inside && !deadSignal.state.extraction.active && deadSignal.state.objective.elapsed===0')
                   and page.locator('#mission-progress').evaluate('(el)=>!el.hidden && el.value===0'))
             page.locator('#pause-btn').click()
             page.locator('#exit-btn').click()
@@ -724,8 +755,10 @@ with sync_playwright() as p:
           const g=deadSignal.game;
           for(const enemy of g.enemies)g.damage(enemy,1000);
           g.state.wavesRemaining=0;
-          g.state.objective.held=g.state.objective.duration;
-          g.state.objective.started=true;
+          for(const site of g.state.objective.sites){
+            g.leader.x=g.state.objective.zone.x;g.leader.y=g.state.objective.zone.y;
+            g.updateObjective(site.duration);
+          }
           for(const soldier of g.soldiers.slice(1))g.damage(soldier,1000);
           g.leader.x=g.extraction.x;g.leader.y=g.extraction.y;
           g.leader.path=null;g.leader.pathTimer=0;
@@ -851,9 +884,11 @@ with sync_playwright() as p:
             # Isolate the longest return instruction without a lengthy holdout.
             page.evaluate('''() => {
               deadSignal.state.enemies=[];deadSignal.state.wavesRemaining=0;
-              Object.assign(deadSignal.state.objective,{started:true,inside:false,held:10});
+              const g=deadSignal.game,o=g.state.objective;
+              g.leader.x=o.zone.x;g.leader.y=o.zone.y;g.updateObjective(10);
+              g.leader.x=g.world.spawn.x;g.leader.y=g.world.spawn.y;g.updateObjective(0);
             }''')
-            page.wait_for_function('document.getElementById("mission-goal").textContent==="RE-ENTER THE SIGNAL"')
+            page.wait_for_function('document.getElementById("mission-goal").textContent==="REACH REPEATER"')
             assert_objective_readability(page, f'{label} compact relay return', width, height)
             page.screenshot(path=str(artifacts / f'{label}-holdout-return.png'), full_page=True)
         check(f'{label} no JavaScript errors', not errors, errors)

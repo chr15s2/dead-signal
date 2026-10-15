@@ -197,11 +197,12 @@ test('Safari webkit audio is activated only by the explicit enable call', async 
   assert.ok(starts(env.contexts[0]) > 0);
 });
 
-test('focus and reinforcement cues follow the same gesture, deduplication and pause rules as combat', async t => {
+test('focus, reinforcement and relay handoff cues follow gesture, deduplication and pause rules', async t => {
   const env = fixture(t), audio = env.engine();
   const events = [
     {id: 1, type: 'focus', time: 1, x: 200, y: 100, targetId: 40, team: 'player'},
     {id: 2, type: 'reinforcement-warning', time: 1, x: 350, y: 150, dueAt: 3.5, count: 4, direction: 'EAST', team: 'zombie'},
+    {id: 3, type: 'relay-stage', time: 1, x: 350, y: 150, siteIndex: 1, label: 'Ridge mast', team: 'objective'},
   ];
   audio.consume(scene(events));
   assert.equal(env.contexts.length, 0);
@@ -211,7 +212,7 @@ test('focus and reinforcement cues follow the same gesture, deduplication and pa
   assert.equal(starts(context), 0, 'enabling sound cannot replay old tactical announcements');
   for (const [index, event] of events.entries()) {
     context.currentTime += .2;
-    const next = {...event, id: index + 3};
+    const next = {...event, id: index + events.length + 1};
     const before = starts(context);
     audio.consume(scene([next]));
     assert.ok(starts(context) > before, event.type);
@@ -221,10 +222,10 @@ test('focus and reinforcement cues follow the same gesture, deduplication and pa
   }
   audio.pause(true);
   const beforePause = starts(context);
-  audio.consume(scene([{...events[1], id: 5}]));
+  audio.consume(scene([{...events[1], id: 7}]));
   assert.equal(starts(context), beforePause);
   assert.equal(audio.debug.voices, 0);
   audio.pause(false);
-  audio.consume(scene([{...events[1], id: 5}]));
+  audio.consume(scene([{...events[1], id: 7}]));
   assert.equal(starts(context), beforePause);
 });

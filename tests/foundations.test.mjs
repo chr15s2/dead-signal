@@ -8,7 +8,14 @@ const advance = (game, seconds, input = {}) => {
 };
 function isolatedGame() {
   const game = new Game({mission: 1}).start();
+  // A deliberate quiet arena keeps physical regressions independent of mission layout.
   game.state.enemies = [];
+  game.world.obstacles = [];
+  game.world.coastline = null;
+  for (const [index, soldier] of game.soldiers.entries()) {
+    Object.assign(soldier, {x: 220 - index * 28, y: 970 + index * 25, path: null, pathTimer: 0});
+  }
+  game.rebuildNavigation();
   game.setHoldFire(true);
   return game;
 }
@@ -87,13 +94,14 @@ test('a valid actor stopped against navigation padding can walk out again', () =
   assert.ok(distance(game.leader, {x: 700, y: 540}) < 15);
 });
 
-test('patrol danger and hold fire persist without spontaneous sabotage reinforcements', () => {
-  const quiet = new Game({mission: 1}).start(), loud = new Game({mission: 1}).start();
-  quiet.setHoldFire(true);
-  for (const game of [quiet, loud]) { game.moveTo(900, 650); advance(game, 10); }
+test('local patrol danger and hold fire persist without spontaneous sabotage reinforcements', () => {
+  const quiet = isolatedGame(), loud = isolatedGame();
+  for (const game of [quiet, loud]) game.spawnEnemy('soldier', game.leader.x + 180, game.leader.y);
+  loud.setHoldFire(false);
+  for (const game of [quiet, loud]) advance(game, 3);
   assert.equal(quiet.waveCount, 0);
   assert.ok(!quiet.state.events.some(event => event.type === 'shot' && event.team === 'player'));
-  assert.equal(loud.waveCount, 0, 'jammer alarms, rather than ambient noise, now trigger finite responses');
+  assert.equal(loud.waveCount, 0, 'jammer alarms, rather than ambient noise, trigger finite responses');
   assert.ok(loud.state.events.some(event => event.type === 'shot' && event.team === 'player'));
   assert.ok(quiet.soldiers.some(soldier => soldier.hp < 100), 'quiet is a tactical choice, not invulnerability');
 });
@@ -122,14 +130,18 @@ test('distant faction fights wait until the squad enters that part of the map', 
   });
 });
 
-test('water collision uses the coastline supplied to the renderer', () => {
-  const game = isolatedGame();
-  assert.ok(game.world.coastline.length > 10);
-  assert.equal(game.blocked(1500, 40), true);
-  assert.equal(game.blocked(1540, 640), true);
-  assert.equal(game.moveTo(1500, 40), true);
-  assert.equal(game.blocked(game.target.x, game.target.y, 15), false);
-  assert.equal(game.blocked(game.extraction.x, game.extraction.y, 15), false);
+test('water collision uses the authored coastline supplied to the renderer', () => {
+  for (const mission of [0, 1, 2]) {
+    const game = new Game({mission}).start();
+    const coast = game.world.coastline;
+    assert.ok(coast.length > 10);
+    const top = coast[2], east = coast.at(-2);
+    assert.equal(game.blocked(top.x, top.y - 20), true);
+    assert.equal(game.blocked(east.x + 20, east.y), true);
+    assert.equal(game.moveTo(top.x, top.y - 20), true);
+    assert.equal(game.blocked(game.target.x, game.target.y, 15), false);
+    assert.equal(game.blocked(game.extraction.x, game.extraction.y, 15), false);
+  }
 });
 
 test('extraction waits for living squad and survivors to regroup', () => {
@@ -174,7 +186,7 @@ function jammerFiringPosition(game, target, range = 170) {
   return positions.sort((a, b) => distance(a, leader) - distance(b, leader))[0];
 }
 
-function playMission(mission, seed) {
+function playMission(mission, seed, {reverseJammers = false} = {}) {
   const game = new Game({mission, difficulty: 'normal', seed}).start();
   let decisionAt = 0, grenadeAt = -10;
   for (let frame = 0; frame < 240 * 60 && game.state.status === 'playing'; frame++) {
@@ -214,7 +226,7 @@ function playMission(mission, seed) {
       }
       else if (mission === 1) {
         const target = game.state.objective.targets.filter(target => target.alive)
-          .sort((a, b) => distance(a, leader) - distance(b, leader))[0];
+          .sort((a, b) => reverseJammers ? b.id - a.id : distance(a, leader) - distance(b, leader))[0];
         if (target) destination = distance(leader, target) < CONFIG.weaponRange - 35 && game.hasLOS(leader, target)
           ? leader : jammerFiringPosition(game, target);
       } else destination = game.state.objective.zone;
@@ -238,6 +250,19 @@ for (const seed of [1, 42, 531, 1989, 2143]) {
       assert.ok(game.civilians.every(civilian => civilian.rescued));
     }
     if (mission === 1) assert.ok(game.state.objective.targets.every(target => !target.alive));
-    if (mission === 2) assert.equal(game.state.objective.held, game.state.objective.duration);
+    if (mission === 2) {
+      assert.equal(game.state.objective.held, game.state.objective.duration);
+      assert.equal(game.state.objective.siteIndex, 1);
+      assert.deepEqual(game.state.objective.sites.map(site => site.held), [12, 13]);
+    }
   });
 }
+
+for (const seed of [1, 1989]) test(`normal sabotage extracts with the fuel yard attacked first through real actions (seed ${seed})`, () => {
+  const game = playMission(1, seed, {reverseJammers: true});
+  assert.equal(game.state.status, 'won');
+  const responses = game.state.objective.reinforcements;
+  assert.equal(responses.length, 2);
+  assert.deepEqual(responses.map(response => response.sourceId), [...game.state.objective.targets].reverse().map(target => target.id));
+  assert.ok(game.soldiers.some(soldier => soldier.alive));
+});

@@ -1,9 +1,9 @@
-import { Game, MISSIONS } from './engine.js?v=0.8.0';
-import { Renderer } from './renderer.js?v=0.8.0';
-import { InputController, bindAction } from './input.js?v=0.8.0';
-import { AudioEngine } from './audio.js?v=0.8.0';
-import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.8.0';
-import { loadCheckpoint, saveCheckpoint, clearCheckpoint, restoreCheckpoint } from './checkpoint.js?v=0.8.0';
+import { Game, MISSIONS } from './engine.js?v=0.9.0';
+import { Renderer } from './renderer.js?v=0.9.0';
+import { InputController, bindAction } from './input.js?v=0.9.0';
+import { AudioEngine } from './audio.js?v=0.9.0';
+import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.9.0';
+import { loadCheckpoint, saveCheckpoint, clearCheckpoint, restoreCheckpoint } from './checkpoint.js?v=0.9.0';
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -182,7 +182,7 @@ function showMissions() {
     const button = document.createElement('button');
     button.className = `mission-card${index === mission ? ' active' : ''}`;
     button.setAttribute('aria-pressed', String(index === mission));
-    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['VILLAGE RESCUE OPERATION', 'SABOTAGE & ESCAPE', 'DEFEND & TRANSMIT'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
+    button.innerHTML = `<span class="mission-number">${String(index + 1).padStart(2, '0')}</span><div class="mission-info"><span>${['VILLAGE RESCUE OPERATION', 'INDUSTRIAL SABOTAGE', 'TWO POSITIONS. ONE SIGNAL.'][index]}</span><h3></h3><p></p></div><span class="mission-state">${progress.completed.includes(index) ? '✓ COMPLETE' : index === mission ? 'SELECTED' : ''}</span><span class="mission-arrow">↗</span>`;
     button.querySelector('h3').textContent = definition.title;
     button.querySelector('p').textContent = definition.subtitle;
     button.addEventListener('click', () => {
@@ -202,8 +202,8 @@ function showBriefing() {
   text('briefing-copy', mission === 0
     ? 'Secure the village. Rescue the clinic medic and school radio operator in either order, clear the harbour, then escort everyone to the flare. Choose the exposed road or a longer route through cover. The HUD counts defenders at each objective.'
     : mission === 1
-      ? 'Cut the island’s two signal jammers, in either order. Each destroyed jammer brings a counterattack: watch the warning, use cover and keep moving. Once both are down, get your squad to the flare. Tap a jammer to focus fire; drag Grenade to aim a blast.'
-      : 'Restore the radio link. Hold the relay perimeter for 25 seconds of uplink time while three infected waves approach. Their warning shows where to prepare. Step out to dodge or regroup, then return; your transmission progress stays. Bring everyone to the flare.');
+      ? 'Infiltrate the island’s industrial yards. Destroy the jammers in two separate compounds, in either order: take the open service road or flank through cover. Each jammer triggers a warned counterattack. You only need the devices down; get everyone to the western beach flare.'
+      : 'Rebuild the radio link in two positions: hold the village repeater for 12 seconds, then cross to the ridge mast for 13. Three infected waves follow your uplink progress; watch their approach warnings. Step out to regroup without losing progress. After both links, bring everyone to the coastal flare.');
   const checkpoint = loadCheckpoint(undefined, { mission, difficulty: progress.difficulty });
   $('start-btn').innerHTML = checkpoint ? 'CONTINUE CHECKPOINT <span>→</span>' : 'DEPLOY SQUAD <span>↗</span>';
   $('fresh-btn').hidden = !checkpoint;
@@ -359,7 +359,7 @@ function updateHud() {
   }
   text('timer', formatTime(state.time)); text('kills', String(state.kills).padStart(2, '0'));
   const operation = state.objective;
-  text('operation-stat-label', operation?.type === 'sabotage' ? 'JAMMERS DOWN' : operation?.type === 'holdout' ? 'UPLINK TIME' : 'SURVIVORS');
+  text('operation-stat-label', operation?.type === 'sabotage' ? 'JAMMERS DOWN' : operation?.type === 'holdout' ? 'UPLINK · 2 SITES' : 'SURVIVORS');
   text('rescues', operation?.type === 'sabotage'
     ? `${operation.targets.filter(target => !target.alive).length} / ${operation.targets.length}`
     : operation?.type === 'holdout' ? `${Math.floor(operation.held)} / ${operation.duration}s`
@@ -413,7 +413,7 @@ function updateHud() {
   }
   $('mission-progress').hidden = objective.progress === null;
   $('mission-progress').value = objective.progress ?? 0;
-  $('mission-progress').setAttribute('aria-label', state.extraction.active ? 'Extraction progress' : operation?.type === 'holdout' ? 'Radio uplink progress' : 'Mission progress');
+  $('mission-progress').setAttribute('aria-label', state.extraction.active ? 'Extraction progress' : objective.progressLabel || (operation?.type === 'holdout' ? 'Radio uplink progress' : 'Mission progress'));
   text('footer-tip', hold ? 'HOLD FIRE ACTIVE · MOVE QUIETLY' : 'AUTO FIRE ACTIVE · USE COVER. STAY TOGETHER.');
   if (state.message && state.message !== lastMessage) {
     lastMessage = state.message;
@@ -436,8 +436,8 @@ function showResult(won) {
   $('result-title').innerHTML = won ? (mission === 2 ? 'SIGNAL<br>RESTORED.' : 'MADE IT<br>OUT ALIVE.') : 'RADIO<br>SILENCE.';
   text('result-copy', won ? [
     'The medic, radio operator and your surviving squad are home. The village route is secure. Regroup for the next operation.',
-    'Both jammers are down and the counterattacks are behind you. Your squad has reopened the island’s radio corridor.',
-    'Transmission received. Your squad held the relay through three infected waves, and help knows where to find the island.',
+    'Both industrial jammers are down. Your squad made the western beach extraction and reopened the island’s radio corridor.',
+    'Transmission received. You linked the village repeater to the ridge mast and brought your surviving squad to the coast. Help knows where to find the island.',
   ][mission] : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
   const alive = state.soldiers.filter(soldier => soldier.alive).length;
   if (won && alive === 3) text('result-label', `${mission === 2 ? 'OPERATION' : 'MISSION'} COMPLETE · FULL SQUAD`);

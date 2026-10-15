@@ -61,6 +61,7 @@ export function buildScenery(state) {
   if (state.extraction) protectedPoints.push({...state.extraction, r: state.extraction.r + 20});
   for (const person of state.civilians || []) protectedPoints.push({x: person.x, y: person.y, r: 64});
   if (state.objective?.zone) protectedPoints.push({...state.objective.zone, r: state.objective.zone.r + 34});
+  for (const site of state.objective?.sites || []) protectedPoints.push({...site, r: site.r + 34});
   for (const device of state.objective?.targets || []) protectedPoints.push({x: device.x, y: device.y, r: 62});
   for (const stage of state.objective?.stages || []) protectedPoints.push({x:stage.x,y:stage.y,r:65});
   const props = [];

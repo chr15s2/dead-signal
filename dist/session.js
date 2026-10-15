@@ -1,6 +1,6 @@
 /** Browser progress and objective text. No DOM or simulation side effects. */
 export const SAVE_KEY = 'dead-signal-v1';
-export const MISSION_REVISION = 3;
+export const MISSION_REVISION = 4;
 
 export function normalizeProgress(value) {
   const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false, missionRevision: MISSION_REVISION };
@@ -9,10 +9,10 @@ export function normalizeProgress(value) {
     result.completed = [...new Set(value.completed.filter(id => Number.isInteger(id) && id >= 0 && id < 3))].sort();
   }
   if (value.best && typeof value.best === 'object' && !Array.isArray(value.best)) {
-    // Revision 3 reworks jammer counterattacks and relay waves. The revision 2
-    // First Contact route remains comparable; older routes have no valid times.
+    // Revision 4 replaces the sabotage route and splits the relay between two
+    // positions. First Contact is unchanged from revisions 2 and 3.
     const comparable = value.missionRevision === MISSION_REVISION ? [0, 1, 2]
-      : value.missionRevision === 2 ? [0] : [];
+      : [2, 3].includes(value.missionRevision) ? [0] : [];
     for (const id of comparable) {
       const time = value.best[id];
       if (typeof time === 'number' && Number.isFinite(time) && time > 0) result.best[id] = time;
@@ -55,7 +55,9 @@ export function objectiveFor(state) {
     ? compass[((Math.round(pending.direction / (Math.PI / 4)) % 8) + 8) % 8] : null;
   const direction = bearing ? ` from ${bearing}` : '';
   const warning = pending ? `${objective.type === 'sabotage' ? 'Counterattack' : 'Infected'}${direction}${warningSeconds ? ` in ${warningSeconds}s` : ' approaching'}` : '';
-  const stage = objective.type === 'operation' ? { stage: objective.phase + 1, stages: objective.stageCount || 4 } : {};
+  const site = objective.type === 'holdout' ? objective.sites?.[objective.siteIndex] : null;
+  const stage = objective.type === 'operation' ? { stage: objective.phase + 1, stages: objective.stageCount || 4 }
+    : site ? {stage: objective.siteIndex + 1, stages: objective.sites.length} : {};
   if (state.extraction.active) {
     if (state.extraction.regrouping) {
       return { ...stage, label: 'REGROUP', text: warning ? `Regroup at the flare. ${warning}.` : state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
@@ -89,8 +91,22 @@ export function objectiveFor(state) {
   }
   if (objective.type === 'sabotage') {
     const destroyed = objective.targets.filter(target => !target.alive).length;
-    return {label: 'SABOTAGE', text: warning ? `${warning}. Cut the remaining jammer.` : 'Destroy both marked jammers. Gunfire or grenades work.',
+    return {label: 'SABOTAGE', text: warning ? `${warning}. Cut the remaining jammer.` : 'Cut both compound jammers, in either order. Watch the lanes.',
       counter: `${destroyed} / ${objective.targets.length} SILENCED`, progress: null};
+  }
+  if (site) {
+    const seconds = Math.max(0, Math.ceil(site.duration - site.held - 1e-9));
+    const finalSite = objective.siteIndex === objective.sites.length - 1;
+    const place = finalSite ? 'RIDGE MAST' : 'REPEATER';
+    const started = objective.siteStarted || site.held > 0;
+    const detail = objective.inside ? 'Keep your selected soldier in the circle.'
+      : started ? 'Progress saved. Return to this circle when safe.'
+        : finalSite ? 'First link complete. Reach the ridge mast.' : 'Enter the village repeater circle to transmit.';
+    return {...stage, label: `${objective.inside ? 'HOLD' : 'REACH'} ${place}`,
+      text: warning ? `${warning}. ${objective.inside ? 'Hold or reposition.' : 'Reach the active circle.'}` : detail,
+      counter: `${seconds} SEC ${started ? 'LEFT' : 'SIGNAL'}`,
+      progress: Math.min(1, site.held / site.duration),
+      progressLabel: `${site.label || (finalSite ? 'Ridge mast' : 'Village repeater')} uplink progress`};
   }
   const seconds = Math.max(0, Math.ceil(objective.duration - objective.held - 1e-9));
   if (!objective.started) {
