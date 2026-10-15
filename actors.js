@@ -45,6 +45,9 @@ export class ActorPainter {
     const bob = moving ? Math.round(Math.abs(stride) * (zombie ? .5 : 1)) : 0;
     const idle = !reducedMotion && !moving ? Math.sin(time * 2.1 + (Number(p.id) || 0)) * .25 : 0;
     const hit = (p.hitFlash || 0) > 0;
+    const windingBite = zombie && (p.biteTimer || 0) > 0;
+    const biteProgress = windingBite ? reducedMotion ? .5
+      : clamp(1 - p.biteTimer / (p.biteDuration || .3), 0, 1) : 0;
     const skin = p.name === 'ROOK' ? '#b9865d' : p.name === 'JUNE' ? '#e4c398' : '#dcb588';
     const jacket = hit ? '#f1e5c4' : zombie ? '#737c70' : civilian ? '#d4b67d' : enemy ? '#bb8a55' : '#2e8074';
     const light = zombie ? '#949d80' : civilian ? '#f1d69a' : enemy ? '#deb477' : '#80bd9e';
@@ -53,6 +56,16 @@ export class ActorPainter {
     // A compact contact shadow anchors the feet, separate from the sunlight cast.
     c.fillStyle = 'rgba(22,49,33,.32)'; c.beginPath(); c.ellipse(1, 5, 8, 3.5, .08, 0, TAU); c.fill();
     c.fillStyle = 'rgba(22,49,33,.14)'; c.beginPath(); c.ellipse(6, 8, 8, 3, .3, 0, TAU); c.fill();
+    if (windingBite) {
+      // A stationary coil and a warm arc announce the locked bite before damage.
+      // Reduced motion keeps the same warning at a fixed, readable pose.
+      c.beginPath(); c.arc(0, 1, 18, aim - .7, aim + .7);
+      c.strokeStyle = '#254636'; c.lineWidth = 3.5; c.stroke();
+      c.strokeStyle = '#eeb16e'; c.lineWidth = 1.6; c.stroke();
+      c.fillStyle = '#f7d39a';
+      const mark = aim - .7 + 1.4 * (reducedMotion ? .5 : biteProgress);
+      c.fillRect(Math.cos(mark) * 18 - 1, 1 + Math.sin(mark) * 18 - 1, 2, 2);
+    }
     if (type === 'squad') {
       c.lineWidth = leader ? 3 : 1.5; c.strokeStyle = leader ? '#194b3c' : '#3d8766';
       c.beginPath(); c.ellipse(0, 5, leader ? 10 : 8, leader ? 5 : 4, 0, 0, TAU); c.stroke();
@@ -75,6 +88,7 @@ export class ActorPainter {
     c.fillStyle = zombie ? '#83916b' : '#a4ae7c'; c.fillRect(lx, ly, 2, 1); c.fillRect(rx, ry, 2, 1);
     c.fillStyle = '#35513b'; c.fillRect(lx, ly + 4, 4, 1); c.fillRect(rx, ry + 4, 4, 1);
     c.translate(lean, -bob - idle);
+    if (windingBite) c.translate(-Math.cos(aim) * (1 + biteProgress * 2), -Math.sin(aim) * (1 + biteProgress * 2));
 
     c.fillStyle = ink; c.fillRect(-7, -9, 14, 13);
     c.fillStyle = jacket; c.fillRect(-5, -8, 10, 11);
@@ -83,7 +97,7 @@ export class ActorPainter {
     c.fillRect(-4, 0, 8, 3); c.fillRect(4, -7, 1, 7);
 
     if (zombie) {
-      this.drawZombie(c, p, dx, dy, moving ? phase : 0, hit);
+      this.drawZombie(c, p, dx, dy, moving ? phase : 0, hit, windingBite);
     } else {
       if (!civilian) {
         // Shoulder straps, two canvas pouches, belt clasp and a shaded radio pack.
@@ -145,8 +159,8 @@ export class ActorPainter {
     }
   }
 
-  drawZombie(c, p, dx, dy, phase, hit) {
-    const reach = p.attackCooldown > .5 ? 1 : 0;
+  drawZombie(c, p, dx, dy, phase, hit, windingBite = false) {
+    const reach = windingBite ? -3 : p.attackCooldown > .5 ? 1 : 0;
     const sway = Math.round(Math.sin(phase * .5));
     const fx = Math.round(dx * (6 + reach)), fy = Math.round(dy * (6 + reach));
     // Uneven reaching arms and a hanging head distinguish the shambling stride.

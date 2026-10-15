@@ -1,9 +1,9 @@
 /** Original, procedural pixel artwork for Dead Signal. No external assets. */
-import { CONFIG } from './engine.js?v=0.7.0';
-import { ActorPainter } from './actors.js?v=0.7.0';
-import { GroundLighting, paintSunlight } from './lighting.js?v=0.7.0';
-import { CombatEffects } from './effects.js?v=0.7.0';
-import { buildScenery, paintSceneryGround, SceneryPainter, paintBuildingWeathering } from './scenery.js?v=0.7.0';
+import { CONFIG } from './engine.js?v=0.8.0';
+import { ActorPainter } from './actors.js?v=0.8.0';
+import { GroundLighting, paintSunlight } from './lighting.js?v=0.8.0';
+import { CombatEffects } from './effects.js?v=0.8.0';
+import { buildScenery, paintSceneryGround, SceneryPainter, paintBuildingWeathering } from './scenery.js?v=0.8.0';
 
 const TAU = Math.PI * 2;
 const MAX_EFFECTS = 64;
@@ -11,6 +11,22 @@ const FRIENDLY_SAMPLES = [[0,-13],[-4,-8],[4,-8]];
 const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
 function seeded(seed) { let s = seed >>> 0; return () => { s = Math.imul(1664525,s) + 1013904223 | 0; return (s>>>0)/4294967296; }; }
 function rgba(hex,a) { return hex.startsWith('#') && hex.length===7 ? `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})` : hex; }
+
+// These are views of live simulation records, never a second tactical state.
+export function activeFocusTarget(state) {
+  if (!state?.focusTargetId || !(state.focusUntil > state.time)) return null;
+  return (state.enemies || []).find(actor => actor.id === state.focusTargetId && actor.alive)
+    || (state.objective?.type === 'sabotage' ? (state.objective.targets || [])
+      .find(device => device.id === state.focusTargetId && device.alive) : null) || null;
+}
+export function upcomingReinforcements(state) {
+  const objective = state?.objective;
+  const records = objective?.type === 'sabotage' ? objective.reinforcements || []
+    : objective?.type === 'holdout' && objective.pendingWave ? [objective.pendingWave] : [];
+  return records.filter(record => record.pending && !record.spawned && Number.isFinite(record.dueAt)
+    && Number.isFinite(record.x) && Number.isFinite(record.y)).slice(0, 3)
+    .sort((a,b) => a.dueAt - b.dueAt);
+}
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -215,7 +231,7 @@ export class Renderer {
     }
     c.restore();
   }
-  render(state,{preview=false,reducedMotion=false}={}) {
+  render(state,{preview=false,reducedMotion=false,grenadePreview=null}={}) {
     if(!state?.world)return;
     if(this.lastState!==state){this.reset();this.lastState=state;}
     this.reducedMotion=reducedMotion;
@@ -294,6 +310,9 @@ export class Renderer {
     const ex=state.extraction;
     if(ex&&this.visible(ex.x,ex.y,ex.r,ex.r))this.drawExtraction(c,ex,time,reducedMotion);
     this.drawObjectiveGround(c,state,reducedMotion);
+    if (!preview && state.status === 'playing') {
+      for (const warning of upcomingReinforcements(state)) this.drawReinforcementGround(c,warning,state);
+    }
     for(const person of state.civilians||[]){
       if(state.objective?.type!=='operation'&&!person.rescued&&this.visible(person.x,person.y)){
         c.strokeStyle='#b6e4d2';c.lineWidth=1.5;c.setLineDash([3,5]);c.beginPath();c.arc(person.x,person.y,23,0,TAU);c.stroke();c.setLineDash([]);
@@ -349,6 +368,13 @@ export class Renderer {
     }this.effects.length=write;
     if(!preview){
       if(state.target&&leader&&this.visible(state.target.x,state.target.y))this.drawOrderMarker(c,state.target);
+      if (state.status === 'playing') {
+        const focus=activeFocusTarget(state);
+        if (focus && this.visible(focus.x,focus.y)) this.drawFocusTarget(c,focus,state);
+        if (leader && grenadePreview && Number.isFinite(grenadePreview.x) && Number.isFinite(grenadePreview.y)) {
+          this.drawGrenadeAim(c,leader,grenadePreview);
+        }
+      }
       // Identification is the only layer lifted above cover; the world keeps its depth.
       for(const soldier of soldiers)if(soldier.alive&&this.visible(soldier.x,soldier.y)&&this.friendlyOccluded(soldier)){
         this.drawFriendlyIdentification(c,soldier,soldier.id===state.leaderId);
@@ -522,6 +548,54 @@ export class Renderer {
     c.strokeStyle='rgba(24,61,53,.8)';c.lineWidth=this.worldPixels(3);c.stroke();
     c.strokeStyle='#cdebd9';c.lineWidth=this.worldPixels(1.2);c.stroke();
     c.fillStyle='#deefe0';c.fillRect(-dot,-dot,dot*2,dot*2);c.restore();
+  }
+  drawFocusTarget(c,target,state){
+    const scale=target.type==='jammer'?clamp(.46/this.camera.zoom,1,1.25):this.personScale||1;
+    const radius=target.type==='jammer'?27*scale:15*scale,y=target.y-(target.type==='jammer'?14:5)*scale;
+    const tick=this.worldPixels(5),color='#ffcf86';
+    c.save();c.translate(target.x,y);c.beginPath();
+    for(const [x,y,dx,dy] of [[-radius,-radius,1,1],[radius,-radius,-1,1],[-radius,radius,1,-1],[radius,radius,-1,-1]]){
+      c.moveTo(x+dx*tick,y);c.lineTo(x,y);c.lineTo(x,y+dy*tick);
+    }
+    c.strokeStyle='rgba(27,45,35,.9)';c.lineWidth=this.worldPixels(4);c.stroke();
+    c.strokeStyle=color;c.lineWidth=this.worldPixels(2);c.stroke();
+    // The small dial is remaining order time, with no pulse or rotation.
+    c.strokeStyle=rgba(color,.8);c.lineWidth=this.worldPixels(1.5);
+    c.beginPath();c.arc(0,0,radius+this.worldPixels(3),-Math.PI/2,-Math.PI/2+TAU*clamp((state.focusUntil-state.time)/6,0,1));c.stroke();
+    c.restore();
+  }
+  drawGrenadeAim(c,leader,point){
+    const radius=CONFIG.grenadeRadius,constrained=Math.hypot(point.x-leader.x,point.y-leader.y)>=CONFIG.grenadeRange-.5;
+    const color=constrained?'#ffd09a':'#e1f0d0',tick=this.worldPixels(5),gap=this.worldPixels(2);
+    c.save();c.setLineDash([this.worldPixels(3),this.worldPixels(5)]);
+    c.beginPath();c.moveTo(leader.x,leader.y);c.lineTo(point.x,point.y);
+    c.strokeStyle='rgba(24,45,35,.8)';c.lineWidth=this.worldPixels(4);c.stroke();
+    c.strokeStyle=rgba(color,.95);c.lineWidth=this.worldPixels(2);c.stroke();
+    c.setLineDash([]);
+    c.beginPath();c.arc(point.x,point.y,radius,0,TAU);
+    c.fillStyle=rgba(color,.055);c.fill();
+    c.strokeStyle='rgba(24,45,35,.85)';c.lineWidth=this.worldPixels(4);c.stroke();
+    c.strokeStyle=color;c.lineWidth=this.worldPixels(2);c.stroke();
+    c.beginPath();
+    for(let i=0;i<4;i++){const a=i*Math.PI/2,dx=Math.cos(a),dy=Math.sin(a);c.moveTo(point.x+dx*gap,point.y+dy*gap);c.lineTo(point.x+dx*(gap+tick),point.y+dy*(gap+tick));}
+    c.strokeStyle='#193d31';c.lineWidth=this.worldPixels(4);c.stroke();
+    c.strokeStyle=color;c.lineWidth=this.worldPixels(2);c.stroke();
+    const label='AIM',font=this.worldPixels(11),y=point.y+this.worldPixels(19),pad=this.worldPixels(5);
+    c.font=`bold ${font}px monospace`;c.textAlign='center';c.textBaseline='middle';
+    const width=c.measureText(label).width+pad*2;
+    c.fillStyle='rgba(24,43,35,.9)';c.fillRect(point.x-width/2,y-font*.7,width,font*1.4);
+    c.fillStyle=color;c.fillText(label,point.x,y);c.restore();
+  }
+  drawReinforcementGround(c,warning,state){
+    const radius=34;
+    if(!this.visible(warning.x-radius,warning.y-radius,radius*2,radius*2))return;
+    c.save();c.globalAlpha=warning.dueAt<=state.time?.65:1;c.translate(warning.x,warning.y);c.setLineDash([this.worldPixels(3),this.worldPixels(6)]);
+    c.beginPath();c.arc(0,0,radius,0,TAU);
+    c.strokeStyle='rgba(30,46,34,.8)';c.lineWidth=this.worldPixels(3);c.stroke();
+    c.strokeStyle='#f0bc7b';c.lineWidth=this.worldPixels(1.8);c.stroke();c.setLineDash([]);
+    const angle=(Number.isFinite(warning.direction)?warning.direction:0)+Math.PI;
+    for(const distance of [-5,6])this.drawBearingArrow(c,Math.cos(angle)*distance,Math.sin(angle)*distance,angle,'#f0bc7b',this.worldPixels(3));
+    c.restore();
   }
   drawGrenadeFootprint(c,grenade,reducedMotion){
     const t=clamp((grenade.time||0)/(grenade.duration||CONFIG.grenadeFlight),0,1);
@@ -765,8 +839,20 @@ export class Renderer {
     }
     if(!target&&state.extraction?.active){target=state.extraction;color='#d6e9ac';}
     const edges={left:10,right:this.width-10,top:safeTop+9,bottom:Math.max(safeTop+28,this.height-safeBottom-9)};
-    if(target)this.drawEdgeMarker(c,target,leader,edges,color,true,target.type==='jammer'||target===objective?.zone);
+    const focus=activeFocusTarget(state),warning=upcomingReinforcements(state)[0],occupied=[];
+    if(target){
+      const mark=this.drawEdgeMarker(c,target,leader,edges,focus===target?'#ffcf86':color,true,
+        target.type==='jammer'||target===objective?.zone,focus===target?'focus':null);
+      if(mark)occupied.push(mark);
+    }
+    if(focus&&focus!==target){
+      const mark=this.drawEdgeMarker(c,focus,leader,edges,'#ffcf86',false,false,'focus',occupied);
+      if(mark)occupied.push(mark);
+    }
+    if(warning)this.drawEdgeMarker(c,warning,leader,edges,'#f0bc7b',false,false,'warning',occupied);
     // A nearby offscreen threat receives a small bearing, without obscuring the objective.
+    // Explicit orders and incoming reinforcements take that slot while active.
+    if(focus||warning)return;
     let threat=null,distance=Infinity;
     for(const enemy of state.enemies||[])if(enemy.alive&&enemy!==target){
       const d=Math.hypot(enemy.x-leader.x,enemy.y-leader.y);
@@ -775,7 +861,7 @@ export class Renderer {
     }
     if(threat)this.drawEdgeMarker(c,threat,leader,edges,threat.type==='zombie'?'#b9c68d':'#e3ac75',false);
   }
-  drawEdgeMarker(c,target,leader,edges,color,objective,visibleProp=false){
+  drawEdgeMarker(c,target,leader,edges,color,objective,visibleProp=false,kind=null,occupied=[]){
     const t=this.transform,sx=target.x*t.zoom+t.x,sy=target.y*t.zoom+t.y;
     // Equipment already visible at the top of a short field needs no arrow over its sprite.
     if(visibleProp&&sx>=4&&sx<=this.width-4&&sy>=4&&sy<=this.height-4)return;
@@ -785,13 +871,34 @@ export class Renderer {
     if(vx>0)reach=Math.min(reach,(edges.right-ox)/vx);else if(vx<0)reach=Math.min(reach,(edges.left-ox)/vx);
     if(vy>0)reach=Math.min(reach,(edges.bottom-oy)/vy);else if(vy<0)reach=Math.min(reach,(edges.top-oy)/vy);
     if(!Number.isFinite(reach))return;
-    const x=Math.round(ox+vx*reach),radius=objective?8:5;
+    let x=Math.round(ox+vx*reach);const radius=objective?8:kind?7:5;
     let y=Math.round(oy+vy*reach);
     const radarWidth=Math.min(63,Math.round(this.width*.23)),radarBottom=7+Math.round(radarWidth*.75)+3;
     if(x>this.width-radarWidth-12&&y<radarBottom+radius+3)y=radarBottom+radius+3;
+    // Keep the mission bearing legible when an order and an approach share it.
+    for(const mark of occupied){
+      const separation=radius+(mark.radius||8)+3;
+      if(Math.hypot(x-mark.x,y-mark.y)>=separation)continue;
+      if(x<=edges.left+1||x>=edges.right-1){
+        const sign=y>=mark.y?1:-1,next=mark.y+sign*separation;
+        y=next>=edges.top&&next<=edges.bottom?next:mark.y-sign*separation;
+      }else{
+        const sign=x>=mark.x?1:-1,next=mark.x+sign*separation;
+        x=next>=edges.left&&next<=edges.right?next:mark.x-sign*separation;
+      }
+      x=clamp(x,edges.left,edges.right);y=clamp(y,edges.top,edges.bottom);
+    }
     c.fillStyle='rgba(24,43,36,.87)';c.beginPath();c.arc(x,y,radius,0,TAU);c.fill();
-    if(objective){c.strokeStyle=rgba(color,.5);c.lineWidth=1;c.beginPath();c.arc(x,y,radius,0,TAU);c.stroke();}
-    this.drawBearingArrow(c,x,y,Math.atan2(vy,vx),color,objective?4:3);
+    if(objective||kind){c.strokeStyle=rgba(color,.6);c.lineWidth=1;c.beginPath();c.arc(x,y,radius,0,TAU);c.stroke();}
+    if(kind==='focus'){
+      c.strokeStyle=color;c.lineWidth=.8;c.beginPath();
+      for(const [dx,dy]of [[-1,-1],[1,-1],[-1,1],[1,1]]){c.moveTo(x+dx*2,y+dy*4);c.lineTo(x+dx*4,y+dy*4);c.lineTo(x+dx*4,y+dy*2);}c.stroke();
+      this.drawBearingArrow(c,x,y,Math.atan2(vy,vx),color,2);
+    }else if(kind==='warning'){
+      c.strokeStyle=color;c.lineWidth=1.2;c.beginPath();c.moveTo(x,y-4);c.lineTo(x,y+.5);c.stroke();
+      c.fillStyle=color;c.fillRect(x-.6,y+2.5,1.2,1.2);
+    }else this.drawBearingArrow(c,x,y,Math.atan2(vy,vx),color,objective?4:3);
+    return {x,y,radius};
   }
   drawBearingArrow(c,x,y,angle,color,size) {
     c.save();c.translate(x,y);c.rotate(angle);c.fillStyle=color;
