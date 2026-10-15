@@ -6,6 +6,7 @@
 const MOVEMENT_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 const GAME_KEYS = new Set([...MOVEMENT_KEYS, ' ', 'g', 'h', 'escape', '1', '2', '3']);
 const INTERACTIVE = 'input, select, textarea, button, a[href], [contenteditable]:not([contenteditable="false"]), [role="button"], dialog[open]';
+const GRENADE_DRAG_THRESHOLD = 8;
 
 /** Radial deadzone with a smooth 0–1 range and equal speed in every direction. */
 export function joystickVector(dx, dy, radius, deadzone = .13) {
@@ -82,10 +83,11 @@ export function bindAction(button, handler) {
 }
 
 export class InputController {
-  constructor({ canvas, joystick, knob, renderer, isPlaying, onMove, onGrenade, onHold, onPause, onFirstInput, onSelect }) {
+  constructor({ canvas, joystick, knob, grenadeButton = null, renderer, isPlaying, onMove, onGrenade, onHold, onPause, onFirstInput, onSelect }) {
     this.canvas = canvas;
     this.joystick = joystick;
     this.knob = knob;
+    this.grenadeButton = grenadeButton;
     this.renderer = renderer;
     this.isPlaying = isPlaying;
     this.onMove = onMove;
@@ -100,6 +102,9 @@ export class InputController {
     this._joyPointer = null;
     this._firePointer = null;
     this._clientAim = null;
+    this._grenadeGesture = null;
+    this._grenadeClicks = new Map();
+    this._grenadePointerType = null;
     this._firstInput = false;
     this._removers = [];
     this._document = canvas.ownerDocument;
@@ -120,6 +125,17 @@ export class InputController {
       this._listen(joystick, type, event => {
         if (event.pointerId === this._joyPointer) this._resetJoystick(type !== 'lostpointercapture');
       });
+    }
+    if (grenadeButton) {
+      this._listen(grenadeButton, 'pointerdown', event => this._startGrenade(event), { passive: false });
+      this._listen(grenadeButton, 'pointermove', event => this._updateGrenade(event), { passive: false });
+      this._listen(grenadeButton, 'pointerup', event => this._finishGrenade(event), { passive: false });
+      for (const type of ['pointercancel', 'lostpointercapture']) {
+        this._listen(grenadeButton, type, event => {
+          if (event.pointerId === this._grenadeGesture?.pointerId) this._cancelGrenade(type !== 'lostpointercapture');
+        });
+      }
+      this._listen(grenadeButton, 'click', event => this._grenadeClick(event));
     }
     this._listen(canvas, 'contextmenu', event => event.preventDefault());
     this._listen(canvas, 'pointerdown', event => this._canvasDown(event), { passive: false });
@@ -143,6 +159,17 @@ export class InputController {
 
   get pointerType() { return this.lastPointerType; }
 
+  /** A transient view of the held gesture; projection follows the current camera. */
+  get grenadeAim() {
+    if (!this._grenadeAvailable()) this._cancelGrenade();
+    const gesture = this._grenadeGesture;
+    if (!gesture || gesture.cancelled) return null;
+    if (!gesture.dragged) return { aiming: true, point: null };
+    if (this._grenadeInsideButton(gesture)) return null;
+    const point = this._projectGrenade(gesture);
+    return point ? { aiming: true, point } : null;
+  }
+
   _listen(target, type, callback, options) {
     target.addEventListener(type, callback, options);
     this._removers.push(() => target.removeEventListener(type, callback, options));
@@ -163,6 +190,128 @@ export class InputController {
     try {
       if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
     } catch { /* Releasing an ended pointer is harmless. */ }
+  }
+
+  _grenadeAvailable() {
+    return Boolean(this.grenadeButton && this.isPlaying() && !this.grenadeButton.disabled
+      && this.grenadeButton.getAttribute?.('aria-disabled') !== 'true');
+  }
+
+  _grenadeNow() { return this._window.performance?.now() ?? Date.now(); }
+
+  _pruneGrenadeClicks() {
+    const time = this._grenadeNow();
+    for (const [id, click] of this._grenadeClicks) {
+      if (time - click.time > 1500) this._grenadeClicks.delete(id);
+    }
+  }
+
+  _rememberGrenadeClick(gesture) {
+    this._pruneGrenadeClicks();
+    this._grenadeClicks.set(gesture.pointerId, {
+      type: gesture.pointerType, startX: gesture.startX, startY: gesture.startY,
+      x: gesture.clientX, y: gesture.clientY, time: this._grenadeNow(),
+    });
+    // A delayed browser click needs only a small, bounded recent journal.
+    if (this._grenadeClicks.size > 16) this._grenadeClicks.delete(this._grenadeClicks.keys().next().value);
+  }
+
+  _startGrenade(event) {
+    this._grenadePointerType = event.pointerType || 'mouse';
+    if (!this._grenadeAvailable() || this._grenadeGesture || event.button !== 0
+      || !Number.isInteger(event.pointerId) || !Number.isFinite(event.clientX + event.clientY)) return;
+    const bounds = this.grenadeButton.getBoundingClientRect();
+    if (!(bounds.width > 0 && bounds.height > 0) || event.clientX < bounds.left
+      || event.clientX > bounds.left + bounds.width || event.clientY < bounds.top
+      || event.clientY > bounds.top + bounds.height) return;
+    event.preventDefault();
+    this.lastPointerType = this._grenadePointerType;
+    this._grenadeGesture = { pointerId: event.pointerId, pointerType: this._grenadePointerType,
+      startX: event.clientX, startY: event.clientY, clientX: event.clientX, clientY: event.clientY,
+      dragged: false, leftButton: false, cancelled: false };
+    this._capture(this.grenadeButton, event.pointerId);
+    this._started('action');
+  }
+
+  _updateGrenade(event) {
+    const gesture = this._grenadeGesture;
+    if (!gesture || event.pointerId !== gesture.pointerId) return;
+    event.preventDefault();
+    if (!this._grenadeAvailable()) { this._cancelGrenade(); return; }
+    if (!Number.isFinite(event.clientX + event.clientY)) { gesture.cancelled = true; return; }
+    gesture.clientX = event.clientX;
+    gesture.clientY = event.clientY;
+    const distance = Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY);
+    if (distance >= GRENADE_DRAG_THRESHOLD) gesture.dragged = true;
+    else if (gesture.dragged) gesture.cancelled = true;
+    const insideButton = this._grenadeInsideButton(gesture);
+    if (!insideButton) gesture.leftButton = true;
+    else if (gesture.dragged && gesture.leftButton) gesture.cancelled = true;
+  }
+
+  _grenadeInsideButton(gesture) {
+    const bounds = this.grenadeButton.getBoundingClientRect();
+    return gesture.clientX >= bounds.left && gesture.clientX <= bounds.left + bounds.width
+      && gesture.clientY >= bounds.top && gesture.clientY <= bounds.top + bounds.height;
+  }
+
+  _projectGrenade(gesture) {
+    const point = this.renderer.screenToWorld(gesture.clientX, gesture.clientY);
+    return point && Number.isFinite(point.x) && Number.isFinite(point.y) ? point : null;
+  }
+
+  _finishGrenade(event) {
+    if (event.button !== 0 || event.pointerId !== this._grenadeGesture?.pointerId) return;
+    this._updateGrenade(event);
+    const gesture = this._grenadeGesture;
+    if (!gesture) return;
+    const point = gesture.dragged && !gesture.cancelled && !this._grenadeInsideButton(gesture)
+      ? this._projectGrenade(gesture) : null;
+    const throwGrenade = this._grenadeAvailable() && !gesture.cancelled && (!gesture.dragged || point);
+    this._rememberGrenadeClick(gesture);
+    this._grenadeGesture = null;
+    this._release(this.grenadeButton, gesture.pointerId);
+    if (throwGrenade) {
+      if (point) this.onGrenade?.(point.x, point.y);
+      else this.onGrenade?.();
+    }
+  }
+
+  _cancelGrenade(release = true) {
+    const gesture = this._grenadeGesture;
+    if (!gesture) return;
+    this._rememberGrenadeClick(gesture);
+    this._grenadeGesture = null;
+    if (release) this._release(this.grenadeButton, gesture.pointerId);
+  }
+
+  _grenadeClick(event) {
+    this._pruneGrenadeClicks();
+    // Keyboard and assistive activation still work without pointer gestures.
+    if (event.detail === 0) {
+      if (this._grenadeAvailable()) this.onGrenade?.();
+      return;
+    }
+    let duplicateId = this._grenadeClicks.has(event.pointerId) ? event.pointerId : null;
+    // Legacy Safari sends a MouseEvent after a touch rather than a PointerEvent.
+    const touchClick = event.pointerType === 'touch' || event.sourceCapabilities?.firesTouchEvents;
+    const legacyPointerClick = !event.pointerType && event.isTrusted;
+    if (duplicateId === null && (touchClick || legacyPointerClick)) {
+      for (const [id, click] of this._grenadeClicks) {
+        if (click.type === (touchClick ? 'touch' : this._grenadePointerType)
+          && (Math.hypot(event.clientX - click.x, event.clientY - click.y) <= 24
+          || Math.hypot(event.clientX - click.startX, event.clientY - click.startY) <= 24)) {
+          duplicateId = id;
+          break;
+        }
+      }
+    }
+    if (duplicateId !== null) {
+      this._grenadeClicks.delete(duplicateId);
+      event.preventDefault();
+      return;
+    }
+    if (this._grenadeAvailable() && !this._grenadeGesture) this.onGrenade?.();
   }
 
   _startJoystick(event) {
@@ -243,7 +392,11 @@ export class InputController {
       this._keys.add(key);
       this._started(key === ' ' ? 'aim' : 'movement');
     } else if (!event.repeat) {
-      if (key === 'g') this.onGrenade?.();
+      if (key === 'g') {
+        const point = this.aimPoint();
+        if (point) this.onGrenade?.(point.x, point.y);
+        else this.onGrenade?.();
+      }
       if (key === 'h') this.onHold?.();
       if (['1', '2', '3'].includes(key)) this.onSelect?.(Number(key) - 1);
       this._started('action');
@@ -258,6 +411,7 @@ export class InputController {
   }
 
   sample() {
+    if (!this._grenadeAvailable()) this._cancelGrenade();
     if (!this.isPlaying()) return { moveX: 0, moveY: 0 };
     let moveX = this._joy.x + (this._keys.has('d') || this._keys.has('arrowright') ? 1 : 0)
       - (this._keys.has('a') || this._keys.has('arrowleft') ? 1 : 0);
@@ -274,6 +428,7 @@ export class InputController {
   }
 
   reset() {
+    this._cancelGrenade();
     this._keys.clear();
     this._resetJoystick();
     const id = this._firePointer;
@@ -287,5 +442,6 @@ export class InputController {
     this.reset();
     for (const remove of this._removers) remove();
     this._removers.length = 0;
+    this._grenadeClicks.clear();
   }
 }

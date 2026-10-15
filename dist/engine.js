@@ -3,8 +3,8 @@
  * Dependency-free ES module. Coordinates and velocities are world pixels / second.
  * MIT licensed; see the project LICENSE.
  */
-import { findRoute } from './navigation.js?v=0.7.0';
-import { FIRST_CONTACT, createFirstContactWorld } from './mission-data.js?v=0.7.0';
+import { findRoute } from './navigation.js?v=0.8.0';
+import { FIRST_CONTACT, createFirstContactWorld } from './mission-data.js?v=0.8.0';
 
 export const MISSIONS = Object.freeze([
   {
@@ -18,14 +18,14 @@ export const MISSIONS = Object.freeze([
     id: 1,
     title: 'BAD FREQUENCY',
     subtitle: 'Break the interference.',
-    briefing: 'Two hostile jammers are blocking the evacuation frequency. Destroy both marked antennas with gunfire or grenades, then get your squad to the flare. Your squad fires at a jammer when nearby hostiles are dealt with.',
-    objective: 'Destroy 2 jammers and reach extraction',
+    briefing: 'Two hostile jammers are blocking the evacuation frequency. Destroy both marked antennas in either order with gunfire or grenades. Each destroyed jammer draws one announced infected counterattack. Then cross to the western evacuation flare. Mark a jammer to focus fire, or let the squad deal with nearby enemies first.',
+    objective: 'Destroy 2 jammers and reach the western flare',
   },
   {
     id: 2,
     title: 'LAST TRANSMISSION',
     subtitle: 'Keep the signal alive.',
-    briefing: 'Reach the radio relay and keep your selected soldier inside its marked perimeter for 25 seconds. Three infected waves will answer the signal. Step outside to dodge or regroup; transmission progress is saved. Then bring your squad to the flare.',
+    briefing: 'Reach the radio relay and keep your selected soldier inside its marked perimeter for 25 seconds. Three announced infected waves answer your transmission progress. Step outside to dodge or regroup; progress is saved, and waves already announced will still arrive. Then bring your squad to the flare.',
     objective: 'Transmit for 25 seconds and reach extraction',
   },
 ]);
@@ -34,6 +34,8 @@ const WIDTH = 1600;
 const HEIGHT = 1200;
 const CELL = 40;
 const TAU = Math.PI * 2;
+const FOCUS_SECONDS = 6;
+const BITE_SECONDS = 0.3;
 export const FIRST_CONTACT_REVISION = 1;
 // Gameplay tuning lives together; all rates are per simulation second.
 export const CONFIG = Object.freeze({
@@ -174,14 +176,16 @@ export class Game {
       grenades: this.easy ? 5 : 4, rescueCount: 0, rescueTarget: index === 0 ? 2 : 0,
       checkpointSequence: 0,
       objective: index === 0 ? this.createOperationObjective() : index === 1
-        ? {type: 'sabotage', targets: []}
+        ? {type: 'sabotage', targets: [], reinforcements: []}
         : {type: 'holdout', zone: {x: 1020, y: 520, r: 110}, duration: 25,
-          held: 0, started: false, inside: false, elapsed: 0},
+          held: 0, started: false, inside: false, elapsed: 0, pendingWave: null, nextWaveIndex: 0},
       message: MISSIONS[index].objective,
-      extraction: {...(index === 0 ? FIRST_CONTACT.extraction : {x: 1380, y: 220, r: 86}), active: false, progress: 0},
+      extraction: {...(index === 0 ? FIRST_CONTACT.extraction : index === 1
+        ? {x: 390, y: 200, r: 86} : {x: 1380, y: 220, r: 86}), active: false, progress: 0},
       world: index === 0 ? createFirstContactWorld(this.random) : makeWorld(this.random),
       soldiers: [], leaderId: 1, enemies: [], civilians: [], bullets: [],
       particles: [], corpses: [], target: null, thrownGrenades: [],
+      focusTargetId: null, focusUntil: 0,
       holdFire: false, wavesRemaining: index === 0 ? 1 : index === 1 ? 2 : 3,
       totalKills: 0,
       events: [],
@@ -387,20 +391,90 @@ export class Game {
     return true;
   }
 
-  grenade(x, y) {
+  focusedTarget() {
+    if (this.state.focusUntil <= this.state.time) return null;
+    return [...this.enemies, ...(this.state.objective.targets || [])]
+      .find(target => target.id === this.state.focusTargetId && target.alive) || null;
+  }
+
+  focusTarget(id) {
+    if (this.state.status !== 'playing') return false;
+    const target = [...this.enemies, ...(this.state.objective.targets || [])]
+      .find(candidate => candidate.id === id && candidate.alive);
+    if (!target) return false;
+    this.state.focusTargetId = target.id;
+    this.state.focusUntil = this.state.time + FOCUS_SECONDS;
+    this.emit('focus', target, {targetId: target.id, team: 'player'});
+    this.say(this.holdFire ? 'TARGET MARKED · holding fire' : 'TARGET MARKED · focus fire', 1.8);
+    return true;
+  }
+
+  focusTargetAt(x, y, radius = 36) {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius)
+      || radius <= 0 || radius > 120 || this.state.status !== 'playing') return false;
+    let closest = null, distance = radius;
+    for (const candidate of [...this.enemies, ...(this.state.objective.targets || [])]) {
+      if (!candidate.alive) continue;
+      const gap = Math.hypot(candidate.x - x, candidate.y - y);
+      if (gap < distance || (gap === distance && (!closest || candidate.id < closest.id))) {
+        closest = candidate; distance = gap;
+      }
+    }
+    return closest ? this.focusTarget(closest.id) : false;
+  }
+
+  // Preview and throwing use exactly the same deterministic landing decision.
+  // This method does not consume RNG, change an order, or spend a grenade.
+  grenadeTarget(x, y) {
     const leader = this.leader;
-    if (!leader || this.state.status !== 'playing' || this.state.grenades <= 0) return false;
-    if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      const nearby = candidates => candidates.filter(e => e.alive && dist(e, leader) < CONFIG.grenadeRange)
-        .sort((a, b) => dist(a, leader) - dist(b, leader))[0];
-      const nearest = nearby(this.enemies) || nearby(this.state.objective.targets || []);
-      x = nearest ? nearest.x : leader.x + Math.cos(leader.angle) * 180;
-      y = nearest ? nearest.y : leader.y + Math.sin(leader.angle) * 180;
+    if (!leader) return null;
+    const explicit = Number.isFinite(x) && Number.isFinite(y);
+    if (!explicit) {
+      const focused = this.focusedTarget();
+      if (focused && dist(focused, leader) <= CONFIG.grenadeRange) {
+        x = focused.x; y = focused.y;
+      } else {
+        const targets = [...this.enemies, ...(this.state.objective.targets || [])]
+          .filter(target => target.alive && dist(target, leader) <= CONFIG.grenadeRange)
+          .sort((a, b) => a.id - b.id);
+        const candidates = targets.map(target => ({x: target.x, y: target.y}));
+        // Pair centers catch groups straddling a gap without a costly world scan.
+        for (let a = 0; a < targets.length; a++) for (let b = a + 1; b < targets.length; b++) {
+          if (dist(targets[a], targets[b]) <= CONFIG.grenadeRadius * 1.6) candidates.push({
+            x: (targets[a].x + targets[b].x) / 2, y: (targets[a].y + targets[b].y) / 2});
+        }
+        let best = null, bestScore = -1, bestDistance = Infinity;
+        for (const candidate of candidates) {
+          const distance = dist(candidate, leader);
+          if (distance > CONFIG.grenadeRange) continue;
+          let score = 0;
+          for (const target of targets) {
+            const gap = dist(candidate, target);
+            if (gap >= CONFIG.grenadeRadius) continue;
+            const damage = Math.min(target.hp, 105 * (1 - gap / (CONFIG.grenadeRadius * 1.3)));
+            const priority = target.type === 'soldier' ? 1.15 : target.type === 'jammer' ? 1.2 : 1;
+            score += damage * priority;
+          }
+          if (score > bestScore + 1e-8 || (Math.abs(score - bestScore) <= 1e-8 && distance < bestDistance)) {
+            best = candidate; bestScore = score; bestDistance = distance;
+          }
+        }
+        x = best ? best.x : leader.x + Math.cos(leader.angle) * 180;
+        y = best ? best.y : leader.y + Math.sin(leader.angle) * 180;
+      }
     }
     const distance = Math.hypot(x - leader.x, y - leader.y);
     const scale = distance > CONFIG.grenadeRange ? CONFIG.grenadeRange / distance : 1;
-    const tx = clamp(leader.x + (x - leader.x) * scale, 15, this.world.width - 15);
-    const ty = clamp(leader.y + (y - leader.y) * scale, 15, this.world.height - 15);
+    return {x: clamp(leader.x + (x - leader.x) * scale, 15, this.world.width - 15),
+      y: clamp(leader.y + (y - leader.y) * scale, 15, this.world.height - 15)};
+  }
+
+  grenade(x, y) {
+    const leader = this.leader;
+    if (!leader || this.state.status !== 'playing' || this.state.grenades <= 0) return false;
+    const landing = this.grenadeTarget(x, y);
+    if (!landing) return false;
+    const tx = landing.x, ty = landing.y;
     this.state.grenades--;
     this.state.thrownGrenades.push({
       x: leader.x, y: leader.y, sx: leader.x, sy: leader.y,
@@ -424,6 +498,7 @@ export class Game {
       moveAngle: 0, moving: false, vx: 0, vy: 0, speed: 0,
       walkPhase: this.random() * TAU, hitFlash: 0,
       active: false, reaction: 0, sightLost: 0,
+      biteTargetId: null, biteTimer: 0, biteDuration: BITE_SECONDS,
     };
     this.state.enemies.push(enemy);
     return enemy;
@@ -602,6 +677,10 @@ export class Game {
     this.emit('hit', actor, {team: actor.name ? 'player' : actor.type === 'soldier' ? 'enemy' : 'zombie', actorId: actor.id, targetId: actor.id, source, damage: amount});
     if (actor.hp > 0) return;
     actor.alive = false;
+    if (actor.id === this.state.focusTargetId) {
+      this.state.focusTargetId = null; this.state.focusUntil = 0;
+    }
+    if (actor.type === 'zombie') { actor.biteTargetId = null; actor.biteTimer = 0; }
     this.state.corpses.push({x: actor.x, y: actor.y, type: actor.type || 'squad', angle: actor.angle, name: actor.name, time: this.state.time});
     this.emit('death', actor, {team: actor.name ? 'player' : actor.type === 'soldier' ? 'enemy' : 'zombie', actorId: actor.id, targetId: actor.id, name: actor.name});
     if (!actor.name) {
@@ -627,10 +706,14 @@ export class Game {
     this.emit('hit', target, {team: 'objective', actorId: target.id, targetId: target.id, source, damage: amount});
     if (target.hp > 0) return;
     target.alive = false;
+    if (target.id === this.state.focusTargetId) {
+      this.state.focusTargetId = null; this.state.focusUntil = 0;
+    }
     this.emit('jammer-destroyed', target, {team: 'objective', actorId: target.id, targetId: target.id});
     this.puff(target.x, target.y, '#ad8959', 14, 'smoke');
+    this.queueJammerResponse(target);
     const destroyed = this.state.objective.targets.filter(device => !device.alive).length;
-    this.say(`JAMMER DOWN · ${destroyed}/2 SILENCED`, 3);
+    this.say(`JAMMER DOWN · ${destroyed}/2 SILENCED · counterattack incoming`, 3);
   }
 
   puff(x, y, color, count = 8, type = 'spark') {
@@ -691,6 +774,7 @@ export class Game {
   step(dt, input) {
     const state = this.state;
     state.time += dt;
+    if (!this.focusedTarget()) { state.focusTargetId = null; state.focusUntil = 0; }
     for (const actor of [...this.soldiers, ...this.enemies, ...this.civilians, ...(state.objective.targets || [])]) {
       actor.moving = false; actor.vx = 0; actor.vy = 0; actor.speed = 0;
       actor.hitFlash = Math.max(0, (actor.hitFlash || 0) - dt);
@@ -737,12 +821,15 @@ export class Game {
       const shouldFire = input.fire === true || (!this.holdFire && input.fire !== false);
       if (!shouldFire || soldier.cooldown > 0) continue;
       let target = null;
-      if (input.aim && Number.isFinite(input.aim.x) && Number.isFinite(input.aim.y)) {
-        // Manual aim remains usable even when no enemy is under the reticle.
-        if (input.fire === true) target = input.aim;
-        else target = this.acquireTarget(soldier, this.enemies, CONFIG.weaponRange,
-          e => dist(e, input.aim) < 100 ? dist(e, input.aim) : Infinity);
+      const hasAim = input.aim && Number.isFinite(input.aim.x) && Number.isFinite(input.aim.y);
+      // Explicit right-click fire remains manual, including empty-ground shots.
+      if (hasAim && input.fire === true) target = input.aim;
+      if (!target) {
+        const focused = this.focusedTarget();
+        if (focused) target = this.acquireTarget(soldier, [focused], CONFIG.weaponRange);
       }
+      if (!target && hasAim) target = this.acquireTarget(soldier, this.enemies, CONFIG.weaponRange,
+        e => dist(e, input.aim) < 100 ? dist(e, input.aim) : Infinity);
       if (!target) target = this.acquireTarget(soldier, this.enemies, CONFIG.weaponRange);
       if (!target) target = this.acquireTarget(soldier, state.objective.targets || [], CONFIG.weaponRange);
       if (target) this.fire(soldier, target, 'player');
@@ -825,6 +912,20 @@ export class Game {
       // Off-screen factions remain in place until the squad reaches their area.
       enemy.active ||= friendly.some(s => dist(s, enemy) < CONFIG.activationRadius);
       if (!enemy.active) continue;
+      if (enemy.type === 'zombie' && enemy.biteTimer > 0) {
+        // A bite commits to one victim. Readable windup gives a moving squad
+        // time to step away instead of taking an instantaneous contact hit.
+        enemy.biteTimer = Math.max(0, enemy.biteTimer - dt);
+        if (enemy.biteTimer <= 1e-9) {
+          const victim = [...this.soldiers, ...this.enemies]
+            .find(actor => actor.id === enemy.biteTargetId && actor.alive);
+          const hit = victim && dist(enemy, victim) <= 30 && this.hasLOS(enemy, victim);
+          if (hit) this.damage(victim, victim.name ? (this.hard ? 13 : this.easy ? 5 : 8) : 15, 'zombie');
+          enemy.attackCooldown = hit ? 0.65 : 0.45;
+          enemy.biteTimer = 0; enemy.biteTargetId = null;
+        }
+        continue;
+      }
       const home = enemy.operationHome;
       // Objective guards own their local approach. They may fight at its edge,
       // but cannot migrate across the village and leave a distant objective
@@ -862,9 +963,12 @@ export class Game {
         } else if (distance > 25) {
           if (!home || dist(enemy, home) < home.r || dist(target, home) < home.r)
             this.navigate(enemy, target.x, target.y, this.hard ? 69 : this.easy ? 43 : 52, dt);
-        } else if (enemy.attackCooldown <= 0) {
-          this.damage(target, target.name ? (this.hard ? 13 : this.easy ? 5 : 8) : 15, 'zombie');
-          enemy.attackCooldown = 0.95;
+        } else if (enemy.attackCooldown <= 0 && this.hasLOS(enemy, target)) {
+          enemy.biteDuration = BITE_SECONDS;
+          enemy.biteTimer = BITE_SECONDS;
+          enemy.biteTargetId = target.id;
+          this.emit('bite-warning', enemy, {actorId: enemy.id, targetId: target.id,
+            duration: BITE_SECONDS, team: 'zombie'});
         }
       } else if (enemy.waveSpawn || (enemy.type === 'zombie' && this.state.noise > 15 && dist(enemy, this.lastShot) < 650)) {
         let destination = enemy.waveSpawn ? leader : this.lastShot;
@@ -1035,45 +1139,144 @@ export class Game {
     return count + (this.hard ? 2 : this.easy ? -2 : 0);
   }
 
-  updateWaves(dt) {
-    if (this.state.objective.type === 'operation') { this.updateOperationResponse(); return; }
-    if (this.state.wavesRemaining <= 0 || this.state.extraction.active) return;
-    const objective = this.state.objective;
-    const holdout = objective.type === 'holdout';
-    if (holdout && !objective.started) return;
-    if (!holdout) this.waveTimer += dt;
-    const due = holdout ? objective.elapsed + 1e-9 >= this.waveCount * 8 : this.waveTimer > 8 && this.state.noise > 35;
-    if (!due) return;
-    this.waveTimer = 0;
-    this.waveCount++;
-    this.state.wavesRemaining--;
+  reinforcementCount() { return this.hard ? 5 : this.easy ? 3 : 4; }
+
+  reinforcementPointSafe(point) {
+    return !this.blocked(point.x, point.y, 16)
+      && this.soldiers.every(soldier => !soldier.alive || dist(soldier, point) >= 330);
+  }
+
+  reinforcementPoint(direction, distance = 400) {
     const leader = this.leader;
-    if (!leader) return;
-    // Reinforcements emerge beyond the squad's immediate view.
-    const angle = this.random() * TAU;
-    const radius = holdout ? 400 : 470;
-    const location = {x: leader.x + Math.cos(angle) * radius, y: leader.y + Math.sin(angle) * radius};
-    const center = holdout ? this.safeWavePoint(location.x, location.y)
-      : this.nearestOpen(clamp(location.x, 65, this.world.width - 65), clamp(location.y, 65, this.world.height - 65));
-    if (!center) {
-      // An impossible spawn is postponed rather than appearing on a soldier.
-      this.waveCount--; this.state.wavesRemaining++; return;
+    if (!leader) return null;
+    // Keep the actual entry in the announced sector. A generic radial fallback
+    // could put a wave behind the squad after warning of an attack ahead.
+    for (const radius of [distance, Math.max(400, distance - 100), distance + 80]) {
+      for (const turn of [0, 0.2, -0.2, 0.4, -0.4, 0.65, -0.65, Math.PI / 4, -Math.PI / 4]) {
+        const angle = direction + turn;
+        const point = this.nearestOpen(clamp(leader.x + Math.cos(angle) * radius, 65, this.world.width - 65),
+          clamp(leader.y + Math.sin(angle) * radius, 65, this.world.height - 65));
+        const actual = Math.atan2(point.y - leader.y, point.x - leader.x);
+        const difference = Math.abs(Math.atan2(Math.sin(actual - direction), Math.cos(actual - direction)));
+        if (difference <= Math.PI / 4 + 1e-9 && this.reinforcementPointSafe(point)) return point;
+      }
     }
-    const count = this.hard ? 5 : holdout && !this.easy ? 4 : 3;
-    let spawned = 0;
-    for (let i = 0; i < count; i++) {
-      const x = center.x + (this.random() - 0.5) * 100;
-      const y = center.y + (this.random() - 0.5) * 100;
-      const point = holdout ? this.safeWavePoint(x, y) : this.nearestOpen(x, y);
-      if (!point) continue;
+    return null;
+  }
+
+  warnReinforcement(record) {
+    this.emit('reinforcement-warning', record, {reinforcementId: record.id, sourceId: record.sourceId,
+      dueAt: record.dueAt, count: record.count, direction: record.direction, route: record.route, team: 'zombie'});
+  }
+
+  createReinforcement(id, sourceId, route, destination, delay) {
+    const leader = this.leader;
+    if (!leader) return null;
+    const angle = destination ? Math.atan2(destination.y - leader.y, destination.x - leader.x)
+      : this.random() * TAU;
+    // A running squad can travel 355px during a sabotage warning. Place that
+    // initial interception farther up its route so the arrival remains safe.
+    const radius = route === 'relay' ? 400 : 400 + CONFIG.squadSpeed * delay;
+    const preferred = {x: clamp(leader.x + Math.cos(angle) * radius, 65, this.world.width - 65),
+      y: clamp(leader.y + Math.sin(angle) * radius, 65, this.world.height - 65)};
+    // The announcement can still exist in a temporarily impossible world;
+    // the actual arrival is postponed until a safe, body-clear point exists.
+    const point = this.reinforcementPoint(angle, radius)
+      || this.safeWavePoint(preferred.x, preferred.y) || preferred;
+    const record = {id, sourceId, x: point.x, y: point.y, dueAt: this.state.time + delay,
+      count: this.reinforcementCount(), pending: true, spawned: false,
+      direction: Math.atan2(point.y - leader.y, point.x - leader.x), route};
+    this.warnReinforcement(record);
+    return record;
+  }
+
+  queueJammerResponse(target) {
+    const objective = this.state.objective;
+    if (objective.type !== 'sabotage' || objective.reinforcements.some(record => record.sourceId === target.id)) return;
+    const remaining = objective.targets.find(device => device.alive);
+    const record = this.createReinforcement(objective.reinforcements.length + 1, target.id,
+      remaining ? 'jammer' : 'extraction', remaining || this.extraction, 2.5);
+    if (record) objective.reinforcements.push(record);
+  }
+
+  spawnReinforcement(record) {
+    if (!record?.pending || record.spawned || this.state.time + 1e-9 < record.dueAt) return false;
+    const leader = this.leader;
+    if (!leader) return false;
+    let center = {x: record.x, y: record.y};
+    const direction = Math.atan2(center.y - leader.y, center.x - leader.x);
+    const difference = Math.abs(Math.atan2(Math.sin(direction - record.direction), Math.cos(direction - record.direction)));
+    if (!this.reinforcementPointSafe(center) || difference > Math.PI / 4 + 1e-9) {
+      center = this.reinforcementPoint(record.direction);
+      if (!center) {
+        const alternative = this.safeWavePoint(leader.x + Math.cos(record.direction) * 400,
+          leader.y + Math.sin(record.direction) * 400);
+        if (!alternative) return false;
+        record.x = alternative.x; record.y = alternative.y;
+        record.direction = Math.atan2(alternative.y - leader.y, alternative.x - leader.x);
+        record.dueAt = this.state.time + 0.6;
+        this.warnReinforcement(record);
+        this.say('INCOMING SHIFTED · watch the new approach', 1.4);
+        return false;
+      }
+      const relocated = Math.atan2(center.y - leader.y, center.x - leader.x);
+      const cueShift = Math.abs(Math.atan2(Math.sin(relocated - direction), Math.cos(relocated - direction)));
+      if (cueShift > Math.PI / 4 + 1e-9) {
+        // A player can run past the original entry. The visible cue must move
+        // before enemies arrive, even when the original compass sector agrees.
+        record.x = center.x; record.y = center.y;
+        record.direction = relocated;
+        record.dueAt = this.state.time + 0.6;
+        this.warnReinforcement(record);
+        this.say('INCOMING SHIFTED · watch the new approach', 1.4);
+        return false;
+      }
+    }
+    const points = [];
+    for (let i = 0; i < record.count; i++) {
+      const candidate = this.nearestOpen(center.x + (this.random() - 0.5) * 100,
+        center.y + (this.random() - 0.5) * 100);
+      const angle = Math.atan2(candidate.y - leader.y, candidate.x - leader.x);
+      const turn = Math.abs(Math.atan2(Math.sin(angle - record.direction), Math.cos(angle - record.direction)));
+      points.push(this.reinforcementPointSafe(candidate) && turn <= Math.PI / 4 + 1e-9 ? candidate : center);
+    }
+    for (const point of points) {
       const enemy = this.spawnEnemy('zombie', point.x, point.y);
       enemy.active = true; enemy.waveSpawn = true;
-      spawned++;
+      enemy.reinforcementId = record.id;
     }
-    this.state.totalKills += spawned;
-    this.emit('wave', center, {count: spawned, remaining: this.state.wavesRemaining});
-    this.say(holdout ? `${this.state.wavesRemaining === 0 ? 'FINAL WAVE' : 'SIGNAL ANSWERED'} · keep transmitting`
-      : 'THE DEAD HEARD YOU · infected incoming', 3);
+    record.x = center.x; record.y = center.y;
+    record.pending = false; record.spawned = true;
+    this.waveCount++;
+    this.state.wavesRemaining = Math.max(0, this.state.wavesRemaining - 1);
+    this.state.totalKills += points.length;
+    this.emit('wave', center, {reinforcementId: record.id, count: points.length,
+      remaining: this.state.wavesRemaining, route: record.route, team: 'zombie'});
+    this.say(record.route === 'relay' ? `${this.state.wavesRemaining === 0 ? 'FINAL WAVE' : 'SIGNAL ANSWERED'} · keep transmitting`
+      : 'COUNTERATTACK ARRIVED · keep moving toward the flare', 3);
+    return true;
+  }
+
+  updateWaves(dt) {
+    if (this.state.objective.type === 'operation') { this.updateOperationResponse(); return; }
+    const objective = this.state.objective;
+    if (objective.type === 'sabotage') {
+      for (const record of objective.reinforcements) this.spawnReinforcement(record);
+      return;
+    }
+    if (objective.type !== 'holdout' || !objective.started) return;
+    if (objective.pendingWave) {
+      if (this.spawnReinforcement(objective.pendingWave)) objective.pendingWave = null;
+    }
+    if (!objective.pendingWave && objective.inside && objective.nextWaveIndex < 3 && !this.state.extraction.active
+      && objective.held + 1e-9 >= objective.nextWaveIndex * 8) {
+      const record = this.createReinforcement(objective.nextWaveIndex + 1, null, 'relay', null, 2);
+      if (record) {
+        objective.pendingWave = record;
+        objective.nextWaveIndex++;
+        this.say('INFECTED APPROACHING · hold or reposition', 2);
+      }
+    }
   }
 
   updateRescue(dt) {
@@ -1133,7 +1336,7 @@ export class Game {
       this.say('OBJECTIVE COMPLETE · get to the flare', 4);
       // The marked objective is enough; never require a whole-map cleanup.
       // The operation's already announced response survives extraction opening.
-      if (objective.type !== 'operation') state.wavesRemaining = 0;
+      if (!['operation', 'sabotage', 'holdout'].includes(objective.type)) state.wavesRemaining = 0;
     }
     const leaderAtFlare = dist(leader, state.extraction) < state.extraction.r;
     const squadTogether = this.soldiers.every(s => !s.alive || dist(s, state.extraction) < state.extraction.r + 28)

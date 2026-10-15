@@ -240,6 +240,97 @@ def objective_bearings(page):
     }''')
 
 
+def assert_tactical_controls(page, label, touch):
+    # Controlled local targeting fixture. Native pointer events exercise the
+    # shipping input/app/renderer path; these checks do not measure balance.
+    page.evaluate('''() => {
+      const g=deadSignal.game;g.setHoldFire(true);g.state.grenades=6;
+      const p=g.nearestOpen(g.leader.x+110,g.leader.y-70);
+      const e=g.spawnEnemy('soldier',p.x,p.y);e.cooldown=5;
+      g.state.target=null;window.qaFocusTarget=e.id;window.qaTacticalMove=JSON.stringify(g.state.target);
+      window.qaTacticalOrder= g.state.events.at(-1)?.id??0;
+    }''')
+    page.wait_for_timeout(120)
+    point = page.evaluate('''() => {
+      const e=deadSignal.game.enemies.find(e=>e.id===qaFocusTarget);
+      return deadSignal.renderer.worldToScreen(e.x,e.y);
+    }''')
+    if touch:
+        page.touchscreen.tap(point['x'], point['y'])
+    else:
+        page.mouse.click(point['x'], point['y'])
+    check(f'{label} tapping a hostile marks focus without moving or overriding Hold Fire',
+          page.evaluate('deadSignal.state.focusTargetId===qaFocusTarget && JSON.stringify(deadSignal.state.target)===qaTacticalMove && deadSignal.state.holdFire && !deadSignal.state.events.some(e=>e.id>qaTacticalOrder && e.type==="order")'), page.evaluate('({focus:deadSignal.state.focusTargetId,expected:qaFocusTarget,target:deadSignal.state.target,previous:qaTacticalMove,hold:deadSignal.state.holdFire})'))
+    page.evaluate('deadSignal.game.damage(deadSignal.game.enemies.find(e=>e.id===qaFocusTarget),1000,"player")')
+    check(f'{label} focused target death clears the mark immediately', page.evaluate('deadSignal.state.focusTargetId===null'))
+    page.evaluate('''() => {
+      window.qaReleaseTarget=null;
+      document.addEventListener('pointerup',event=>{
+        if(event.target!==document.getElementById('grenade-btn'))return;
+        const aim=deadSignal.input.grenadeAim?.point;
+        if(aim)window.qaReleaseTarget=deadSignal.game.grenadeTarget(aim.x,aim.y);
+      },true);
+    }''')
+    field = page.locator('#field').bounding_box()
+    button = touch_point(page, '#grenade-btn', pointer_id=2)
+    destination = {'x': field['x'] + field['width'] * .7, 'y': field['y'] + field['height'] * .3, 'id': 2}
+    before = state(page)['grenades']
+    if touch:
+        cdp = page.context.new_cdp_session(page)
+        joystick = touch_point(page, '#joystick', pointer_id=1, x=.83)
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [joystick]})
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [joystick, button]})
+        check(f'{label} grenade press reserves a preview without spending ammunition',
+              state(page)['grenades'] == before and page.evaluate('deadSignal.input.grenadeAim?.aiming===true'))
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [joystick, destination]})
+        page.wait_for_timeout(80)
+        check(f'{label} captured grenade drag previews while the movement thumb keeps steering',
+              page.evaluate('deadSignal.input.grenadeAim?.point!==null && deadSignal.input.sample().moveX>.9'))
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': [destination]})
+        page.wait_for_timeout(40)
+        check(f'{label} aimed release throws exactly once at the previewed landing point',
+              state(page)['grenades'] == before - 1 and page.evaluate('''() => {
+                const g=deadSignal.state.thrownGrenades.at(-1),p=qaReleaseTarget;
+                return p&&g&&Math.hypot(g.tx-p.x,g.ty-p.y)<.000001&&deadSignal.input.grenadeAim===null&&deadSignal.input.sample().moveX>.9;
+              }'''))
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+        before = state(page)['grenades']
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [button]})
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [destination]})
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [button]})
+        cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+        check(f'{label} returning a grenade drag to its button cancels without spending ammunition', state(page)['grenades'] == before and page.evaluate('deadSignal.input.grenadeAim===null'))
+        for reason in ['cancel', 'blur', 'orientation', 'pause']:
+            before = state(page)['grenades']
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [button]})
+            cdp.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [destination]})
+            if reason == 'cancel':
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchCancel', 'touchPoints': []})
+            else:
+                if reason == 'pause':
+                    page.evaluate('document.getElementById("pause-btn").click()')
+                else:
+                    page.evaluate('name=>window.dispatchEvent(new Event(name))', 'orientationchange' if reason == 'orientation' else 'blur')
+                cdp.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []})
+            check(f'{label} grenade {reason} cancels its captured aim without a delayed throw', state(page)['grenades'] == before and page.evaluate('deadSignal.input.grenadeAim===null'))
+            if reason == 'pause':
+                page.locator('#resume-btn').click()
+    else:
+        page.mouse.move(button['x'], button['y']);page.mouse.down()
+        check(f'{label} mouse grenade press does not throw early', state(page)['grenades'] == before)
+        page.mouse.move(destination['x'], destination['y'])
+        page.mouse.up()
+        check(f'{label} mouse captured release commits the preview exactly once',
+              state(page)['grenades'] == before - 1 and page.evaluate('''() => {
+                const g=deadSignal.state.thrownGrenades.at(-1),p=qaReleaseTarget;
+                return p&&g&&Math.hypot(g.tx-p.x,g.ty-p.y)<.000001&&deadSignal.input.grenadeAim===null;
+              }'''))
+    before = state(page)['grenades']
+    page.evaluate('document.getElementById("grenade-btn").click()')
+    check(f'{label} assistive grenade activation remains available exactly once', state(page)['grenades'] == before - 1)
+    quiet_control_fixture(page)
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path='/usr/bin/chromium', headless=True, args=['--no-sandbox'])
     for width, height, touch in [(390, 844, True), (360, 740, True), (844, 390, True), (1440, 1000, False)]:
@@ -285,6 +376,9 @@ with sync_playwright() as p:
         assert_noise_feedback(page, label, width, height)
         assert_order_feedback(page, label, touch)
         quiet_control_fixture(page)
+        assert_tactical_controls(page, label, touch)
+        page.evaluate("deadSignal.game.setHoldFire(false)")
+        page.wait_for_timeout(120)
         auto_icon = page.locator('#hold-btn .fire-slash').evaluate('(el)=>getComputedStyle(el).display === "none"')
         page.locator('#hold-btn').click()
         check(f'{label} hold-fire toggles', state(page)['hold'] and page.locator('#hold-btn').get_attribute('aria-pressed') == 'true')
@@ -545,6 +639,11 @@ with sync_playwright() as p:
             page.wait_for_function('document.getElementById("mission-counter").textContent.includes("1 / 2")')
             check(f'{label} destroying one jammer updates objective counter without opening extraction',
                   page.evaluate('!deadSignal.state.objective.targets[0].alive && deadSignal.state.objective.targets[1].alive && !deadSignal.state.extraction.active'))
+            check(f'{label} jammer warning names an approach and countdown in the existing objective HUD',
+                  page.evaluate('deadSignal.state.objective.reinforcements.length===1 && deadSignal.state.objective.reinforcements[0].pending')
+                  and 'COUNTERATTACK' in page.locator('#mission-detail').inner_text().upper()
+                  and page.locator('#mission-detail').evaluate('el=>/from (north|south|east|west)/i.test(el.textContent)&&/in [1-3]s/.test(el.textContent)&&!/from -?[0-9]/.test(el.textContent)'))
+            assert_objective_readability(page, f'{label} jammer counterattack warning', width, height)
             check(f'{label} sabotage bearing moves to the remaining live jammer',
                   [target['id'] for target in objective_bearings(page)] == [page.evaluate('deadSignal.state.objective.targets[1].id')])
             page.locator('#pause-btn').click()
@@ -576,6 +675,9 @@ with sync_playwright() as p:
             }''')
             page.wait_for_function('deadSignal.state.objective.inside && deadSignal.state.objective.held > .4')
             page.wait_for_timeout(120)
+            check(f'{label} relay entry announces its first incoming wave before it arrives',
+                  page.evaluate('deadSignal.state.objective.nextWaveIndex===1 && deadSignal.state.objective.pendingWave!==null && deadSignal.game.waveCount===0')
+                  and 'INFECTED' in page.locator('#mission-detail').inner_text().upper())
             check(f'{label} entering the radio zone updates the live progress display',
                   page.locator('#mission-progress').evaluate('(el)=>!el.hidden && el.value>0 && el.value<1')
                   and 'RETURN' not in page.locator('#mission-goal').inner_text())
@@ -703,7 +805,8 @@ with sync_playwright() as p:
           const style=getComputedStyle(el);
           return !el.hidden && style.display!=='none' && style.visibility!=='hidden'
             && parseFloat(style.fontSize)>=8 && el.scrollWidth<=el.clientWidth+1
-            && /DRAG/.test(el.textContent) && /AUTO/.test(el.textContent);
+            && /DRAG PAD/.test(el.textContent) && /FOCUS/.test(el.textContent)
+            && /GRENADE/.test(el.textContent) && /RELEASE/.test(el.textContent);
         }''')
         check(f'{label} movement hint remains readable within the field', hint_inside and hint_readable, hint_bounds)
         clearance = page.evaluate('''() => {

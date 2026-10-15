@@ -4,7 +4,7 @@
  * seed; destructible cover, casualties and the evacuation response survive.
  * Original content, MIT licensed; see the project LICENSE.
  */
-import { Game, CONFIG, FIRST_CONTACT_REVISION } from './engine.js?v=0.7.0';
+import { Game, CONFIG, FIRST_CONTACT_REVISION } from './engine.js?v=0.8.0';
 
 export const CHECKPOINT_KEY = 'dead-signal-first-contact-checkpoint';
 const FORMAT = 1;
@@ -17,18 +17,18 @@ const STATE_KEYS = ['status', 'mission', 'time', 'noise', 'kills', 'grenades',
   'rescueCount', 'rescueTarget', 'checkpointSequence', 'objective', 'message',
   'extraction', 'soldiers', 'leaderId', 'enemies', 'civilians', 'bullets',
   'particles', 'corpses', 'target', 'thrownGrenades', 'holdFire', 'wavesRemaining',
-  'totalKills', 'events', 'playerKills'];
+  'totalKills', 'events', 'playerKills', 'focusTargetId', 'focusUntil'];
 const ACTOR_KEYS = new Set(['id', 'name', 'type', 'x', 'y', 'hp', 'maxHp', 'alive',
   'angle', 'shootFlash', 'cooldown', 'invulnerable', 'pathTimer', 'stuck',
   'moveAngle', 'moving', 'vx', 'vy', 'speed', 'walkPhase', 'hitFlash', 'targetId',
   'aimTimer', 'attackCooldown', 'wanderX', 'wanderY', 'active', 'reaction',
   'sightLost', 'waveSpawn', 'operationGroup', 'operationHome', 'operationResponse',
-  'rescued', 'siteId', 'label', 'navVersion']);
+  'rescued', 'siteId', 'label', 'navVersion', 'biteTargetId', 'biteTimer', 'biteDuration']);
 const ACTOR_BOOLEANS = new Set(['alive', 'moving', 'active', 'waveSpawn',
   'operationResponse', 'rescued']);
 const ACTOR_STRINGS = new Set(['name', 'type', 'operationGroup', 'siteId', 'label']);
 const ACTOR_NUMBERS = new Set([...ACTOR_KEYS].filter(key => !ACTOR_BOOLEANS.has(key)
-  && !ACTOR_STRINGS.has(key) && !['operationHome', 'targetId'].includes(key)));
+  && !ACTOR_STRINGS.has(key) && !['operationHome', 'targetId', 'biteTargetId'].includes(key)));
 
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
@@ -145,6 +145,14 @@ function validActor(actor, world) {
     if (ACTOR_NUMBERS.has(key) && !finite(value, -1000000, 1000000)) return false;
   }
   if (actor.targetId !== undefined && actor.targetId !== null && !integer(actor.targetId, 1, 10000000)) return false;
+  const biteKeys = ['biteTargetId', 'biteTimer', 'biteDuration'];
+  if (biteKeys.some(key => Object.hasOwn(actor, key))) {
+    if (!biteKeys.every(key => Object.hasOwn(actor, key)) || actor.biteDuration !== 0.3
+      || !finite(actor.biteTimer, 0, actor.biteDuration)
+      || (actor.biteTimer === 0 ? actor.biteTargetId !== null
+        : !integer(actor.biteTargetId, 1, 10000000))
+      || (actor.biteTimer > 0 && (actor.type !== 'zombie' || !actor.alive))) return false;
+  }
   if (actor.operationHome !== undefined && (!keys(actor.operationHome, ['x', 'y', 'r'])
     || !point({x: actor.operationHome.x, y: actor.operationHome.y}, world)
     || !finite(actor.operationHome.r, 1, Math.max(world.width, world.height)))) return false;
@@ -314,6 +322,21 @@ function hydrate(snapshot, suppliedFresh) {
   const ids = new Set(actors.map(actor => actor.id));
   if (ids.size !== actors.length || meta.nextId !== Math.max(...ids) + 1
     || actors.some(actor => actor.targetId !== undefined && actor.targetId !== null && !ids.has(actor.targetId))) return null;
+  for (const actor of actors) if (actor.biteTargetId !== undefined && actor.biteTargetId !== null) {
+    const victim = actors.find(candidate => candidate.id === actor.biteTargetId);
+    if (!victim || victim === actor || !(victim.name || victim.type === 'soldier')) return null;
+  }
+  // Version 0.7 saves predate tactical focus and committed bites. Both sets of
+  // fields are optional together, and absent fields resume in their idle state.
+  const hasFocus = Object.hasOwn(state, 'focusTargetId') || Object.hasOwn(state, 'focusUntil');
+  if (hasFocus) {
+    if (!Object.hasOwn(state, 'focusTargetId') || !Object.hasOwn(state, 'focusUntil')
+      || !finite(state.focusUntil, 0, state.time + 6 + 1e-7)) return null;
+    if (state.focusTargetId === null) {
+      if (state.focusUntil !== 0) return null;
+    } else if (!integer(state.focusTargetId, 1, 10000000) || state.focusUntil <= state.time
+      || !state.enemies.some(enemy => enemy.id === state.focusTargetId && enemy.alive)) return null;
+  }
   for (let i = 0; i < 3; i++) {
     const saved = state.soldiers[i], original = game.soldiers[i];
     if (saved.id !== original.id || saved.name !== original.name || saved.maxHp !== original.maxHp
@@ -356,7 +379,8 @@ function hydrate(snapshot, suppliedFresh) {
     || (!extraction.active && extraction.progress !== 0)) return null;
   if (actors.some(actor => actor.alive && game.blocked(actor.x, actor.y, CONFIG.actorRadius))) return null;
   const savedPoints = state.objective.currentPoints;
-  game.state = {...state, world: game.world};
+  game.state = {...state, world: game.world, focusTargetId: state.focusTargetId ?? null,
+    focusUntil: state.focusUntil ?? 0};
   game.refreshOperationObjective();
   // The evacuation point contains a copy of extraction's presentation state;
   // that copy can trail checkObjective by one physics tick. Its location and
@@ -378,6 +402,9 @@ function hydrate(snapshot, suppliedFresh) {
   for (const actor of actors) {
     actor.path = null; actor.pathGoal = null; actor.pathTimer = 0;
     actor.moving = false; actor.vx = 0; actor.vy = 0; actor.speed = 0;
+    if (actor.type === 'zombie' && actor.biteTargetId === undefined) {
+      actor.biteTargetId = null; actor.biteTimer = 0; actor.biteDuration = 0.3;
+    }
   }
   return game;
 }

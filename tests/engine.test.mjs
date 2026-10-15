@@ -126,11 +126,11 @@ test('mission three has three relay-triggered waves and opens extraction with ho
   assert.equal(game.enemies.length, 0);
   game.leader.x = game.state.objective.zone.x;
   game.leader.y = game.state.objective.zone.y;
-  for (const seconds of [1 / 60, 8, 8]) advance(game, seconds);
+  for (const seconds of [1 / 60, 8, 8, 2.05]) advance(game, seconds);
   assert.equal(game.state.wavesRemaining, 0);
   assert.equal(game.waveCount, 3);
   assert.equal(game.state.events.filter(event => event.type === 'wave').length, 3);
-  assert.equal(game.extraction.active, false, '16 seconds is not a full transmission');
+  assert.equal(game.extraction.active, false, 'all three warned waves can arrive before the full transmission completes');
   game.state.objective.held = 25;
   game.checkObjective(.1);
   assert.equal(game.extraction.active, true);

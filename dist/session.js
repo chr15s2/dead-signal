@@ -1,6 +1,6 @@
 /** Browser progress and objective text. No DOM or simulation side effects. */
 export const SAVE_KEY = 'dead-signal-v1';
-export const MISSION_REVISION = 2;
+export const MISSION_REVISION = 3;
 
 export function normalizeProgress(value) {
   const result = { completed: [], best: {}, difficulty: 'normal', soundOn: false, missionRevision: MISSION_REVISION };
@@ -9,10 +9,10 @@ export function normalizeProgress(value) {
     result.completed = [...new Set(value.completed.filter(id => Number.isInteger(id) && id >= 0 && id < 3))].sort();
   }
   if (value.best && typeof value.best === 'object' && !Array.isArray(value.best)) {
-    // First Contact is now a longer operation. Revision 1's other two missions
-    // are unchanged; older or unknown revisions have no comparable times.
+    // Revision 3 reworks jammer counterattacks and relay waves. The revision 2
+    // First Contact route remains comparable; older routes have no valid times.
     const comparable = value.missionRevision === MISSION_REVISION ? [0, 1, 2]
-      : value.missionRevision === 1 ? [1, 2] : [];
+      : value.missionRevision === 2 ? [0] : [];
     for (const id of comparable) {
       const time = value.best[id];
       if (typeof time === 'number' && Number.isFinite(time) && time > 0) result.best[id] = time;
@@ -46,15 +46,24 @@ export function saveProgress(storage, value) {
 
 export function objectiveFor(state) {
   const objective = state.objective || {type: 'rescue'};
+  const pending = objective.type === 'sabotage'
+    ? objective.reinforcements?.filter(response => response.pending && !response.spawned).sort((a, b) => a.dueAt - b.dueAt)[0]
+    : objective.type === 'holdout' && objective.pendingWave?.pending && !objective.pendingWave.spawned ? objective.pendingWave : null;
+  const warningSeconds = pending ? Math.max(0, Math.ceil(pending.dueAt - state.time)) : 0;
+  const compass = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
+  const bearing = Number.isFinite(pending?.direction)
+    ? compass[((Math.round(pending.direction / (Math.PI / 4)) % 8) + 8) % 8] : null;
+  const direction = bearing ? ` from ${bearing}` : '';
+  const warning = pending ? `${objective.type === 'sabotage' ? 'Counterattack' : 'Infected'}${direction}${warningSeconds ? ` in ${warningSeconds}s` : ' approaching'}` : '';
   const stage = objective.type === 'operation' ? { stage: objective.phase + 1, stages: objective.stageCount || 4 } : {};
   if (state.extraction.active) {
     if (state.extraction.regrouping) {
-      return { ...stage, label: 'REGROUP', text: state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
+      return { ...stage, label: 'REGROUP', text: warning ? `Regroup at the flare. ${warning}.` : state.rescueTarget > 0 ? 'Bring your squad and survivors into the zone.' : 'Bring your squad into the zone.', counter: 'STAY TOGETHER', progress: state.extraction.progress };
     }
     if (state.extraction.progress > 0) {
       return { ...stage, label: 'EXTRACTING', text: 'Hold position. Everyone comes home.', counter: `${Math.round(state.extraction.progress * 100)}%`, progress: state.extraction.progress };
     }
-    return { ...stage, label: 'EXTRACTION OPEN', text: 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
+    return { ...stage, label: 'EXTRACTION OPEN', text: warning ? `${warning}. Keep moving to the flare.` : 'Follow the marked flare to the coast.', counter: 'REACH THE FLARE', progress: 0 };
   }
   if (objective.type === 'operation') {
     const point = objective.currentPoints?.[0];
@@ -80,7 +89,7 @@ export function objectiveFor(state) {
   }
   if (objective.type === 'sabotage') {
     const destroyed = objective.targets.filter(target => !target.alive).length;
-    return {label: 'SABOTAGE', text: 'Destroy both marked jammers. Gunfire or grenades work.',
+    return {label: 'SABOTAGE', text: warning ? `${warning}. Cut the remaining jammer.` : 'Destroy both marked jammers. Gunfire or grenades work.',
       counter: `${destroyed} / ${objective.targets.length} SILENCED`, progress: null};
   }
   const seconds = Math.max(0, Math.ceil(objective.duration - objective.held - 1e-9));
@@ -89,6 +98,6 @@ export function objectiveFor(state) {
       counter: `${objective.duration} SEC SIGNAL`, progress: 0};
   }
   return {label: objective.inside ? 'HOLD THE SIGNAL' : 'RE-ENTER THE SIGNAL',
-    text: objective.inside ? 'Keep your selected soldier inside. Survive the infected waves.' : 'Return to the perimeter. Transmission progress is saved.',
+    text: objective.inside ? warning ? `${warning}. Hold or reposition.` : 'Keep your selected soldier inside. Survive the infected waves.' : warning ? `${warning}. Return when safe; progress is saved.` : 'Return to the perimeter. Transmission progress is saved.',
     counter: `${seconds} SEC LEFT`, progress: Math.min(1, objective.held / objective.duration)};
 }

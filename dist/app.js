@@ -1,9 +1,9 @@
-import { Game, MISSIONS } from './engine.js?v=0.7.0';
-import { Renderer } from './renderer.js?v=0.7.0';
-import { InputController, bindAction } from './input.js?v=0.7.0';
-import { AudioEngine } from './audio.js?v=0.7.0';
-import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.7.0';
-import { loadCheckpoint, saveCheckpoint, clearCheckpoint, restoreCheckpoint } from './checkpoint.js?v=0.7.0';
+import { Game, MISSIONS } from './engine.js?v=0.8.0';
+import { Renderer } from './renderer.js?v=0.8.0';
+import { InputController, bindAction } from './input.js?v=0.8.0';
+import { AudioEngine } from './audio.js?v=0.8.0';
+import { loadProgress, saveProgress, objectiveFor } from './session.js?v=0.8.0';
+import { loadCheckpoint, saveCheckpoint, clearCheckpoint, restoreCheckpoint } from './checkpoint.js?v=0.8.0';
 
 // The application owns scene lifecycle; simulation, input, rendering and sound
 // each keep their own state. A restart resets every boundary together.
@@ -37,9 +37,9 @@ let checkpointStorageWarning = false;
 const metrics = { updates: 0, frames: 0, updateMs: 0, renderMs: 0, updateSamples: [], renderSamples: [] };
 
 const input = new InputController({
-  canvas, joystick: $('joystick'), knob: $('joystick-knob'), renderer,
+  canvas, joystick: $('joystick'), knob: $('joystick-knob'), grenadeButton: $('grenade-btn'), renderer,
   isPlaying: () => mode === 'game' && game.state.status === 'playing' && !$('manual').open,
-  onMove: (x, y) => { if (!game.moveTo(x, y)) radio('Route blocked. Choose open ground.'); },
+  onMove: orderAt,
   onGrenade: throwGrenade,
   onHold: toggleHold,
   onPause: () => { if (mode === 'game') pauseGame(game.state.status !== 'paused'); },
@@ -58,6 +58,26 @@ function formatTime(seconds) {
 
 function persist() { saveProgress(undefined, progress); }
 function focusField() { canvas.focus({ preventScroll: true }); }
+
+function orderAt(x, y) {
+  const box = canvas.getBoundingClientRect();
+  const center = renderer.worldToScreen(x, y);
+  const step = renderer.worldToScreen(x + 1, y);
+  const scale = Math.abs(step.x - center.x);
+  const radius = Math.min(45, 22 / Math.max(.01, scale));
+  const targets = [...game.state.enemies, ...(game.state.objective?.targets || [])];
+  const nearest = targets.filter(target => target.alive && Math.hypot(target.x - x, target.y - y) <= radius)
+    .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+  const visible = nearest && renderer.worldToScreen(nearest.x, nearest.y);
+  // A generous touch target still belongs to a visible actor. A tap beside the
+  // canvas edge must not select a hidden enemy just outside the camera.
+  if (visible && visible.x >= box.left && visible.x <= box.right && visible.y >= box.top && visible.y <= box.bottom
+      && game.focusTargetAt(x, y, radius)) {
+    radio(game.state.holdFire ? 'Target marked. Release Hold Fire when ready.' : 'Target marked. The squad will focus fire when in range.', 2.5);
+    return;
+  }
+  if (!game.moveTo(x, y)) radio('Route blocked. Choose open ground.');
+}
 
 function radio(message, duration = 4) {
   if (mode !== 'game') return;
@@ -181,7 +201,9 @@ function showBriefing() {
   text('briefing-title', `MISSION ${String(mission + 1).padStart(2, '0')} / ${MISSIONS[mission].title}`);
   text('briefing-copy', mission === 0
     ? 'Secure the village. Rescue the clinic medic and school radio operator in either order, clear the harbour, then escort everyone to the flare. Choose the exposed road or a longer route through cover. The HUD counts defenders at each objective.'
-    : MISSIONS[mission].objective);
+    : mission === 1
+      ? 'Cut the island’s two signal jammers, in either order. Each destroyed jammer brings a counterattack: watch the warning, use cover and keep moving. Once both are down, get your squad to the flare. Tap a jammer to focus fire; drag Grenade to aim a blast.'
+      : 'Restore the radio link. Hold the relay perimeter for 25 seconds of uplink time while three infected waves approach. Their warning shows where to prepare. Step out to dodge or regroup, then return; your transmission progress stays. Bring everyone to the flare.');
   const checkpoint = loadCheckpoint(undefined, { mission, difficulty: progress.difficulty });
   $('start-btn').innerHTML = checkpoint ? 'CONTINUE CHECKPOINT <span>→</span>' : 'DEPLOY SQUAD <span>↗</span>';
   $('fresh-btn').hidden = !checkpoint;
@@ -313,10 +335,9 @@ function toggleHold() {
   if (input.pointerType !== 'touch') focusField();
 }
 
-function throwGrenade() {
+function throwGrenade(x, y) {
   if (mode !== 'game' || game.state.status !== 'playing') return;
-  const target = input.aimPoint();
-  const thrown = target ? game.grenade(target.x, target.y) : game.grenade();
+  const thrown = Number.isFinite(x) && Number.isFinite(y) ? game.grenade(x, y) : game.grenade();
   if (thrown) {
     audio.cue('grenade');
     if (!reducedMotion.matches && navigator.vibrate) navigator.vibrate(18);
@@ -345,7 +366,7 @@ function updateHud() {
       : `${state.rescueCount} / ${state.rescueTarget}`);
   text('grenade-count', state.grenades);
   $('grenade-btn').disabled = state.grenades === 0;
-  $('grenade-btn').setAttribute('aria-label', `Throw grenade, ${state.grenades} remaining`);
+  $('grenade-btn').setAttribute('aria-label', `Grenade, ${state.grenades} remaining. Tap for a quick throw; drag to aim and release to throw. Return to the button to cancel.`);
   const hold = state.holdFire;
   $('hold-btn').setAttribute('aria-pressed', String(hold));
   $('hold-btn').setAttribute('aria-label', hold ? 'Resume automatic fire' : 'Hold fire and travel quietly');
@@ -415,10 +436,11 @@ function showResult(won) {
   $('result-title').innerHTML = won ? (mission === 2 ? 'SIGNAL<br>RESTORED.' : 'MADE IT<br>OUT ALIVE.') : 'RADIO<br>SILENCE.';
   text('result-copy', won ? [
     'The medic, radio operator and your surviving squad are home. The village route is secure. Regroup for the next operation.',
-    'Both jammers are down. Your squad slipped out before the dead closed in.',
-    'Transmission received. Your squad is home, and help knows where to find the island.',
+    'Both jammers are down and the counterattacks are behind you. Your squad has reopened the island’s radio corridor.',
+    'Transmission received. Your squad held the relay through three infected waves, and help knows where to find the island.',
   ][mission] : 'Use cover, move quietly, and save a grenade for close encounters. Recruit difficulty gives you more room to recover.');
   const alive = state.soldiers.filter(soldier => soldier.alive).length;
+  if (won && alive === 3) text('result-label', `${mission === 2 ? 'OPERATION' : 'MISSION'} COMPLETE · FULL SQUAD`);
   $('result-stats').innerHTML = `<div><span>TIME</span><b>${formatTime(state.time)}</b></div><div><span>SQUAD ALIVE</span><b>${alive} / 3</b></div><div><span>ELIMINATED</span><b>${state.kills}</b></div>`;
   $('memorial').replaceChildren();
   const lost = state.soldiers.filter(soldier => !soldier.alive).map(soldier => soldier.name);
@@ -458,7 +480,6 @@ bindAction($('pause-btn'), () => pauseGame(game.state.status !== 'paused'));
 bindAction($('resume-btn'), () => pauseGame(false));
 bindAction($('restart-btn'), () => startMission());
 bindAction($('hold-btn'), toggleHold);
-bindAction($('grenade-btn'), throwGrenade);
 bindAction($('next-btn'), () => {
   const won = game.state.status === 'won';
   if (won) mission = mission === 2 ? 0 : mission + 1;
@@ -527,7 +548,10 @@ function frame(now) {
   }
   metrics.updateMs = performance.now() - updateStart;
   const renderStart = performance.now();
-  renderer.render(game.state, { preview: mode === 'base', reducedMotion: reducedMotion.matches });
+  const aim = input.grenadeAim;
+  const grenadePreview = mode === 'game' && game.state.status === 'playing' && game.state.grenades > 0 && aim?.aiming
+    ? game.grenadeTarget(aim.point?.x, aim.point?.y) : null;
+  renderer.render(game.state, { preview: mode === 'base', reducedMotion: reducedMotion.matches, grenadePreview });
   metrics.renderMs = performance.now() - renderStart;
   if (mode === 'game' && game.state.status === 'playing') {
     sampleMetric('updateSamples', metrics.updateMs); sampleMetric('renderSamples', metrics.renderMs);

@@ -213,7 +213,7 @@ kbd { font: 9px var(--mono); border: 1px solid var(--line); padding: 0 3px; }
 .hold-button[aria-pressed=true] .fire-slash { display: block; }
 .hold-button span { font: 600 8px var(--mono); }
 .hold-button[aria-pressed=true] { color: #15372c; background: #ded3a6; border-color: #f0e4ba; }
-.grenade-button { position: relative; display: grid; place-items: center; width: 71px; height: 71px; border: 1px solid #f0aa76; border-radius: 50%; background: #dc6544f5; color: #fff1d8; box-shadow: inset 0 0 0 5px #dc6544, inset 0 0 0 6px #f3a27188, 0 0 0 4px #183d356b, 0 3px 0 #102b2544; touch-action: manipulation; }
+.grenade-button { position: relative; display: grid; place-items: center; width: 71px; height: 71px; border: 1px solid #f0aa76; border-radius: 50%; background: #dc6544f5; color: #fff1d8; box-shadow: inset 0 0 0 5px #dc6544, inset 0 0 0 6px #f3a27188, 0 0 0 4px #183d356b, 0 3px 0 #102b2544; touch-action: none; }
 .grenade-button svg { width: 29px; height: 29px; stroke-width: 1.7; }
 .grenade-button span { position: absolute; top: -4px; right: -2px; width: 23px; height: 23px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--ink); color: var(--ink); background: var(--paper); font: 600 11px var(--mono); }
 .grenade-label { grid-column: 2; text-align: center; font: 600 8px var(--mono); margin-top: 10px; letter-spacing: .035em; }

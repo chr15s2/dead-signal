@@ -159,10 +159,12 @@ export class AudioEngine {
           case 'explosion': this._explosion(spatial); break;
           case 'rescue': this._radio('rescue'); break;
           case 'wave': this._radio('wave'); break;
+          case 'reinforcement-warning': this._radio('warning'); break;
           case 'objective': this._radio('objective'); break;
           case 'jammer-destroyed': this._radio('objective'); break;
           case 'extracted': this._radio('extracted'); break;
           case 'holdfire': this.cue('select'); break;
+          case 'focus': this.cue('focus'); break;
           default: continue;
         }
       } catch {
@@ -180,6 +182,9 @@ export class AudioEngine {
         case 'deploy': this._radio('deploy'); break;
         case 'select': this._click(570, 760); break;
         case 'grenade': this._click(1050, 620, 0.07); break;
+        case 'focus':
+          if (this._ready('focus-order', .12)) this._click(760, 1050, 0.04);
+          break;
         case 'pause': this._click(430, 280, 0.045); break;
         case 'resume': this._click(280, 430, 0.045); break;
         case 'win': this._radio('win'); break;
@@ -372,6 +377,7 @@ export class AudioEngine {
       objective: [[520, 0], [780, 0.14]],
       extracted: [[650, 0], [870, 0.12]],
       wave: [[330, 0], [330, 0.16]],
+      warning: [[460, 0], [350, 0.14], [460, 0.28]],
       casualty: [[270, 0], [180, 0.17]],
       win: [[440, 0], [550, 0.14], [660, 0.28]],
       lose: [[240, 0], [180, 0.2]],

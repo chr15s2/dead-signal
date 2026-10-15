@@ -25,15 +25,21 @@ Open <http://localhost:8080>. To try it on a phone on the same Wi-Fi, open `http
 
 | Action | Touch | Desktop |
 | --- | --- | --- |
-| Move the squad | Drag the movement joystick or tap the battlefield | WASD / arrow keys or left-click the battlefield |
+| Move the squad | Drag the movement joystick or tap clear ground | WASD / arrow keys or left-click clear ground |
+| Focus fire | Tap an enemy or signal jammer | Left-click an enemy or signal jammer |
 | Aim and fire | Squad automatically shoots nearby targets | Hold right-click to aim and fire |
 | Hold fire | Tap the hold-fire button | H |
-| Throw a grenade | Tap the grenade button | G |
+| Throw a grenade | Tap for a quick throw; drag from the button to aim, then release | G at the cursor, or use the grenade button |
+| Cancel grenade aim | Drag back onto the button, then lift | Drag back onto the button, or press Esc to pause |
 | Pause | Tap pause | Esc |
 
-Keep soldiers near cover and choose when to fire: noise brings zombies. Stop moving for more accurate fire. Enemy soldiers and zombies can damage each other. First Contact starts at the village entrance, then sends you to rescue the clinic medic and school radio operator in either order. Clear the local defenders counted in the HUD, secure the harbour, and escort everyone through an infected escape encounter. Exposed streets offer shorter routes; covered lanes offer another approach. Near a defended site, the objective bearing points toward its remaining guards.
+Keep soldiers near cover and choose when to fire: noise brings zombies. Stop moving for more accurate fire. Tap a hostile or jammer to mark it for the squad for six seconds; soldiers concentrate on it when their range and line of sight allow. Hold Fire still prevents automatic shooting. Quick grenades prefer the marked target or a useful cluster; dragging lets you choose cover, a barrel, or a particular enemy. The aiming ring shows the actual blast footprint and range-clamped landing point. Grenades cannot hurt your squad or survivors. Zombies wind up before biting: moving out of reach or breaking contact lets you evade the bite.
 
-Bad Frequency sends you after two signal jammers: your squad shoots them when nearby enemies are dealt with, and grenades work too. Last Transmission asks you to hold the relay circle for 25 cumulative seconds while three finite infected waves arrive. Step outside to dodge and the uplink pauses; return to continue. Finishing the transmission opens extraction even if hostiles remain. Bring every living squad member and rescued survivor to the extraction circle, then hold position while the timer finishes. The HUD shows when followers need to regroup. Named soldiers can die, so surviving with the whole squad takes care.
+First Contact starts at the village entrance, then sends you to rescue the clinic medic and school radio operator in either order. Clear the local defenders counted in the HUD, secure the harbour, and escort everyone through an infected escape encounter. Exposed streets offer shorter routes; covered lanes offer another approach. Near a defended site, the objective bearing points toward its remaining guards.
+
+Bad Frequency sends you after two signal jammers: focus fire can prioritize them, rifles can finish the job, and grenades work too. Each destroyed jammer triggers a warned, finite infected response. The first can intercept the route to the other jammer; the second pursues your evacuation to the western beach. Choosing the order changes the approach and escape route.
+
+Last Transmission asks you to hold the relay circle for 25 cumulative seconds. Its three finite infected waves are tied to uplink milestones, with warning bearings before they arrive. Step outside to dodge and the uplink pauses; return to continue. Future waves wait for actual transmission progress. Finishing the transmission opens extraction even if hostiles remain. Bring every living squad member and rescued survivor to the extraction circle, then hold position while the timer finishes. The HUD shows when followers need to regroup. Named soldiers can die, so surviving with the whole squad takes care.
 
 The game pauses when you leave the tab or open the field manual. Returning to the tab requires an explicit resume. Use squad cards, or desktop keys 1–3, to change the leader.
 
@@ -86,6 +92,8 @@ Version 0.5.0 gives the existing three missions distinct objectives: rescue the 
 Version 0.6.0 polishes the existing art: warm afternoon light and cool projected shadows, more detailed characters with faction-specific movement and recoil, restrained material-aware combat effects, sparse roadside equipment and weathered buildings, and clearer squad portraits, health, noise status, and field dispatches. Visual effects use their own deterministic randomness and bounded caches; they do not change the simulation, mission rules, or saves. Pausing freezes simulation-clock animation, and reduced motion removes decorative movement and interface transitions. Small phone results keep both action buttons visible.
 
 Version 0.7.0 rebuilds First Contact as a four-stage operation across an authored 2800×2200 village: secure the entrance, rescue two people in either order, secure the harbour, and evacuate through one finite infected response. Local garrisons guard their own districts, with connecting-road encounters and several approaches around cover. Navigation and rendering support mission-specific world sizes. Milestone checkpoints preserve the full run and never automatically start after a reload. Old First Contact best times reset once because the mission changed; other mission records, completions, and preferences remain. Bad Frequency and Last Transmission retain their existing layouts and rules. Mission duration depends on route and tactics; there is no enforced minimum.
+
+Version 0.8.0 adds tactical control across the existing missions: tap to focus fire, drag to aim a grenade with a live landing preview, smarter quick throws, and a readable zombie bite wind-up that can be evaded. Bad Frequency's two jammer destructions each trigger a finite, telegraphed response; Last Transmission's waves follow uplink milestones instead of time spent outside the relay. Warning bearings, focus markers, and optional procedural sound explain these events. The existing three maps, touch layout, and named squad remain central. Revision 2 First Contact records and checkpoints remain compatible; revised sabotage and relay best times reset once, while completions and preferences remain.
 
 ## Hosting and licensing
 
