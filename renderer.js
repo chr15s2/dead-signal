@@ -1,9 +1,9 @@
 /** Original, procedural pixel artwork for Dead Signal. No external assets. */
-import { CONFIG } from './engine.js?v=0.8.0';
-import { ActorPainter } from './actors.js?v=0.8.0';
-import { GroundLighting, paintSunlight } from './lighting.js?v=0.8.0';
-import { CombatEffects } from './effects.js?v=0.8.0';
-import { buildScenery, paintSceneryGround, SceneryPainter, paintBuildingWeathering } from './scenery.js?v=0.8.0';
+import { CONFIG } from './engine.js?v=0.9.0';
+import { ActorPainter } from './actors.js?v=0.9.0';
+import { GroundLighting, paintSunlight } from './lighting.js?v=0.9.0';
+import { CombatEffects } from './effects.js?v=0.9.0';
+import { buildScenery, paintSceneryGround, SceneryPainter, paintBuildingWeathering } from './scenery.js?v=0.9.0';
 
 const TAU = Math.PI * 2;
 const MAX_EFFECTS = 64;
@@ -35,7 +35,7 @@ export class Renderer {
     this.width = 1; this.height = 1; this.cache = null; this.terrainWorld = null;
     this.lastTime = 0; this.initialized = false; this.lastState = null;
     this.objects = []; this.effects = []; this.lastEventId = 0; this.shake = 0;
-    this.objectiveArt = new Map(); this.objectiveAlpha = new Map(); this.radioProp = null;
+    this.objectiveArt = new Map(); this.objectiveAlpha = new Map(); this.relayProps = []; this.relayObjective = null;
     this.actorPainter = new ActorPainter(); this.groundLighting = new GroundLighting();
     this.combatEffects = new CombatEffects(); this.sceneryPainter = new SceneryPainter(); this.scenery = [];
     this.look = {x:0,y:0}; this.transform = {x:0,y:0,zoom:1};
@@ -63,7 +63,7 @@ export class Renderer {
     // A restarted mission has a new state, even when its mission number is unchanged.
     this.initialized=false;this.lastState=null;this.lastTime=0;
     this.look.x=0;this.look.y=0;this.shake=0;this.effects.length=0;this.lastEventId=0;
-    this.radioProp=null;
+    this.relayProps.length=0;this.relayObjective=null;
     this.actorPainter.reset(); this.groundLighting.reset();
     this.combatEffects.reset();
   }
@@ -336,8 +336,8 @@ export class Renderer {
     if(objective?.type==='sabotage'){
       for(const device of objective.targets||[])if(this.visible(device.x,device.y))objects.push(device);
     }else if(objective?.type==='holdout'&&objective.zone){
-      if(!this.radioProp)this.radioProp={type:'relay',x:objective.zone.x,y:objective.zone.y};
-      if(this.visible(this.radioProp.x,this.radioProp.y))objects.push(this.radioProp);
+      // Equipment stays at its authored site after the operator moves on.
+      for(const prop of this.relaysFor(objective))if(this.visible(prop.x-40,prop.y-65,80,90))objects.push(prop);
     }
     objects.sort((a,b)=>(a.y+(a.h||0))-(b.y+(b.h||0)));
     for(const o of objects){
@@ -386,6 +386,15 @@ export class Renderer {
   visible(x,y,w=0,h=0){const b=this.bounds;return x+w>=b.left&&x<=b.right&&y+h>=b.top&&y<=b.bottom;}
   // Interaction marks keep the same readable CSS size at every camera scale.
   worldPixels(cssPixels){return cssPixels*this.width/this.cssWidth/this.camera.zoom;}
+  relaysFor(objective){
+    const sites=objective.sites?.length?objective.sites:[objective.zone];
+    if(this.relayObjective!==objective||this.relayProps.length!==sites.length
+      ||sites.some((site,i)=>site.x!==this.relayProps[i].x||site.y!==this.relayProps[i].y)){
+      this.relayObjective=objective;
+      this.relayProps=sites.map((site,siteIndex)=>({type:'relay',x:site.x,y:site.y,siteIndex}));
+    }
+    return this.relayProps;
+  }
   drawObjectiveGround(c,state,reducedMotion){
     const objective=state.objective;if(!objective)return;
     if(objective.type==='operation'){
@@ -408,31 +417,42 @@ export class Renderer {
         c.restore();
       }
     }else if(objective.type==='holdout'&&objective.zone){
-      const zone=objective.zone,r=zone.r,complete=objective.held>=objective.duration;
+      for(const prop of this.relaysFor(objective))this.drawRelayGround(c,prop,state,reducedMotion);
+    }
+  }
+  drawRelayGround(c,prop,state,reducedMotion){
+      const objective=state.objective,site=objective.sites?.[prop.siteIndex]||objective;
+      const zone=objective.sites?.[prop.siteIndex]||objective.zone,r=zone.r;
       if(!this.visible(zone.x-r,zone.y-r,r*2,r*2))return;
-      const color=complete?'#bbdcc1':objective.inside?'#f1cd88':'#e4be7d';
+      const complete=site.held>=site.duration,active=!complete&&prop.siteIndex===(objective.siteIndex||0);
+      const color=complete?'#a6c5aa':active?'#f1cd88':'#82977d';
       c.save();c.translate(zone.x,zone.y);
+      if(!active){
+        // A compact, quiet marker keeps the completed and upcoming sites recognizable.
+        c.strokeStyle=rgba(color,.55);c.lineWidth=this.worldPixels(.9);
+        c.setLineDash([this.worldPixels(2),this.worldPixels(5)]);c.beginPath();c.arc(0,0,35,0,TAU);c.stroke();c.setLineDash([]);
+        c.restore();return;
+      }
       // The relay has survey posts and a segmented perimeter; extraction keeps its cross.
       c.setLineDash([this.worldPixels(6),this.worldPixels(5)]);c.beginPath();c.arc(0,0,r,0,TAU);
       c.strokeStyle='rgba(26,51,37,.6)';c.lineWidth=this.worldPixels(3.2);c.stroke();
-      c.strokeStyle=rgba(color,complete?.55:.83);c.lineWidth=this.worldPixels(1.1);c.stroke();c.setLineDash([]);
+      c.strokeStyle=rgba(color,objective.inside?.95:.75);c.lineWidth=this.worldPixels(1.1);c.stroke();c.setLineDash([]);
       for(let i=0;i<4;i++){
         const a=i*Math.PI/2,x=Math.cos(a)*r,y=Math.sin(a)*r;
         c.fillStyle='#2c4c3a';c.fillRect(x-3,y-3,6,6);c.fillStyle=color;c.fillRect(x-1.5,y-1.5,3,3);
       }
-      const progress=clamp(objective.held/objective.duration,0,1);
+      const progress=clamp(site.held/site.duration,0,1);
       if(progress>0){
         c.strokeStyle='#2a4b36';c.lineWidth=this.worldPixels(4);c.beginPath();c.arc(0,0,r-7,-Math.PI/2,-Math.PI/2+TAU*progress);c.stroke();
         c.strokeStyle=color;c.lineWidth=this.worldPixels(2);c.stroke();
       }
-      if(objective.started&&!complete){
+      if(objective.siteStarted??objective.started){
         // A quiet inner dial confirms the hold without washing out actors or gunfire.
         c.strokeStyle=rgba(color,.5);c.lineWidth=this.worldPixels(.8);
         const dial=reducedMotion?0:((state.time||0)*.12)%1;
         c.beginPath();c.arc(0,0,30,-Math.PI/2+TAU*dial,Math.PI/2+TAU*dial);c.stroke();
       }
       c.restore();
-    }
   }
   drawOperationGround(c,objective){
     if(objective.phase>=3)return;
@@ -476,17 +496,30 @@ export class Renderer {
       c.strokeStyle=rgba('#f1cd88',.48);c.lineWidth=1;c.beginPath();
       c.arc(8,-58,8+signal*2,-.95,.65);c.stroke();
     }else if(prop.type==='relay'){
-      const objective=state.objective,complete=objective.held>=objective.duration;
-      c.fillStyle=complete?'#b9dcc3':objective.inside?'#f1d296':'#829b75';c.fillRect(-9,-17,2,2);
-      if(objective.started&&!complete){
+      const objective=state.objective,site=objective.sites?.[prop.siteIndex]||objective;
+      const complete=site.held>=site.duration,active=!complete&&prop.siteIndex===(objective.siteIndex||0);
+      const started=active&&(objective.siteStarted??objective.started);
+      c.fillStyle=complete?'#b9dcc3':active&&objective.inside?'#f1d296':'#829b75';c.fillRect(-9,-17,2,2);
+      if(started){
         const length=reducedMotion?9:4+Math.floor((state.time||0)*4)%6;
         c.fillStyle='#b9d7ae';c.fillRect(-5,-16,length,1);
       }
       // A tiny meter stays below the equipment, clear of the squad's head/health cues.
-      if(objective.started||complete){
+      if(started||complete){
         const width=this.worldPixels(26)/scale;
         c.fillStyle='#294a37';c.fillRect(-width/2-1,15,width+2,4);
-        c.fillStyle=complete?'#b9dcc3':'#f1cd88';c.fillRect(-width/2,16,width*clamp(objective.held/objective.duration,0,1),2);
+        c.fillStyle=complete?'#b9dcc3':'#f1cd88';c.fillRect(-width/2,16,width*clamp(site.held/site.duration,0,1),2);
+      }
+      if(complete){
+        c.strokeStyle='#b9dcc3';c.lineWidth=this.worldPixels(1.3)/scale;c.beginPath();
+        c.moveTo(24,2);c.lineTo(28,6);c.lineTo(35,-3);c.stroke();
+      }
+      if(site.label){
+        const font=this.worldPixels(10)/scale,y=site.held>0?31:24;
+        c.font=`600 ${font}px monospace`;c.textAlign='center';c.textBaseline='middle';
+        const label=site.label.toUpperCase(),width=c.measureText(label).width;
+        c.fillStyle='rgba(28,49,38,.88)';c.fillRect(-width/2-font*.6,y-font*.65,width+font*1.2,font*1.3);
+        c.fillStyle=complete?'#a6c5aa':active?'#f1cd88':'#9daf99';c.fillText(label,0,y);
       }
     }
     c.restore();
@@ -929,11 +962,16 @@ export class Renderer {
         else{c.strokeStyle='#a7c3a4';c.lineWidth=.8;c.beginPath();c.moveTo(px-1.5,py);c.lineTo(px,py+1.5);c.lineTo(px+2,py-1.5);c.stroke();}
       }
     }else if(objective?.type==='holdout'&&objective.zone){
-      const zone=objective.zone,complete=objective.held>=objective.duration;
-      const px=x+zone.x/ww*mw,py=y+zone.y/wh*mh;
-      c.strokeStyle=complete?'#a7c3a4':'#edc080';c.lineWidth=.8;
-      c.beginPath();c.ellipse(px,py,zone.r/ww*mw,zone.r/wh*mh,0,0,TAU);c.stroke();
-      c.fillStyle=complete?'#a7c3a4':'#edc080';c.fillRect(Math.round(px)-1,Math.round(py)-1,2,2);
+      for(const prop of this.relaysFor(objective)){
+        const site=objective.sites?.[prop.siteIndex]||objective;
+        const zone=objective.sites?.[prop.siteIndex]||objective.zone;
+        const complete=site.held>=site.duration,active=!complete&&prop.siteIndex===(objective.siteIndex||0);
+        const px=x+zone.x/ww*mw,py=y+zone.y/wh*mh;
+        c.strokeStyle=complete?'#a7c3a4':active?'#edc080':'#84987d';c.lineWidth=.8;
+        if(active){c.beginPath();c.ellipse(px,py,zone.r/ww*mw,zone.r/wh*mh,0,0,TAU);c.stroke();}
+        if(complete){c.beginPath();c.moveTo(px-2,py);c.lineTo(px,py+2);c.lineTo(px+3,py-2);c.stroke();}
+        else{c.fillStyle=c.strokeStyle;c.fillRect(Math.round(px)-1,Math.round(py)-1,2,2);}
+      }
     }
     for(const e of state.enemies||[])if(e.alive){c.fillStyle=e.type==='zombie'?'#bbc48b':'#e0ac70';c.fillRect(Math.round(x+e.x/ww*mw),Math.round(y+e.y/wh*mh),1,1);}
     const vw=this.width/this.camera.zoom/ww*mw,vh=this.height/this.camera.zoom/wh*mh;

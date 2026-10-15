@@ -161,6 +161,7 @@ export class AudioEngine {
           case 'wave': this._radio('wave'); break;
           case 'reinforcement-warning': this._radio('warning'); break;
           case 'objective': this._radio('objective'); break;
+          case 'relay-stage': this._radio('objective'); break;
           case 'jammer-destroyed': this._radio('objective'); break;
           case 'extracted': this._radio('extracted'); break;
           case 'holdfire': this.cue('select'); break;

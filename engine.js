@@ -3,8 +3,9 @@
  * Dependency-free ES module. Coordinates and velocities are world pixels / second.
  * MIT licensed; see the project LICENSE.
  */
-import { findRoute } from './navigation.js?v=0.8.0';
-import { FIRST_CONTACT, createFirstContactWorld } from './mission-data.js?v=0.8.0';
+import { findRoute } from './navigation.js?v=0.9.0';
+import { FIRST_CONTACT, createFirstContactWorld } from './mission-data.js?v=0.9.0';
+import { SABOTAGE, TRANSMISSION, createFieldMissionWorld } from './field-missions.js?v=0.9.0';
 
 export const MISSIONS = Object.freeze([
   {
@@ -17,21 +18,19 @@ export const MISSIONS = Object.freeze([
   {
     id: 1,
     title: 'BAD FREQUENCY',
-    subtitle: 'Break the interference.',
-    briefing: 'Two hostile jammers are blocking the evacuation frequency. Destroy both marked antennas in either order with gunfire or grenades. Each destroyed jammer draws one announced infected counterattack. Then cross to the western evacuation flare. Mark a jammer to focus fire, or let the squad deal with nearby enemies first.',
+    subtitle: 'Two compounds. One clear frequency.',
+    briefing: 'Infiltrate the warehouse receiver and fuel-yard jammer in either order. Follow the exposed roads or use covered approaches, then destroy both marked antennas with gunfire or grenades. Each destroyed jammer draws one announced infected counterattack. Bring the squad to the western evacuation flare. Mark a jammer to focus fire, or let the squad deal with nearby enemies first.',
     objective: 'Destroy 2 jammers and reach the western flare',
   },
   {
     id: 2,
     title: 'LAST TRANSMISSION',
-    subtitle: 'Keep the signal alive.',
-    briefing: 'Reach the radio relay and keep your selected soldier inside its marked perimeter for 25 seconds. Three announced infected waves answer your transmission progress. Step outside to dodge or regroup; progress is saved, and waves already announced will still arrive. Then bring your squad to the flare.',
-    objective: 'Transmit for 25 seconds and reach extraction',
+    subtitle: 'Carry the signal to the ridge.',
+    briefing: 'Bring the village repeater online, then carry the signal to the ridge mast. Keep your selected soldier inside each perimeter: 12 seconds at the repeater, then 13 seconds at the mast. Three announced infected waves answer your transmission progress. Step outside to dodge or regroup; progress is saved, and waves already announced will still arrive. Then bring your squad to the flare.',
+    objective: 'Link both relays, transmit for 25 seconds and extract',
   },
 ]);
 
-const WIDTH = 1600;
-const HEIGHT = 1200;
 const CELL = 40;
 const TAU = Math.PI * 2;
 const FOCUS_SECONDS = 6;
@@ -107,53 +106,6 @@ function segmentCircle(ax, ay, bx, by, x, y, r) {
   return t >= 0 && t <= 1 ? t : c <= 0 ? 0 : null;
 }
 
-function makeWorld(random) {
-  const obstacles = [];
-  const put = (type, x, y, w, h) => obstacles.push({
-    x, y, w, h, type,
-    hp: type === 'barrel' ? 24 : type === 'hut' ? 160 : Infinity,
-    alive: true,
-  });
-  // Broad routes remain open across the map. Huts have traversable gaps.
-  for (const [x, y] of [[525, 750], [710, 425], [1080, 710], [1140, 345], [865, 180]]) {
-    put('hut', x, y, 116, 86);
-  }
-  for (const [x, y] of [[382, 800], [515, 475], [895, 675], [1070, 170], [1280, 600], [725, 960], [295, 420]]) {
-    put('rock', x, y, 50, 36);
-  }
-  for (const [x, y] of [[642, 757], [679, 457], [845, 441], [1126, 721], [1263, 356], [856, 283], [955, 614]]) {
-    put('barrel', x, y, 23, 27);
-  }
-  for (const [x, y] of [
-    [105, 160], [171, 207], [214, 170], [319, 171], [362, 258], [220, 348],
-    [157, 526], [199, 578], [302, 634], [421, 603], [457, 113], [512, 181],
-    [569, 313], [636, 231], [752, 103], [982, 77], [1137, 89], [1254, 113],
-    [1426, 425], [1463, 542], [1475, 647], [1406, 768], [1329, 927],
-    [1420, 1047], [1167, 1047], [1049, 992], [973, 1078], [855, 1089],
-    [584, 1067], [430, 1014], [310, 1098], [91, 1076], [107, 821],
-  ]) put('tree', x, y, 25, 27);
-
-  const decorations = [];
-  for (let i = 0; i < 320; i++) {
-    decorations.push({
-      x: 30 + random() * (WIDTH - 60),
-      y: 30 + random() * (HEIGHT - 60),
-      type: i % 16 === 0 ? 'flower' : i % 7 === 0 ? 'dirt' : 'grass',
-      variant: Math.floor(random() * 4),
-    });
-  }
-  for (const [x, y] of [[577, 687], [819, 547], [1240, 480], [982, 893], [482, 918]]) {
-    decorations.push({x, y, type: 'crater'});
-  }
-  // The same boundary is consumed by movement and rendering: water is solid.
-  const coastline = [
-    [-10, 102], [180, 47], [710, 76], [955, 54], [1160, 90], [1340, 60],
-    [1490, 210], [1528, 495], [1482, 645], [1538, 780], [1513, 945],
-    [1549, 1090], [1555, 1210],
-  ].map(([x, y]) => ({x, y}));
-  return {width: WIDTH, height: HEIGHT, obstacles, decorations, coastline};
-}
-
 export class Game {
   constructor({mission = 0, difficulty = 'normal', seed = 1989} = {}) {
     this.random = makeRandom(seed);
@@ -177,12 +129,11 @@ export class Game {
       checkpointSequence: 0,
       objective: index === 0 ? this.createOperationObjective() : index === 1
         ? {type: 'sabotage', targets: [], reinforcements: []}
-        : {type: 'holdout', zone: {x: 1020, y: 520, r: 110}, duration: 25,
-          held: 0, started: false, inside: false, elapsed: 0, pendingWave: null, nextWaveIndex: 0},
+        : this.createHoldoutObjective(),
       message: MISSIONS[index].objective,
       extraction: {...(index === 0 ? FIRST_CONTACT.extraction : index === 1
-        ? {x: 390, y: 200, r: 86} : {x: 1380, y: 220, r: 86}), active: false, progress: 0},
-      world: index === 0 ? createFirstContactWorld(this.random) : makeWorld(this.random),
+        ? SABOTAGE.extraction : TRANSMISSION.extraction), active: false, progress: 0},
+      world: index === 0 ? createFirstContactWorld(this.random) : createFieldMissionWorld(index, this.random),
       soldiers: [], leaderId: 1, enemies: [], civilians: [], bullets: [],
       particles: [], corpses: [], target: null, thrownGrenades: [],
       focusTargetId: null, focusUntil: 0,
@@ -190,7 +141,7 @@ export class Game {
       totalKills: 0,
       events: [],
     };
-    const start = index === 0 ? FIRST_CONTACT.start : {x: 220, y: 970};
+    const start = index === 0 ? FIRST_CONTACT.start : index === 1 ? SABOTAGE.start : TRANSMISSION.start;
     this.lastShot = {...start};
     ['FOX', 'ROOK', 'JUNE'].forEach((name, i) => {
       this.state.soldiers.push({
@@ -202,26 +153,41 @@ export class Game {
         speed: 0, walkPhase: i * 2, hitFlash: 0, targetId: null,
       });
     });
-    const patrols = index === 1
-      ? [[505, 675], [765, 545], [900, 420], [1085, 550], [1240, 485], [1180, 840]]
-      : [[510, 677], [640, 515], [885, 532], [985, 310], [1290, 462], [1190, 800], [970, 908], [1380, 650]];
-    const infected = index === 1
-      ? [[420, 910], [472, 840], [656, 900], [735, 795], [906, 793], [971, 605], [1135, 583], [1180, 937], [1320, 800], [1360, 460], [1030, 242]]
-      : [[420, 913], [470, 856], [675, 860], [738, 685], [829, 867], [957, 745], [1095, 913], [1230, 860], [1300, 762], [1380, 541], [1200, 268], [1100, 480], [940, 142], [815, 371]];
     if (index === 0) this.populateOperation();
-    else {
-      for (const [x, y] of patrols) this.spawnEnemy('soldier', x, y);
-      for (const [x, y] of infected) this.spawnEnemy('zombie', x, y);
-    }
-    if (index === 1) {
-      for (const [x, y] of [[829, 327], [1300, 570]]) this.state.objective.targets.push({
-        id: this.nextId++, type: 'jammer', x, y, r: 18,
-        hp: 90, maxHp: 90, alive: true, hitFlash: 0,
-      });
-    }
+    else this.populateFieldMission(index);
     this.rebuildNavigation();
     this.state.totalKills = this.state.enemies.length;
     if (index === 0) this.refreshOperationObjective();
+  }
+
+  createHoldoutObjective() {
+    const sites = TRANSMISSION.relays.map(site => ({id: site.id, label: site.name,
+      ...site.zone, duration: site.duration, held: 0}));
+    const first = sites[0];
+    return {type: 'holdout', sites, siteIndex: 0, siteStarted: false,
+      zone: {x: first.x, y: first.y, r: first.r},
+      duration: sites.reduce((total, site) => total + site.duration, 0),
+      held: 0, started: false, inside: false, elapsed: 0, pendingWave: null, nextWaveIndex: 0};
+  }
+
+  populateFieldMission(index) {
+    const definition = index === 1 ? SABOTAGE : TRANSMISSION;
+    const locations = index === 1 ? definition.targets : definition.relays;
+    for (const location of locations) {
+      const home = location.point || location.zone;
+      for (const spec of location.enemies) {
+        const enemy = this.spawnEnemy(spec.type, spec.x, spec.y);
+        enemy.operationGroup = location.id;
+        enemy.operationHome = {x: home.x, y: home.y, r: location.radius};
+      }
+    }
+    for (const spec of definition.ambient) this.spawnEnemy(spec.type, spec.x, spec.y);
+    if (index === 1) {
+      for (const location of definition.targets) this.state.objective.targets.push({
+        id: this.nextId++, type: 'jammer', siteId: location.id, label: location.name,
+        ...location.point, r: 18, hp: 90, maxHp: 90, alive: true, hitFlash: 0,
+      });
+    }
   }
 
   createOperationObjective() {
@@ -1057,16 +1023,34 @@ export class Game {
     if (objective.type !== 'holdout' || this.state.extraction.active) return;
     const leader = this.leader;
     objective.inside = Boolean(leader && dist(leader, objective.zone) <= objective.zone.r);
-    if (!objective.started && objective.inside) {
-      objective.started = true;
-      this.emit('holdout-start', objective.zone, {team: 'objective', duration: objective.duration});
-      this.say('RELAY LIVE · hold the signal', 3);
+    const site = objective.sites[objective.siteIndex];
+    if (objective.inside && !objective.siteStarted) {
+      objective.siteStarted = true;
+      this.emit('relay-site-start', objective.zone, {siteIndex: objective.siteIndex,
+        label: site.label, duration: site.duration, team: 'objective'});
+      if (!objective.started) {
+        objective.started = true;
+        this.emit('holdout-start', objective.zone, {team: 'objective', duration: objective.duration});
+      }
+      this.say(`${site.label.toUpperCase()} LIVE · hold the signal`, 3);
     }
     if (!objective.started) return;
     objective.elapsed += dt;
-    if (objective.inside) {
-      objective.held = Math.min(objective.duration, objective.held + dt);
-      if (objective.duration - objective.held < 1e-9) objective.held = objective.duration;
+    if (!objective.inside) return;
+    site.held = Math.min(site.duration, site.held + dt);
+    if (site.duration - site.held < 1e-9) site.held = site.duration;
+    objective.held = objective.sites.reduce((total, current) => total + current.held, 0);
+    if (site.held === site.duration && objective.siteIndex < objective.sites.length - 1) {
+      objective.siteIndex++;
+      const next = objective.sites[objective.siteIndex];
+      objective.zone = {x: next.x, y: next.y, r: next.r};
+      objective.siteStarted = false;
+      objective.inside = false;
+      this.emit('relay-stage', objective.zone, {siteIndex: objective.siteIndex,
+        label: next.label, team: 'objective'});
+      this.say(`REPEATER LINKED · carry the signal to ${next.label.toUpperCase()}`, 4);
+      // A site handoff ends this tick. Time at the old perimeter can never
+      // leak into the next relay, even with a large direct simulation step.
     }
   }
 
