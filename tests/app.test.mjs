@@ -45,18 +45,20 @@ test('successful save roundtrips clean completion, difficulty and opt-in audio',
   assert.equal(normalizeProgress({ difficulty: 'easy' }).difficulty, 'easy');
 });
 
-test('revision two preserves the expanded First Contact time and retires rebuilt mission times once', () => {
-  const storage = memoryStorage(JSON.stringify({completed: [0, 1, 2], best: {0: 65, 1: 30, 2: 40}, difficulty: 'hard', soundOn: true, missionRevision: 2}));
-  const migrated = loadProgress(storage);
-  assert.deepEqual(migrated, {completed: [0, 1, 2], best: {0: 65}, difficulty: 'hard', soundOn: true, missionRevision: MISSION_REVISION});
-  migrated.best[1] = 75; migrated.best[2] = 90;
-  assert.equal(saveProgress(storage, migrated), true);
-  assert.deepEqual(loadProgress(storage), migrated, 'new mission times survive subsequent loads');
-  assert.deepEqual(normalizeProgress(migrated), migrated, 'migration is idempotent');
+test('revisions two and three preserve the expanded First Contact time and retire rebuilt mission times once', () => {
+  for (const revision of [2, 3]) {
+    const storage = memoryStorage(JSON.stringify({completed: [0, 1, 2], best: {0: 65, 1: 30, 2: 40}, difficulty: 'hard', soundOn: true, missionRevision: revision}));
+    const migrated = loadProgress(storage);
+    assert.deepEqual(migrated, {completed: [0, 1, 2], best: {0: 65}, difficulty: 'hard', soundOn: true, missionRevision: MISSION_REVISION});
+    migrated.best[1] = 75; migrated.best[2] = 90;
+    assert.equal(saveProgress(storage, migrated), true);
+    assert.deepEqual(loadProgress(storage), migrated, 'new mission times survive subsequent loads');
+    assert.deepEqual(normalizeProgress(migrated), migrated, 'migration is idempotent');
+  }
 });
 
 test('revision one, legacy and unknown revisions retain progress and preferences without incomparable times', () => {
-  for (const revision of [undefined, 0, 1, -1, 4, '3']) {
+  for (const revision of [undefined, 0, 1, -1, 5, '4']) {
     const migrated = normalizeProgress({completed: [0, 1, 2], best: {0: 15, 1: 30, 2: 40}, difficulty: 'easy', soundOn: true, missionRevision: revision});
     assert.deepEqual(migrated, {completed: [0, 1, 2], best: {}, difficulty: 'easy', soundOn: true, missionRevision: MISSION_REVISION});
   }
@@ -85,7 +87,7 @@ test('objective HUD distinguishes rescue and sabotage instead of requesting a ma
   const sabotage = objectiveFor(objectiveState({rescueTarget: 0, objective: {type: 'sabotage', targets: [{alive: false}, {alive: true}]}}));
   assert.equal(sabotage.label, 'SABOTAGE');
   assert.equal(sabotage.counter, '1 / 2 SILENCED');
-  assert.match(sabotage.text, /Gunfire or grenades/);
+  assert.match(sabotage.text, /both compound jammers.*either order/);
   assert.equal(sabotage.progress, null);
 });
 

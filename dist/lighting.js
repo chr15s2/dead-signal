@@ -41,7 +41,8 @@ export class GroundLighting {
       c.drawImage(art.canvas, Math.round(obstacle.x - art.pad), Math.round(obstacle.y - art.pad));
     }
     const operation = state.objective;
-    const devices = operation?.type === 'sabotage' ? operation.targets : operation?.type === 'holdout' ? [operation.zone] : [];
+    const devices = operation?.type === 'sabotage' ? operation.targets : operation?.type === 'holdout'
+      ? operation.sites?.length ? operation.sites : [operation.zone] : [];
     for (const device of devices) {
       if (!visible(device.x - 30, device.y - 20, 100, 85)) continue;
       const key = device.alive === false ? 'wreck' : operation.type;

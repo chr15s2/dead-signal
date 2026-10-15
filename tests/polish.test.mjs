@@ -8,7 +8,14 @@ const advance = (game, seconds, input = {}) => {
 };
 function quietGame() {
   const game = new Game({mission: 1}).start();
+  // A deliberate quiet arena keeps physical regressions independent of mission layout.
   game.state.enemies = [];
+  game.world.obstacles = [];
+  game.world.coastline = null;
+  for (const [index, soldier] of game.soldiers.entries()) {
+    Object.assign(soldier, {x: 220 - index * 28, y: 970 + index * 25, path: null, pathTimer: 0});
+  }
+  game.rebuildNavigation();
   game.setHoldFire(true);
   return game;
 }
@@ -51,6 +58,8 @@ for (const [side, player, spawn] of [
   ['bottom', {x: 580, y: 847.5}, {x: 580, y: 910}],
 ]) test(`a zombie can approach and attack a player hugging the ${side} side of existing cover`, () => {
   const game = quietGame();
+  game.world.obstacles = [{type: 'hut', x: 525, y: 778, w: 116, h: 58, hp: 160, alive: true}];
+  game.rebuildNavigation();
   game.state.soldiers = game.soldiers.slice(0, 1);
   Object.assign(game.leader, player);
   assert.equal(game.blocked(player.x, player.y, CONFIG.actorRadius), false);
@@ -115,7 +124,9 @@ test('only accepted move orders emit an acknowledgement at the resolved destinat
   const orders = () => game.state.events.filter(event => event.type === 'order');
   assert.equal(game.moveTo(NaN, 790), false);
   assert.equal(orders().length, 0);
-  assert.equal(game.moveTo(540, 790), true); // Inside a hut: resolve to clear ground.
+  game.world.obstacles = [{type: 'hut', x: 525, y: 778, w: 116, h: 58, hp: 160, alive: true}];
+  game.rebuildNavigation();
+  assert.equal(game.moveTo(540, 790), true); // Inside fixture hut: resolve to clear ground.
   assert.equal(orders().length, 1);
   const event = orders()[0];
   assert.equal(event.actorId, game.leader.id);

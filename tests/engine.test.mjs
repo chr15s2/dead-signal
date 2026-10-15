@@ -10,7 +10,14 @@ function advance(game, seconds, input = {}) {
 
 function quietGame(options = {}) {
   const game = new Game({mission: 1, ...options}).start();
+  // A deliberate quiet arena keeps physical regressions independent of mission layout.
   game.state.enemies = [];
+  game.world.obstacles = [];
+  game.world.coastline = null;
+  for (const [index, soldier] of game.soldiers.entries()) {
+    Object.assign(soldier, {x: 220 - index * 28, y: 970 + index * 25, path: null, pathTimer: 0});
+  }
+  game.rebuildNavigation();
   game.setHoldFire(true);
   return game;
 }
@@ -120,18 +127,24 @@ test('an extraction requires staying in the zone, loses progress outside, and wi
 });
 
 test('mission three has three relay-triggered waves and opens extraction with hostiles alive', () => {
-  const game = quietGame({ mission: 2 });
+  const game = quietGame({mission: 2});
   advance(game, 12);
   assert.equal(game.extraction.active, false);
   assert.equal(game.enemies.length, 0);
-  game.leader.x = game.state.objective.zone.x;
-  game.leader.y = game.state.objective.zone.y;
-  for (const seconds of [1 / 60, 8, 8, 2.05]) advance(game, seconds);
+  const objective = game.state.objective;
+  game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
+  advance(game, 12.05);
+  assert.equal(objective.siteIndex, 1);
+  assert.equal(objective.held, 12);
+  assert.equal(game.waveCount, 2);
+  game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
+  advance(game, 6.1);
   assert.equal(game.state.wavesRemaining, 0);
   assert.equal(game.waveCount, 3);
   assert.equal(game.state.events.filter(event => event.type === 'wave').length, 3);
-  assert.equal(game.extraction.active, false, 'all three warned waves can arrive before the full transmission completes');
-  game.state.objective.held = 25;
+  assert.equal(game.extraction.active, false, 'all three warned waves can arrive before the final transmission completes');
+  // Isolate completion with ordinary objective updates; combat is covered elsewhere.
+  game.updateObjective(objective.duration - objective.held);
   game.checkObjective(.1);
   assert.equal(game.extraction.active, true);
   assert.ok(game.enemies.some(enemy => enemy.alive), 'hostiles need not be cleared');

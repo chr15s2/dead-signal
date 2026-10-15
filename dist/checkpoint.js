@@ -4,7 +4,7 @@
  * seed; destructible cover, casualties and the evacuation response survive.
  * Original content, MIT licensed; see the project LICENSE.
  */
-import { Game, CONFIG, FIRST_CONTACT_REVISION } from './engine.js?v=0.8.0';
+import { Game, CONFIG, FIRST_CONTACT_REVISION } from './engine.js?v=0.9.0';
 
 export const CHECKPOINT_KEY = 'dead-signal-first-contact-checkpoint';
 const FORMAT = 1;

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game, CONFIG} from '../dist/engine.js';
+import {SABOTAGE} from '../dist/field-missions.js';
 
 const advance = (game, seconds, input = {}) => {
   for (let i = 0; i < Math.round(seconds * 60); i++) game.update(CONFIG.step, input);
@@ -20,7 +21,7 @@ test('the three missions have distinct objectives and only First Contact has its
   assert.deepEqual(games.map(game => game.civilians.length), [2, 0, 0]);
   assert.deepEqual(games.map(game => game.state.rescueTarget), [2, 0, 0]);
   const targets = games[1].state.objective.targets;
-  assert.deepEqual(targets.map(({x, y, hp, maxHp, r}) => [x, y, hp, maxHp, r]), [[829, 327, 90, 90, 18], [1300, 570, 90, 90, 18]]);
+  assert.deepEqual(targets.map(({x, y, hp, maxHp, r}) => [x, y, hp, maxHp, r]), SABOTAGE.targets.map(site => [site.point.x, site.point.y, 90, 90, 18]));
   assert.ok(targets.every(target => !games[1].enemies.includes(target) && !games[1].world.obstacles.includes(target)));
 });
 
@@ -51,10 +52,10 @@ test('barrel chain explosions preserve their firing team through sabotage damage
     const game = isolated(1);
     const target = game.state.objective.targets[0];
     game.world.obstacles = [
-      {type: 'barrel', x: 789, y: 317, w: 20, h: 20, hp: 1, alive: true},
-      {type: 'barrel', x: 815, y: 317, w: 20, h: 20, hp: 24, alive: true},
+      {type: 'barrel', x: target.x - 40, y: target.y - 10, w: 20, h: 20, hp: 1, alive: true},
+      {type: 'barrel', x: target.x - 14, y: target.y - 10, w: 20, h: 20, hp: 24, alive: true},
     ];
-    game.state.bullets.push({x: 765, y: 327, vx: 700, vy: 0, damage: 13, life: .3, team, shooterId: -1});
+    game.state.bullets.push({x: target.x - 64, y: target.y, vx: 700, vy: 0, damage: 13, life: .3, team, shooterId: -1});
     game.updateBullets(.1);
     assert.ok(game.world.obstacles.every(obstacle => !obstacle.alive));
     assert.equal(target.alive, team === 'enemy');
@@ -169,6 +170,10 @@ test('relay progress is cumulative leader presence, saved outside and frozen whi
   game.pause(false);
   game.leader.x = objective.zone.x;
   game.updateObjective(20);
+  assert.equal(objective.held, 12, 'the first site caps without leaking elapsed time into the next');
+  assert.equal(objective.siteIndex, 1);
+  game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
+  game.updateObjective(13);
   assert.equal(objective.held, 25);
   game.checkObjective(CONFIG.step);
   assert.equal(game.extraction.active, true);
@@ -193,7 +198,8 @@ test('changing the selected soldier changes who operates the relay', () => {
 
 test('late mission time does not recall every distant hostile into the relay', () => {
   const game = isolated(2);
-  const distant = game.spawnEnemy('soldier', 1370, 220);
+  const distant = game.spawnEnemy('soldier', game.world.width - 250, 220);
+  assert.ok(distance(distant, game.leader) > CONFIG.activationRadius);
   const original = {x: distant.x, y: distant.y};
   game.state.time = 100;
   game.updateEnemies(CONFIG.step);
@@ -219,7 +225,11 @@ test('relay waves follow held progress milestones with warnings and cannot be bu
   assert.equal(objective.nextWaveIndex, 1, 'future milestones wait for actual transmission');
   assert.equal(objective.held, CONFIG.step);
   for (const milestone of [8, 16]) {
-    game.leader.x = objective.zone.x;
+    game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
+    if (milestone > objective.sites[0].duration && objective.siteIndex === 0) {
+      game.updateObjective(objective.sites[0].duration - objective.held);
+      game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
+    }
     game.updateObjective(milestone - objective.held); game.updateWaves(CONFIG.step);
     const countBefore = game.waveCount;
     assert.ok(objective.pendingWave);
@@ -275,7 +285,13 @@ test('sabotage and relay completion still require the full living squad at extra
   for (const mission of [1, 2]) {
     const game = isolated(mission);
     if (mission === 1) game.state.objective.targets.forEach(target => game.damage(target, 1000));
-    else game.state.objective.held = game.state.objective.duration;
+    else {
+      const objective = game.state.objective;
+      for (let site = 0; site < objective.sites.length; site++) {
+        game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
+        game.updateObjective(objective.sites[site].duration);
+      }
+    }
     game.leader.x = game.extraction.x; game.leader.y = game.extraction.y;
     game.checkObjective(.5);
     assert.equal(game.extraction.active, true);
