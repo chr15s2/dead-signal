@@ -196,3 +196,35 @@ test('Safari webkit audio is activated only by the explicit enable call', async 
   audio.cue('select');
   assert.ok(starts(env.contexts[0]) > 0);
 });
+
+test('focus and reinforcement cues follow the same gesture, deduplication and pause rules as combat', async t => {
+  const env = fixture(t), audio = env.engine();
+  const events = [
+    {id: 1, type: 'focus', time: 1, x: 200, y: 100, targetId: 40, team: 'player'},
+    {id: 2, type: 'reinforcement-warning', time: 1, x: 350, y: 150, dueAt: 3.5, count: 4, direction: 'EAST', team: 'zombie'},
+  ];
+  audio.consume(scene(events));
+  assert.equal(env.contexts.length, 0);
+  await audio.setEnabled(true);
+  const context = env.contexts[0];
+  audio.consume(scene(events));
+  assert.equal(starts(context), 0, 'enabling sound cannot replay old tactical announcements');
+  for (const [index, event] of events.entries()) {
+    context.currentTime += .2;
+    const next = {...event, id: index + 3};
+    const before = starts(context);
+    audio.consume(scene([next]));
+    assert.ok(starts(context) > before, event.type);
+    const played = starts(context);
+    audio.consume(scene([next]));
+    assert.equal(starts(context), played, 'each tactical cue is consumed once');
+  }
+  audio.pause(true);
+  const beforePause = starts(context);
+  audio.consume(scene([{...events[1], id: 5}]));
+  assert.equal(starts(context), beforePause);
+  assert.equal(audio.debug.voices, 0);
+  audio.pause(false);
+  audio.consume(scene([{...events[1], id: 5}]));
+  assert.equal(starts(context), beforePause);
+});

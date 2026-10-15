@@ -87,13 +87,14 @@ test('a valid actor stopped against navigation padding can walk out again', () =
   assert.ok(distance(game.leader, {x: 700, y: 540}) < 15);
 });
 
-test('hold fire prevents reinforcement noise, but marching through patrols remains dangerous', () => {
+test('patrol danger and hold fire persist without spontaneous sabotage reinforcements', () => {
   const quiet = new Game({mission: 1}).start(), loud = new Game({mission: 1}).start();
   quiet.setHoldFire(true);
   for (const game of [quiet, loud]) { game.moveTo(900, 650); advance(game, 10); }
   assert.equal(quiet.waveCount, 0);
   assert.ok(!quiet.state.events.some(event => event.type === 'shot' && event.team === 'player'));
-  assert.ok(loud.waveCount > 0);
+  assert.equal(loud.waveCount, 0, 'jammer alarms, rather than ambient noise, now trigger finite responses');
+  assert.ok(loud.state.events.some(event => event.type === 'shot' && event.team === 'player'));
   assert.ok(quiet.soldiers.some(soldier => soldier.hp < 100), 'quiet is a tactical choice, not invulnerability');
 });
 
@@ -140,7 +141,10 @@ test('extraction waits for living squad and survivors to regroup', () => {
   advance(game, .25);
   assert.equal(game.extraction.regrouping, true);
   assert.equal(game.extraction.progress, 0);
-  advance(game, 7);
+  const route = game.findPath(game.soldiers[1].x, game.soldiers[1].y, game.extraction.x, game.extraction.y);
+  let previous = game.soldiers[1], routeLength = 0;
+  for (const point of route) { routeLength += distance(previous, point); previous = point; }
+  advance(game, routeLength / CONFIG.followSpeed + CONFIG.extractionSeconds + 2);
   assert.equal(game.state.status, 'won');
 });
 

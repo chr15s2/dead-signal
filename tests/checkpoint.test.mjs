@@ -301,3 +301,65 @@ test('default browser storage is optional and a denied global getter is handled'
     else delete globalThis.localStorage;
   }
 });
+
+test('legacy format-one checkpoints default missing tactical fields without healing or losing progress', () => {
+  const {game, snapshot} = saved();
+  const legacy = structuredClone(snapshot);
+  delete legacy.state.focusTargetId;
+  delete legacy.state.focusUntil;
+  for (const actor of [...legacy.state.soldiers, ...legacy.state.enemies, ...legacy.state.civilians]) {
+    delete actor.biteTargetId; delete actor.biteTimer; delete actor.biteDuration;
+  }
+  const restored = restoreCheckpoint(legacy);
+  assert.ok(restored);
+  assert.equal(restored.state.focusTargetId, null);
+  assert.equal(restored.state.focusUntil, 0);
+  assert.ok(restored.enemies.filter(actor => actor.type === 'zombie').every(actor => actor.biteTargetId === null && actor.biteTimer === 0));
+  assert.deepEqual(simulationFacts(restored), simulationFacts(game));
+  assert.equal(restored.state.status, 'paused');
+});
+
+test('an active focus order and partially wound-up bite retain their exact simulation deadline and victim', () => {
+  const game = entryCheckpoint();
+  game.setHoldFire(true);
+  const zombie = game.enemies.find(actor => actor.alive && actor.type === 'zombie');
+  const leader = game.leader;
+  const point = Array.from({length: 16}, (_, index) => {
+    const angle = index * Math.PI / 8;
+    return {x: leader.x + Math.cos(angle) * 24, y: leader.y + Math.sin(angle) * 24};
+  }).find(point => !game.blocked(point.x, point.y, CONFIG.actorRadius) && game.hasLOS(point, leader));
+  assert.ok(point);
+  Object.assign(zombie, point, {cooldown: 0, attackCooldown: 0, active: true});
+  game.focusTarget(zombie.id);
+  game.updateEnemies(CONFIG.step);
+  assert.equal(zombie.biteTargetId, leader.id);
+  game.updateEnemies(.1);
+  assert.ok(zombie.biteTimer > 0 && zombie.biteTimer < .3);
+  const {snapshot} = saved(game);
+  const restored = restoreCheckpoint(snapshot);
+  assert.ok(restored);
+  assert.equal(restored.state.focusTargetId, zombie.id);
+  assert.equal(restored.state.focusUntil, game.state.focusUntil);
+  const restoredZombie = restored.enemies.find(actor => actor.id === zombie.id);
+  assert.deepEqual([restoredZombie.biteTargetId, restoredZombie.biteTimer, restoredZombie.biteDuration],
+    [zombie.biteTargetId, zombie.biteTimer, zombie.biteDuration]);
+  assert.equal(restored.random.getState(), game.random.getState());
+  const before = restoredZombie.biteTimer;
+  restored.update(10);
+  assert.equal(restoredZombie.biteTimer, before, 'restored attack remains paused until explicit resume');
+  const second = restoreCheckpoint(snapshot);
+  restored.pause(false); second.pause(false);
+  for (let frame = 0; frame < 30; frame++) { restored.update(CONFIG.step); second.update(CONFIG.step); }
+  assert.deepEqual(simulationFacts(restored), simulationFacts(second));
+  assert.equal(restored.state.focusTargetId, second.state.focusTargetId);
+  assert.equal(restoredZombie.biteTimer, second.enemies.find(actor => actor.id === zombie.id).biteTimer);
+  for (const invalid of [
+    value => value.state.focusTargetId = 999999,
+    value => value.state.focusUntil = value.state.time + 100,
+    value => value.state.enemies.find(actor => actor.id === zombie.id).biteTargetId = 999999,
+    value => value.state.enemies.find(actor => actor.id === zombie.id).biteTimer = 10,
+  ]) {
+    const corrupted = structuredClone(snapshot); invalid(corrupted);
+    assert.equal(restoreCheckpoint(corrupted), null);
+  }
+});

@@ -45,18 +45,18 @@ test('successful save roundtrips clean completion, difficulty and opt-in audio',
   assert.equal(normalizeProgress({ difficulty: 'easy' }).difficulty, 'easy');
 });
 
-test('revision one retains unchanged mission times and retires the short First Contact time once', () => {
-  const storage = memoryStorage(JSON.stringify({completed: [0, 1, 2], best: {0: 15, 1: 30, 2: 40}, difficulty: 'hard', soundOn: true, missionRevision: 1}));
+test('revision two preserves the expanded First Contact time and retires rebuilt mission times once', () => {
+  const storage = memoryStorage(JSON.stringify({completed: [0, 1, 2], best: {0: 65, 1: 30, 2: 40}, difficulty: 'hard', soundOn: true, missionRevision: 2}));
   const migrated = loadProgress(storage);
-  assert.deepEqual(migrated, {completed: [0, 1, 2], best: {1: 30, 2: 40}, difficulty: 'hard', soundOn: true, missionRevision: MISSION_REVISION});
-  migrated.best[0] = 145;
+  assert.deepEqual(migrated, {completed: [0, 1, 2], best: {0: 65}, difficulty: 'hard', soundOn: true, missionRevision: MISSION_REVISION});
+  migrated.best[1] = 75; migrated.best[2] = 90;
   assert.equal(saveProgress(storage, migrated), true);
-  assert.deepEqual(loadProgress(storage), migrated, 'new operation time survives subsequent loads');
+  assert.deepEqual(loadProgress(storage), migrated, 'new mission times survive subsequent loads');
   assert.deepEqual(normalizeProgress(migrated), migrated, 'migration is idempotent');
 });
 
-test('legacy and unknown mission revisions retain progress and preferences without incomparable times', () => {
-  for (const revision of [undefined, 0, -1, 3, '2']) {
+test('revision one, legacy and unknown revisions retain progress and preferences without incomparable times', () => {
+  for (const revision of [undefined, 0, 1, -1, 4, '3']) {
     const migrated = normalizeProgress({completed: [0, 1, 2], best: {0: 15, 1: 30, 2: 40}, difficulty: 'easy', soundOn: true, missionRevision: revision});
     assert.deepEqual(migrated, {completed: [0, 1, 2], best: {}, difficulty: 'easy', soundOn: true, missionRevision: MISSION_REVISION});
   }
@@ -144,4 +144,25 @@ test('operation HUD gives four distinct stages and local clearance instructions'
   assert.deepEqual([objectiveFor(state).label, objectiveFor(state).counter, objectiveFor(state).stage], ['SECURE THE HARBOUR', '1 HOSTILE', 3]);
   objective.phase = 3; state.extraction.active = true;
   assert.deepEqual([objectiveFor(state).label, objectiveFor(state).stage, objectiveFor(state).stages], ['EXTRACTION OPEN', 4, 4]);
+});
+
+test('incoming response HUD translates bearings, counts down with simulation time and clears after arrival', () => {
+  const response = {id: 1, x: 800, y: 500, dueAt: 5, direction: 0, pending: true, spawned: false};
+  const state = objectiveState({time: 2.1, rescueTarget: 0, objective: {type: 'sabotage', targets: [{alive: false}, {alive: true}], reinforcements: [response]}});
+  const east = objectiveFor(state);
+  assert.match(east.text, /counterattack/i);
+  assert.match(east.text, /east/i);
+  assert.match(east.text, /3s/);
+  response.direction = Math.PI / 2;
+  assert.match(objectiveFor(state).text, /south/i);
+  response.direction = -Math.PI / 2;
+  assert.match(objectiveFor(state).text, /north/i);
+  response.direction = Math.PI;
+  assert.match(objectiveFor(state).text, /west/i);
+  assert.ok(!/3\.14159/.test(objectiveFor(state).text));
+  state.time = 5.5;
+  assert.match(objectiveFor(state).text, /approach/i);
+  response.pending = false; response.spawned = true;
+  assert.doesNotMatch(objectiveFor(state).text, /counterattack/i);
+  assert.equal(objectiveFor(state).counter, '1 / 2 SILENCED');
 });

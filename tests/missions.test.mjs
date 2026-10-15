@@ -97,16 +97,19 @@ test('jammer autofire respects cover and weapon range, while explicit manual aim
   assert.ok(target.hp < target.maxHp, 'manual-aim bullets strike the prop');
 });
 
-test('mobile grenade targeting chooses hostiles first and otherwise a nearby living jammer', () => {
+test('smart grenade values a full-health jammer and honors a focused hostile', () => {
   const game = isolated(1);
   const target = game.state.objective.targets[0];
   game.leader.x = target.x - 250; game.leader.y = target.y;
   const zombie = game.spawnEnemy('zombie', game.leader.x + 80, game.leader.y + 30);
   assert.equal(game.grenade(), true);
-  assert.deepEqual([game.state.thrownGrenades[0].tx, game.state.thrownGrenades[0].ty], [zombie.x, zombie.y]);
-  zombie.alive = false;
+  assert.deepEqual([game.state.thrownGrenades[0].tx, game.state.thrownGrenades[0].ty], [target.x, target.y], '90 useful device damage beats one isolated zombie');
+  game.focusTarget(zombie.id);
   assert.equal(game.grenade(), true);
-  const thrown = game.state.thrownGrenades[1];
+  assert.deepEqual([game.state.thrownGrenades[1].tx, game.state.thrownGrenades[1].ty], [zombie.x, zombie.y]);
+  game.damage(zombie, 1000, 'player');
+  assert.equal(game.grenade(), true);
+  const thrown = game.state.thrownGrenades[2];
   assert.deepEqual([thrown.tx, thrown.ty], [target.x, target.y]);
   game.updateGrenades(CONFIG.grenadeFlight + .01);
   assert.equal(target.alive, false, 'a centered frag destroys the 90 HP device');
@@ -141,7 +144,10 @@ test('no relay progress or waves occur before the selected soldier first enters'
   game.update(CONFIG.step);
   assert.equal(objective.started, true);
   assert.equal(objective.inside, true);
-  assert.equal(game.waveCount, 1, 'the first defense wave follows first entry, not mission time');
+  assert.equal(game.waveCount, 0, 'first entry announces a response before spawning it');
+  assert.equal(objective.nextWaveIndex, 1);
+  assert.ok(objective.pendingWave);
+  assert.ok(game.state.events.some(event => event.type === 'reinforcement-warning'));
   assert.equal(objective.held, CONFIG.step);
 });
 
@@ -155,7 +161,7 @@ test('relay progress is cumulative leader presence, saved outside and frozen whi
   game.updateObjective(4);
   assert.equal(objective.inside, false);
   assert.equal(objective.held, 5);
-  assert.equal(objective.elapsed, 9, 'wave schedule continues during a retreat');
+  assert.equal(objective.elapsed, 9, 'mission encounter time continues while saved transmission progress is frozen');
   game.pause();
   const paused = structuredClone(objective);
   advance(game, 2);
@@ -195,7 +201,7 @@ test('late mission time does not recall every distant hostile into the relay', (
   assert.deepEqual({x: distant.x, y: distant.y}, original);
 });
 
-test('relay waves use defense elapsed time at zero, eight and sixteen seconds only', () => {
+test('relay waves follow held progress milestones with warnings and cannot be burned while outside', () => {
   const game = isolated(2);
   const objective = game.state.objective;
   game.state.time = 100;
@@ -203,33 +209,57 @@ test('relay waves use defense elapsed time at zero, eight and sixteen seconds on
   assert.equal(game.waveCount, 0);
   game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
   game.updateObjective(CONFIG.step); game.updateWaves(CONFIG.step);
-  assert.equal(game.waveCount, 1);
+  assert.equal(game.waveCount, 0);
+  assert.equal(objective.nextWaveIndex, 1);
+  assert.ok(objective.pendingWave.dueAt >= game.state.time + 2 - 1e-8);
   game.leader.x += objective.zone.r + 10;
-  game.updateObjective(7.9); game.updateWaves(7.9);
-  assert.equal(game.waveCount, 1);
-  game.updateObjective(.1); game.updateWaves(.1);
-  assert.equal(game.waveCount, 2);
-  game.updateObjective(8); game.updateWaves(8);
-  assert.equal(game.waveCount, 3);
-  game.updateObjective(50); game.updateWaves(50);
+  game.updateObjective(40);
+  game.state.time += 40; game.updateWaves(CONFIG.step);
+  assert.equal(game.waveCount, 1, 'the announced wave arrives during a retreat');
+  assert.equal(objective.nextWaveIndex, 1, 'future milestones wait for actual transmission');
+  assert.equal(objective.held, CONFIG.step);
+  for (const milestone of [8, 16]) {
+    game.leader.x = objective.zone.x;
+    game.updateObjective(milestone - objective.held); game.updateWaves(CONFIG.step);
+    const countBefore = game.waveCount;
+    assert.ok(objective.pendingWave);
+    game.state.time = objective.pendingWave.dueAt - .01; game.updateWaves(CONFIG.step);
+    assert.equal(game.waveCount, countBefore);
+    game.state.time += .02; game.updateWaves(CONFIG.step);
+    assert.equal(game.waveCount, countBefore + 1);
+  }
+  game.updateObjective(50); game.state.time += 50; game.updateWaves(50);
   assert.equal(game.waveCount, 3);
   assert.equal(game.state.wavesRemaining, 0);
   assert.equal(game.enemies.length, 12);
-  assert.equal(objective.held, CONFIG.step, 'retreat does not transmit');
+  assert.equal(objective.nextWaveIndex, 3);
+  assert.equal(objective.pendingWave, null);
 });
 
-test('holdout spawn points stay330px from every living soldier after cover and coast correction', () => {
+test('holdout announced spawn points remain330px from every living soldier after movement and cover correction', () => {
   for (const seed of [1, 42, 531, 1989, 2143]) {
     for (const location of [{x: 1020, y: 520}, {x: 1370, y: 220}, {x: 1410, y: 1080}]) {
       const game = new Game({mission: 2, seed}).start();
       const objective = game.state.objective;
+      game.leader.x = objective.zone.x; game.leader.y = objective.zone.y;
+      game.updateObjective(CONFIG.step); game.updateWaves(CONFIG.step);
+      assert.ok(objective.pendingWave);
       for (const [index, soldier] of game.soldiers.entries()) {
         Object.assign(soldier, game.nearestOpen(location.x - index * 130, location.y + index * 30));
       }
-      objective.started = true;
-      objective.elapsed = 0;
       const before = game.enemies.length;
-      game.updateWaves(CONFIG.step);
+      for (let attempt = 0; attempt < 3 && game.waveCount === 0; attempt++) {
+        const warning = objective.pendingWave;
+        game.state.time = warning.dueAt + .01;
+        game.updateWaves(CONFIG.step);
+        if (game.waveCount === 0) {
+          assert.ok(warning.pending && !warning.spawned);
+          assert.ok(warning.dueAt >= game.state.time + .6 - 1e-8,
+            'a changed sector must be announced before a postponed arrival');
+          const revised = game.state.events.filter(event => event.type === 'reinforcement-warning').at(-1);
+          assert.equal(revised.dueAt, warning.dueAt);
+        }
+      }
       const spawned = game.enemies.slice(before);
       assert.equal(spawned.length, 4);
       for (const enemy of spawned) {
